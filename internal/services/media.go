@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 )
@@ -107,17 +108,25 @@ func (m *MediaService) GetMediaByID(ctx context.Context, id string) (*entity.Med
 	return &media[0], nil
 }
 
-// UpdateMedia updates an existing media item
-func (m *MediaService) UpdateMedia(ctx context.Context, id string, updateFn func(*entity.Media) error) (*entity.Media, error) {
+// UpdateMedia updates an existing media item using the v1 API request
+func (m *MediaService) UpdateMedia(ctx context.Context, id string, request v1.UpdateMediaRequest) (*entity.Media, error) {
 	// Get the existing media
 	media, err := m.GetMediaByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	// Apply the update function
-	if err := updateFn(media); err != nil {
-		return nil, err
+	// Apply updates if provided
+	if request.CapturedAt != nil {
+		media.CapturedAt = request.CapturedAt.Time
+	}
+	if request.Exif != nil {
+		if media.ExifMetadata == nil {
+			media.ExifMetadata = make(map[string]interface{})
+		}
+		for _, exif := range *request.Exif {
+			media.ExifMetadata[exif.Key] = exif.Value
+		}
 	}
 
 	// TODO: Implement media update in datastore

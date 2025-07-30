@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
 	dtContext "git.tls.tupangiu.ro/cosmin/photos-ng/pkg/context"
 	"github.com/gin-gonic/gin"
@@ -77,12 +76,9 @@ func (s *ServerImpl) CreateAlbum(c *gin.Context) {
 		return
 	}
 
-	// Create album entity
-	album := entity.NewAlbum(request.Name) // Using name as path for now
-
 	// Create album service and create the album
 	albumSrv := services.NewAlbumService(dt)
-	createdAlbum, err := albumSrv.CreateAlbum(c.Request.Context(), album)
+	createdAlbum, err := albumSrv.CreateAlbum(c.Request.Context(), request)
 	if err != nil {
 		zap.S().Errorw("failed to create album", "error", err)
 		c.JSON(http.StatusInternalServerError, v1.Error{
@@ -103,7 +99,7 @@ func (s *ServerImpl) GetAlbum(c *gin.Context, id string) {
 
 	// Create album service and get the album
 	albumSrv := services.NewAlbumService(dt)
-	album, err := albumSrv.GetAlbumByID(c.Request.Context(), id)
+	album, err := albumSrv.GetAlbum(c.Request.Context(), id)
 	if err != nil {
 		switch err.(type) {
 		case *services.ErrResourceNotFound:
@@ -139,11 +135,7 @@ func (s *ServerImpl) UpdateAlbum(c *gin.Context, id string) {
 
 	// Create album service and update the album
 	albumSrv := services.NewAlbumService(dt)
-	updatedAlbum, err := albumSrv.UpdateAlbum(c.Request.Context(), id, func(album *entity.Album) error {
-		// TODO: Update album fields based on request
-		// For now, this is a stub implementation
-		return nil
-	})
+	updatedAlbum, err := albumSrv.UpdateAlbum(c.Request.Context(), id, request)
 	if err != nil {
 		switch err.(type) {
 		case *services.ErrResourceNotFound:

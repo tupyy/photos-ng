@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
 	dtContext "git.tls.tupangiu.ro/cosmin/photos-ng/pkg/context"
 	"github.com/gin-gonic/gin"
@@ -137,21 +136,7 @@ func (s *ServerImpl) UpdateMedia(c *gin.Context, id types.UUID) {
 
 	// Create media service and update the media
 	mediaSrv := services.NewMediaService(dt)
-	updatedMedia, err := mediaSrv.UpdateMedia(c.Request.Context(), idStr, func(media *entity.Media) error {
-		// Update captured at time
-		if request.CapturedAt != nil {
-			media.CapturedAt = request.CapturedAt.Time
-		}
-
-		// Update EXIF data
-		if request.Exif != nil {
-			for _, exif := range *request.Exif {
-				media.ExifMetadata[exif.Key] = exif.Value
-			}
-		}
-
-		return nil
-	})
+	updatedMedia, err := mediaSrv.UpdateMedia(c.Request.Context(), idStr, request)
 	if err != nil {
 		switch err.(type) {
 		case *services.ErrResourceNotFound:

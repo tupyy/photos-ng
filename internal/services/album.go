@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 
+	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 )
@@ -59,8 +60,8 @@ func (a *AlbumService) GetAlbums(ctx context.Context, filter *AlbumFilter) ([]en
 	return a.dt.QueryAlbums(ctx, filter.QueriesFn()...)
 }
 
-// GetAlbumByID retrieves a specific album by its ID
-func (a *AlbumService) GetAlbumByID(ctx context.Context, id string) (*entity.Album, error) {
+// GetAlbum retrieves a specific album by its ID
+func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, error) {
 	albums, err := a.dt.QueryAlbums(ctx, pg.FilterById(id), pg.Limit(1))
 	if err != nil {
 		return nil, err
@@ -73,25 +74,37 @@ func (a *AlbumService) GetAlbumByID(ctx context.Context, id string) (*entity.Alb
 	return &albums[0], nil
 }
 
-// CreateAlbum creates a new album
-func (a *AlbumService) CreateAlbum(ctx context.Context, album entity.Album) (*entity.Album, error) {
-	// TODO: Implement album creation in datastore
+// CreateAlbum creates a new album using the v1 API request
+func (a *AlbumService) CreateAlbum(ctx context.Context, request v1.CreateAlbumRequest) (*entity.Album, error) {
+	album := entity.Album{
+		ID:       "album-" + request.Name, // TODO: Generate proper ID
+		Path:     request.Name,
+		Parent:   request.ParentId,
+		Children: []string{},
+		Media:    []entity.Media{},
+	}
+
+	// TODO: Implement actual album creation in datastore
 	// For now, return the album as-is (stub implementation)
 	return &album, nil
 }
 
-// UpdateAlbum updates an existing album
-func (a *AlbumService) UpdateAlbum(ctx context.Context, id string, updateFn func(*entity.Album) error) (*entity.Album, error) {
+// UpdateAlbum updates an existing album using the v1 API request
+func (a *AlbumService) UpdateAlbum(ctx context.Context, id string, request v1.UpdateAlbumRequest) (*entity.Album, error) {
 	// Get the existing album
-	album, err := a.GetAlbumByID(ctx, id)
+	album, err := a.GetAlbum(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	// Apply the update function
-	if err := updateFn(album); err != nil {
-		return nil, err
+	// Apply updates if provided
+	if request.Name != nil {
+		album.Path = *request.Name // Using name as path for now
 	}
+	// TODO: Add description field to entity.Album if needed
+	// if request.Description != nil {
+	//     album.Description = *request.Description
+	// }
 
 	// TODO: Implement album update in datastore
 	// For now, return the updated album (stub implementation)
@@ -101,7 +114,7 @@ func (a *AlbumService) UpdateAlbum(ctx context.Context, id string, updateFn func
 // DeleteAlbum deletes an album by ID
 func (a *AlbumService) DeleteAlbum(ctx context.Context, id string) error {
 	// Check if album exists
-	_, err := a.GetAlbumByID(ctx, id)
+	_, err := a.GetAlbum(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -114,7 +127,7 @@ func (a *AlbumService) DeleteAlbum(ctx context.Context, id string) error {
 // SyncAlbum synchronizes an album with the file system
 func (a *AlbumService) SyncAlbum(ctx context.Context, id string) (int, error) {
 	// Check if album exists
-	album, err := a.GetAlbumByID(ctx, id)
+	album, err := a.GetAlbum(ctx, id)
 	if err != nil {
 		return 0, err
 	}
