@@ -22,25 +22,25 @@ type ServerInterface interface {
 	CreateAlbum(c *gin.Context)
 	// Delete album by ID
 	// (DELETE /api/v1/albums/{id})
-	DeleteAlbum(c *gin.Context, id openapi_types.UUID)
+	DeleteAlbum(c *gin.Context, id string)
 	// Get album by ID
 	// (GET /api/v1/albums/{id})
-	GetAlbum(c *gin.Context, id openapi_types.UUID)
+	GetAlbum(c *gin.Context, id string)
 	// Update album by ID
 	// (PUT /api/v1/albums/{id})
-	UpdateAlbum(c *gin.Context, id openapi_types.UUID)
+	UpdateAlbum(c *gin.Context, id string)
 	// Sync album
 	// (POST /api/v1/albums/{id}/sync)
-	SyncAlbum(c *gin.Context, id openapi_types.UUID)
+	SyncAlbum(c *gin.Context, id string)
 	// List all media
 	// (GET /api/v1/media)
 	ListMedia(c *gin.Context, params ListMediaParams)
 	// Delete media by ID
 	// (DELETE /api/v1/media/{id})
-	DeleteMedia(c *gin.Context, id openapi_types.UUID)
+	DeleteMedia(c *gin.Context, id string)
 	// Get media by ID
 	// (GET /api/v1/media/{id})
-	GetMedia(c *gin.Context, id openapi_types.UUID)
+	GetMedia(c *gin.Context, id string)
 	// Update media by ID
 	// (PUT /api/v1/media/{id})
 	UpdateMedia(c *gin.Context, id openapi_types.UUID)
@@ -49,7 +49,7 @@ type ServerInterface interface {
 	GetMediaContent(c *gin.Context, id openapi_types.UUID)
 	// Get media thumbnail
 	// (GET /api/v1/media/{id}/thumbnail)
-	GetMediaThumbnail(c *gin.Context, id openapi_types.UUID)
+	GetMediaThumbnail(c *gin.Context, id string)
 	// Get timeline buckets
 	// (GET /api/v1/timeline)
 	GetTimeline(c *gin.Context, params GetTimelineParams)
@@ -117,7 +117,7 @@ func (siw *ServerInterfaceWrapper) DeleteAlbum(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id openapi_types.UUID
+	var id string
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -141,7 +141,7 @@ func (siw *ServerInterfaceWrapper) GetAlbum(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id openapi_types.UUID
+	var id string
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -165,7 +165,7 @@ func (siw *ServerInterfaceWrapper) UpdateAlbum(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id openapi_types.UUID
+	var id string
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -189,7 +189,7 @@ func (siw *ServerInterfaceWrapper) SyncAlbum(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id openapi_types.UUID
+	var id string
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -295,7 +295,7 @@ func (siw *ServerInterfaceWrapper) DeleteMedia(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id openapi_types.UUID
+	var id string
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -319,7 +319,7 @@ func (siw *ServerInterfaceWrapper) GetMedia(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id openapi_types.UUID
+	var id string
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
@@ -391,7 +391,7 @@ func (siw *ServerInterfaceWrapper) GetMediaThumbnail(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id openapi_types.UUID
+	var id string
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {

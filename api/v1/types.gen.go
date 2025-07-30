@@ -35,7 +35,7 @@ type Album struct {
 	Href string `json:"href"`
 
 	// Id Unique identifier for the album
-	Id openapi_types.UUID `json:"id"`
+	Id string `json:"id"`
 
 	// Media list of media href
 	Media *[]string `json:"media,omitempty"`
@@ -145,7 +145,7 @@ type ListMediaParams struct {
 	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
 
 	// AlbumId Filter media by album ID
-	AlbumId *openapi_types.UUID `form:"album_id,omitempty" json:"album_id,omitempty"`
+	AlbumId *string `form:"album_id,omitempty" json:"album_id,omitempty"`
 
 	// Type Filter media by type
 	Type *ListMediaParamsType `form:"type,omitempty" json:"type,omitempty"`

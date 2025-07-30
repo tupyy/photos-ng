@@ -98,7 +98,6 @@ paths:
           description: The ID of the album to retrieve
           schema:
             type: string
-            format: uuid
       responses:
         '200':
           description: Successful response
@@ -123,7 +122,6 @@ paths:
           description: The ID of the album to update
           schema:
             type: string
-            format: uuid
       requestBody:
         required: true
         content:
@@ -156,7 +154,6 @@ paths:
           description: The ID of the album to delete
           schema:
             type: string
-            format: uuid
       responses:
         '204':
           description: Album deleted successfully
@@ -179,7 +176,6 @@ paths:
           description: The ID of the album to sync
           schema:
             type: string
-            format: uuid
       responses:
         '200':
           description: Album sync completed successfully
@@ -231,7 +227,6 @@ paths:
           required: false
           schema:
             type: string
-            format: uuid
         - name: type
           in: query
           description: Filter media by type
@@ -311,7 +306,6 @@ paths:
           description: The ID of the media item to retrieve
           schema:
             type: string
-            format: uuid
       responses:
         '200':
           description: Successful response
@@ -369,7 +363,6 @@ paths:
           description: The ID of the media item to delete
           schema:
             type: string
-            format: uuid
       responses:
         '204':
           description: Media deleted successfully
@@ -392,7 +385,6 @@ paths:
           description: The ID of the media item
           schema:
             type: string
-            format: uuid
       responses:
         '200':
           description: Successful response
@@ -516,9 +508,7 @@ components:
       properties:
         id:
           type: string
-          format: uuid
           description: Unique identifier for the album
-          example: "123e4567-e89b-12d3-a456-426614174000"
         href:
           type: string
           example: "/api/v1/albums/album_id"

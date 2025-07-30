@@ -5,11 +5,12 @@ package pg
 import (
 	"context"
 
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type QueryFilter func(original sq.SelectBuilder) sq.SelectBuilder
+type QueryOption func(original sq.SelectBuilder) sq.SelectBuilder
 
 type TxUserFunc func(context.Context, *Writer) error
 
@@ -37,6 +38,36 @@ func NewPostgresDatastore(ctx context.Context, url string, options ...Option) (*
 	}
 
 	return &Datastore{pool: MustNewInterceptorPooler(pgPool, newLogInterceptor())}, nil
+}
+
+func (d *Datastore) QueryAlbums(ctx context.Context, opts ...QueryOption) ([]entity.Album, error) {
+	return []entity.Album{}, nil
+}
+
+func (d *Datastore) QueryMedia(ctx context.Context, opts ...QueryOption) ([]entity.Media, error) {
+	return []entity.Media{}, nil
+}
+
+// WriteTx executes a write transaction with the provided user function.
+// It manages transaction lifecycle and provides a Writer interface for data modifications.
+func (d *Datastore) WriteTx(ctx context.Context, txFn TxUserFunc) error {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	writer := &Writer{tx: tx}
+
+	if err := txFn(ctx, writer); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (dt *Datastore) Close() {
