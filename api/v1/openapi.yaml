@@ -43,21 +43,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  albums:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Album'
-                  total:
-                    type: integer
-                    description: Total number of albums
-                  limit:
-                    type: integer
-                    description: Number of albums returned
-                  offset:
-                    type: integer
-                    description: Number of albums skipped
+                $ref: '#/components/schemas/ListAlbumsResponse'
         '500':
           $ref: '#/components/responses/InternalServerError'
     post:
@@ -182,15 +168,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Album sync completed"
-                  synced_items:
-                    type: integer
-                    description: Number of items synced
-                    example: 42
+                $ref: '#/components/schemas/SyncAlbumResponse'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -274,21 +252,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  media:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Media'
-                  total:
-                    type: integer
-                    description: Total number of media items
-                  limit:
-                    type: integer
-                    description: Number of media items returned
-                  offset:
-                    type: integer
-                    description: Number of media items skipped
+                $ref: '#/components/schemas/ListMediaResponse'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -470,27 +434,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  buckets:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Bucket'
-                  years:
-                    type: array
-                    items:
-                      type: integer
-                    description: List of all years that contain photos
-                    example: [2020, 2021, 2022, 2023, 2024]
-                  total:
-                    type: integer
-                    description: Total number of buckets
-                  limit:
-                    type: integer
-                    description: Number of buckets returned
-                  offset:
-                    type: integer
-                    description: Number of buckets skipped
+                $ref: '#/components/schemas/GetTimelineResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
@@ -521,6 +465,8 @@ components:
         parentHref:
           type: string
           description: href of the parent
+        description:
+          type: string
         children:
           type: array
           items:
@@ -612,22 +558,21 @@ components:
       type: object
       required:
         - name
-        - path
       properties:
+        parentId:
+          type: string
+          description: Id of the parent
         name:
           type: string
           description: Name of the album
-        path:
-          type: string
-          description: Path of the folder on disk
 
     UpdateAlbumRequest:
       type: object
-      description: Request body for updating an album (currently no additional fields to update)
-      required:
-        - name
+      description: Request body for updating an album
       properties:
         name:
+          type: string
+        description:
           type: string
 
 
@@ -660,6 +605,94 @@ components:
         details:
           type: object
           description: Additional error details
+
+    ListAlbumsResponse:
+      type: object
+      required:
+        - albums
+        - total
+        - limit
+        - offset
+      properties:
+        albums:
+          type: array
+          items:
+            $ref: '#/components/schemas/Album'
+        total:
+          type: integer
+          description: Total number of albums
+        limit:
+          type: integer
+          description: Number of albums returned
+        offset:
+          type: integer
+          description: Number of albums skipped
+
+    ListMediaResponse:
+      type: object
+      required:
+        - media
+        - total
+        - limit
+        - offset
+      properties:
+        media:
+          type: array
+          items:
+            $ref: '#/components/schemas/Media'
+        total:
+          type: integer
+          description: Total number of media items
+        limit:
+          type: integer
+          description: Number of media items returned
+        offset:
+          type: integer
+          description: Number of media items skipped
+
+    GetTimelineResponse:
+      type: object
+      required:
+        - buckets
+        - years
+        - total
+        - limit
+        - offset
+      properties:
+        buckets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Bucket'
+        years:
+          type: array
+          items:
+            type: integer
+          description: List of all years that contain photos
+          example: [2020, 2021, 2022, 2023, 2024]
+        total:
+          type: integer
+          description: Total number of buckets
+        limit:
+          type: integer
+          description: Number of buckets returned
+        offset:
+          type: integer
+          description: Number of buckets skipped
+
+    SyncAlbumResponse:
+      type: object
+      required:
+        - message
+        - synced_items
+      properties:
+        message:
+          type: string
+          description: Sync completion message
+          example: "Album sync completed"
+        synced_items:
+          type: integer
+          description: Number of items synced
+          example: 42
 
   responses:
     BadRequest:

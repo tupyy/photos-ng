@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/config"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
+	v1handlers "git.tls.tupangiu.ro/cosmin/photos-ng/internal/handlers/v1"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/server"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/logger"
 	"github.com/ecordell/optgen/helpers"
@@ -50,12 +52,17 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 				return err
 			}
 
+			// Create v1 server implementation
+			v1Server := v1handlers.NewServer()
+
 			server := server.NewRunnableServer(
 				server.NewRunnableServerConfigWithOptionsAndDefaults(
 					server.WithDatastore(dt),
 					server.WithGraceTimeout(1*time.Second),
 					server.WithPort(config.ServerPort),
 					server.WithRegisterHandlers(string(ApiV1), func(r *gin.RouterGroup) {
+						// Register the generated v1 API handlers
+						v1.RegisterHandlers(r, v1Server)
 					}),
 					server.WithGinMode(config.GinMode),
 					server.WithCloseCallback(func() error {

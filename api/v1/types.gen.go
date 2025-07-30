@@ -32,7 +32,8 @@ type Album struct {
 		Href string `json:"href"`
 		Name string `json:"name"`
 	} `json:"children,omitempty"`
-	Href string `json:"href"`
+	Description *string `json:"description,omitempty"`
+	Href        string  `json:"href"`
 
 	// Id Unique identifier for the album
 	Id string `json:"id"`
@@ -63,8 +64,8 @@ type CreateAlbumRequest struct {
 	// Name Name of the album
 	Name string `json:"name"`
 
-	// Path Path of the folder on disk
-	Path string `json:"path"`
+	// ParentId Id of the parent
+	ParentId *string `json:"parentId,omitempty"`
 }
 
 // Error defines model for Error.
@@ -83,6 +84,50 @@ type Error struct {
 type ExifHeader struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+}
+
+// GetTimelineResponse defines model for GetTimelineResponse.
+type GetTimelineResponse struct {
+	Buckets []Bucket `json:"buckets"`
+
+	// Limit Number of buckets returned
+	Limit int `json:"limit"`
+
+	// Offset Number of buckets skipped
+	Offset int `json:"offset"`
+
+	// Total Total number of buckets
+	Total int `json:"total"`
+
+	// Years List of all years that contain photos
+	Years []int `json:"years"`
+}
+
+// ListAlbumsResponse defines model for ListAlbumsResponse.
+type ListAlbumsResponse struct {
+	Albums []Album `json:"albums"`
+
+	// Limit Number of albums returned
+	Limit int `json:"limit"`
+
+	// Offset Number of albums skipped
+	Offset int `json:"offset"`
+
+	// Total Total number of albums
+	Total int `json:"total"`
+}
+
+// ListMediaResponse defines model for ListMediaResponse.
+type ListMediaResponse struct {
+	// Limit Number of media items returned
+	Limit int     `json:"limit"`
+	Media []Media `json:"media"`
+
+	// Offset Number of media items skipped
+	Offset int `json:"offset"`
+
+	// Total Total number of media items
+	Total int `json:"total"`
 }
 
 // Media defines model for Media.
@@ -104,9 +149,19 @@ type Media struct {
 	Type      string `json:"type"`
 }
 
-// UpdateAlbumRequest Request body for updating an album (currently no additional fields to update)
+// SyncAlbumResponse defines model for SyncAlbumResponse.
+type SyncAlbumResponse struct {
+	// Message Sync completion message
+	Message string `json:"message"`
+
+	// SyncedItems Number of items synced
+	SyncedItems int `json:"synced_items"`
+}
+
+// UpdateAlbumRequest Request body for updating an album
 type UpdateAlbumRequest struct {
-	Name string `json:"name"`
+	Description *string `json:"description,omitempty"`
+	Name        *string `json:"name,omitempty"`
 }
 
 // UpdateMediaRequest defines model for UpdateMediaRequest.

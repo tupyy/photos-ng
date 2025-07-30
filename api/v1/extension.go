@@ -1,0 +1,79 @@
+package v1
+
+import (
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
+	"github.com/oapi-codegen/runtime/types"
+)
+
+// NewAlbum converts an entity.Album to a v1.Album for API responses
+func NewAlbum(album entity.Album) Album {
+	apiAlbum := Album{
+		Id:   album.ID,
+		Name: album.Path, // Using path as name for now since entity doesn't have name
+		Path: album.Path,
+		Href: "/api/v1/albums/" + album.ID,
+	}
+
+	// Convert children
+	if len(album.Children) > 0 {
+		children := make([]struct {
+			Href string `json:"href"`
+			Name string `json:"name"`
+		}, 0, len(album.Children))
+
+		for _, childID := range album.Children {
+			children = append(children, struct {
+				Href string `json:"href"`
+				Name string `json:"name"`
+			}{
+				Href: "/api/v1/albums/" + childID,
+				Name: childID, // Using ID as name for now
+			})
+		}
+		apiAlbum.Children = &children
+	}
+
+	// Convert media references
+	if len(album.Media) > 0 {
+		mediaHrefs := make([]string, 0, len(album.Media))
+		for _, media := range album.Media {
+			mediaHrefs = append(mediaHrefs, "/api/v1/media/"+media.ID)
+		}
+		apiAlbum.Media = &mediaHrefs
+	}
+
+	// Set parent href if parent exists
+	if album.Parent != nil {
+		parentHref := "/api/v1/albums/" + *album.Parent
+		apiAlbum.ParentHref = &parentHref
+	}
+
+	return apiAlbum
+}
+
+// NewMedia converts an entity.Media to a v1.Media for API responses
+func NewMedia(media entity.Media) Media {
+	// Convert captured date
+	capturedAt := types.Date{Time: media.CapturedAt}
+
+	// Convert EXIF data
+	exifHeaders := make([]ExifHeader, 0, len(media.ExifMetadata))
+	for key, value := range media.ExifMetadata {
+		exifHeaders = append(exifHeaders, ExifHeader{
+			Key:   key,
+			Value: value.(string), // Assuming string values for now
+		})
+	}
+
+	return Media{
+		Id:         media.ID,
+		Filename:   media.Filename,
+		AlbumHref:  "/api/v1/albums/" + media.Album.ID,
+		CapturedAt: capturedAt,
+		Type:       string(media.MediaType),
+		Content:    "/api/v1/media/" + media.ID + "/content",
+		Thumbnail:  "/api/v1/media/" + media.ID + "/thumbnail",
+		Href:       "/api/v1/media/" + media.ID,
+		Exif:       exifHeaders,
+	}
+}

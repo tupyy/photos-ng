@@ -1,9 +1,30 @@
 -- +goose Up
 -- +goose StatementBegin
-SELECT 'up SQL query';
+CREATE TABLE albums (
+    id VARCHAR(255) PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT (now() AT TIME ZONE 'UTC') NOT NULL,
+    path TEXT NOT NULL,
+    parent_id VARCHAR(255) REFERENCES album(id) ON DELETE CASCADE
+);
+
+CREATE TABLE media (
+    id VARCHAR(255) PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT (now() AT TIME ZONE 'UTC') NOT NULL,
+	captured_at TIMESTAMP DEFAULT (now() AT TIME ZONE 'UTC') NOT NULL,
+    album_id VARCHAR(255) NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+    file_name VARCHAR(255) NOT NULL,
+    thumbnail BYTEA,
+	exif_metadata JSONB NOT NULL,
+    media_type VARCHAR(10) NOT NULL
+);
+
+ALTER TABLE albums
+	ADD COLUMN IF NOT EXISTS thumbnail_id VARCHAR(255) REFERENCES media(id) ON DELETE SET NULL;
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-SELECT 'down SQL query';
+ALTER TABLE albums DROP COLUMN thumbnail_id;
+DROP TABLE media;
+DROP TABLE albums;
 -- +goose StatementEnd
