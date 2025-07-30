@@ -50,6 +50,14 @@ type Album struct {
 	Path string `json:"path"`
 }
 
+// Bucket defines model for Bucket.
+type Bucket struct {
+	// Media list of media hrefs in this bucket
+	Media *[]string `json:"media,omitempty"`
+	Month *int      `json:"month,omitempty"`
+	Year  *int      `json:"year,omitempty"`
+}
+
 // CreateAlbumRequest defines model for CreateAlbumRequest.
 type CreateAlbumRequest struct {
 	// Name Name of the album
@@ -163,6 +171,18 @@ type ListMediaParamsSortBy string
 
 // ListMediaParamsSortOrder defines parameters for ListMedia.
 type ListMediaParamsSortOrder string
+
+// GetTimelineParams defines parameters for GetTimeline.
+type GetTimelineParams struct {
+	// StartDate Start date for the timeline
+	StartDate openapi_types.Date `form:"startDate" json:"startDate"`
+
+	// Limit Maximum number of buckets to return
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of buckets to skip
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+}
 
 // CreateAlbumJSONRequestBody defines body for CreateAlbum for application/json ContentType.
 type CreateAlbumJSONRequestBody = CreateAlbumRequest

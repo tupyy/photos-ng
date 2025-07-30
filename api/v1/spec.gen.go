@@ -50,6 +50,9 @@ type ServerInterface interface {
 	// Get media thumbnail
 	// (GET /api/v1/media/{id}/thumbnail)
 	GetMediaThumbnail(c *gin.Context, id openapi_types.UUID)
+	// Get timeline buckets
+	// (GET /api/v1/timeline)
+	GetTimeline(c *gin.Context, params GetTimelineParams)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -406,6 +409,55 @@ func (siw *ServerInterfaceWrapper) GetMediaThumbnail(c *gin.Context) {
 	siw.Handler.GetMediaThumbnail(c, id)
 }
 
+// GetTimeline operation middleware
+func (siw *ServerInterfaceWrapper) GetTimeline(c *gin.Context) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetTimelineParams
+
+	// ------------- Required query parameter "startDate" -------------
+
+	if paramValue := c.Query("startDate"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandler(c, fmt.Errorf("Query argument startDate is required, but not found"), http.StatusBadRequest)
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "startDate", c.Request.URL.Query(), &params.StartDate)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter startDate: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", c.Request.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", c.Request.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetTimeline(c, params)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -445,4 +497,5 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.PUT(options.BaseURL+"/api/v1/media/:id", wrapper.UpdateMedia)
 	router.GET(options.BaseURL+"/api/v1/media/:id/content", wrapper.GetMediaContent)
 	router.GET(options.BaseURL+"/api/v1/media/:id/thumbnail", wrapper.GetMediaThumbnail)
+	router.GET(options.BaseURL+"/api/v1/timeline", wrapper.GetTimeline)
 }
