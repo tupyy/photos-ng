@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Photos NG API
-  description: API for managing albums in Photos NG application
+  description: API for managing albums and media in Photos NG application
   version: 1.0.0
   contact:
     name: Photos NG Team
@@ -165,28 +165,417 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /api/v1/albums/{id}/sync:
+    post:
+      summary: Sync album
+      description: Synchronize an album with the file system
+      operationId: syncAlbum
+      tags:
+        - Albums
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the album to sync
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Album sync completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Album sync completed"
+                  synced_items:
+                    type: integer
+                    description: Number of items synced
+                    example: 42
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/media:
+    get:
+      summary: List all media
+      description: Retrieve a list of all media items
+      operationId: listMedia
+      tags:
+        - Media
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of media items to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of media items to skip
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: album_id
+          in: query
+          description: Filter media by album ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          description: Filter media by type
+          required: false
+          schema:
+            type: string
+            enum: [photo, video]
+        - name: startDate
+          in: query
+          description: Filter media captured on or after this date
+          required: false
+          schema:
+            type: string
+            format: date
+            pattern: '^\d{2}/\d{2}/\d{4}$'
+            example: "01/01/2024"
+        - name: endDate
+          in: query
+          description: Filter media captured on or before this date
+          required: false
+          schema:
+            type: string
+            format: date
+            pattern: '^\d{2}/\d{2}/\d{4}$'
+            example: "31/12/2024"
+        - name: sortBy
+          in: query
+          description: Sort media by field
+          required: false
+          schema:
+            type: string
+            enum: [capturedAt, filename, type]
+            default: capturedAt
+        - name: sortOrder
+          in: query
+          description: Sort order
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  media:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Media'
+                  total:
+                    type: integer
+                    description: Total number of media items
+                  limit:
+                    type: integer
+                    description: Number of media items returned
+                  offset:
+                    type: integer
+                    description: Number of media items skipped
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/media/{id}:
+    get:
+      summary: Get media by ID
+      description: Retrieve a specific media item by its ID
+      operationId: getMedia
+      tags:
+        - Media
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the media item to retrieve
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Media'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      summary: Update media by ID
+      description: Update a specific media item by its ID
+      operationId: updateMedia
+      tags:
+        - Media
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the media item to update
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMediaRequest'
+      responses:
+        '200':
+          description: Media updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Media'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete media by ID
+      description: Delete a specific media item by its ID
+      operationId: deleteMedia
+      tags:
+        - Media
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the media item to delete
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Media deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/media/{id}/thumbnail:
+    get:
+      summary: Get media thumbnail
+      description: Retrieve the thumbnail image for a media item
+      operationId: getMediaThumbnail
+      tags:
+        - Media
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the media item
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/media/{id}/content:
+    get:
+      summary: Get media content
+      description: Retrieve the full content of a media item
+      operationId: getMediaContent
+      tags:
+        - Media
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the media item
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+            video/*:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 components:
   schemas:
     Album:
       type: object
       required:
         - id
+        - href
+        - name
+        - path
       properties:
         id:
           type: string
           format: uuid
           description: Unique identifier for the album
           example: "123e4567-e89b-12d3-a456-426614174000"
+        href:
+          type: string
+          example: "/api/v1/albums/album_id"
+        name:
+          type: string
+          description: name of the album
+        path:
+          type: string
+          description: path of the folder on disk
+        parentHref:
+          type: string
+          description: href of the parent
+        children:
+          type: array
+          items:
+            type: object
+            properties:
+              href:
+                type: string
+              name:
+                type: string
+            required:
+              - href
+              - name
+        media:
+          type: array
+          description: list of media href
+          items:
+            type: string
+
+    Media:
+      type: object
+      properties:
+        id:
+          type: string
+        href:
+          type: string
+          example: "/api/v1/media/some_id"
+        albumHref:
+          type: string
+          example: "/api/v1/albums/album_id"
+        capturedAt:
+          type: string
+          format: date
+          pattern: '^\d{2}/\d{2}/\d{4}$'
+          example: "01/01/2024"
+        type:
+          type: string
+          example: "photo | video"
+        filename:
+          type: string
+          description: full path of the media file on the disk
+        thumbnail:
+          type: string
+          description: href to thumbnail
+          example: "/api/v1/media/{id}/thumbnail"
+        content:
+          type: string
+          description: href of the endpoint serving the content of the media
+          example: "/api/v1/media/{id}/content"
+        exif:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExifHeader'
+      required:
+        - id
+        - href
+        - albumHref
+        - capturedAt
+        - type
+        - filename
+        - thumbnail
+        - content
+        - exif
+
+    ExifHeader:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+      required:
+        - key
+        - value
 
     CreateAlbumRequest:
       type: object
-      properties: {}
-      description: Request body for creating a new album (currently no additional fields required)
+      required:
+        - name
+        - path
+      properties:
+        name:
+          type: string
+          description: Name of the album
+        path:
+          type: string
+          description: Path of the folder on disk
 
     UpdateAlbumRequest:
       type: object
-      properties: {}
       description: Request body for updating an album (currently no additional fields to update)
+      required:
+        - name
+      properties:
+        name:
+          type: string
+
+
+    UpdateMediaRequest:
+      type: object
+      properties:
+        capturedAt:
+          type: string
+          format: date
+          pattern: '^\d{2}/\d{2}/\d{4}$'
+          description: Date when the media was captured
+          example: "01/01/2024"
+        exif:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExifHeader'
+          description: EXIF data for the media
 
     Error:
       type: object
@@ -234,11 +623,4 @@ components:
             message: "Internal server error"
             code: "INTERNAL_ERROR"
 
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
 
-security:
-  - BearerAuth: []

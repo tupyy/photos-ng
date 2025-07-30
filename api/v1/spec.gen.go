@@ -29,6 +29,27 @@ type ServerInterface interface {
 	// Update album by ID
 	// (PUT /api/v1/albums/{id})
 	UpdateAlbum(c *gin.Context, id openapi_types.UUID)
+	// Sync album
+	// (POST /api/v1/albums/{id}/sync)
+	SyncAlbum(c *gin.Context, id openapi_types.UUID)
+	// List all media
+	// (GET /api/v1/media)
+	ListMedia(c *gin.Context, params ListMediaParams)
+	// Delete media by ID
+	// (DELETE /api/v1/media/{id})
+	DeleteMedia(c *gin.Context, id openapi_types.UUID)
+	// Get media by ID
+	// (GET /api/v1/media/{id})
+	GetMedia(c *gin.Context, id openapi_types.UUID)
+	// Update media by ID
+	// (PUT /api/v1/media/{id})
+	UpdateMedia(c *gin.Context, id openapi_types.UUID)
+	// Get media content
+	// (GET /api/v1/media/{id}/content)
+	GetMediaContent(c *gin.Context, id openapi_types.UUID)
+	// Get media thumbnail
+	// (GET /api/v1/media/{id}/thumbnail)
+	GetMediaThumbnail(c *gin.Context, id openapi_types.UUID)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -44,8 +65,6 @@ type MiddlewareFunc func(c *gin.Context)
 func (siw *ServerInterfaceWrapper) ListAlbums(c *gin.Context) {
 
 	var err error
-
-	c.Set(BearerAuthScopes, []string{})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListAlbumsParams
@@ -79,8 +98,6 @@ func (siw *ServerInterfaceWrapper) ListAlbums(c *gin.Context) {
 // CreateAlbum operation middleware
 func (siw *ServerInterfaceWrapper) CreateAlbum(c *gin.Context) {
 
-	c.Set(BearerAuthScopes, []string{})
-
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -104,8 +121,6 @@ func (siw *ServerInterfaceWrapper) DeleteAlbum(c *gin.Context) {
 		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
 		return
 	}
-
-	c.Set(BearerAuthScopes, []string{})
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -131,8 +146,6 @@ func (siw *ServerInterfaceWrapper) GetAlbum(c *gin.Context) {
 		return
 	}
 
-	c.Set(BearerAuthScopes, []string{})
-
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -157,8 +170,6 @@ func (siw *ServerInterfaceWrapper) UpdateAlbum(c *gin.Context) {
 		return
 	}
 
-	c.Set(BearerAuthScopes, []string{})
-
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -167,6 +178,232 @@ func (siw *ServerInterfaceWrapper) UpdateAlbum(c *gin.Context) {
 	}
 
 	siw.Handler.UpdateAlbum(c, id)
+}
+
+// SyncAlbum operation middleware
+func (siw *ServerInterfaceWrapper) SyncAlbum(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SyncAlbum(c, id)
+}
+
+// ListMedia operation middleware
+func (siw *ServerInterfaceWrapper) ListMedia(c *gin.Context) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListMediaParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", c.Request.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", c.Request.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "album_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "album_id", c.Request.URL.Query(), &params.AlbumId)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter album_id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "type" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "type", c.Request.URL.Query(), &params.Type)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter type: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "startDate" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "startDate", c.Request.URL.Query(), &params.StartDate)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter startDate: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "endDate" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "endDate", c.Request.URL.Query(), &params.EndDate)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter endDate: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "sortBy" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "sortBy", c.Request.URL.Query(), &params.SortBy)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter sortBy: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "sortOrder" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "sortOrder", c.Request.URL.Query(), &params.SortOrder)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter sortOrder: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListMedia(c, params)
+}
+
+// DeleteMedia operation middleware
+func (siw *ServerInterfaceWrapper) DeleteMedia(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.DeleteMedia(c, id)
+}
+
+// GetMedia operation middleware
+func (siw *ServerInterfaceWrapper) GetMedia(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetMedia(c, id)
+}
+
+// UpdateMedia operation middleware
+func (siw *ServerInterfaceWrapper) UpdateMedia(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateMedia(c, id)
+}
+
+// GetMediaContent operation middleware
+func (siw *ServerInterfaceWrapper) GetMediaContent(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetMediaContent(c, id)
+}
+
+// GetMediaThumbnail operation middleware
+func (siw *ServerInterfaceWrapper) GetMediaThumbnail(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetMediaThumbnail(c, id)
 }
 
 // GinServerOptions provides options for the Gin server.
@@ -201,4 +438,11 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/api/v1/albums/:id", wrapper.DeleteAlbum)
 	router.GET(options.BaseURL+"/api/v1/albums/:id", wrapper.GetAlbum)
 	router.PUT(options.BaseURL+"/api/v1/albums/:id", wrapper.UpdateAlbum)
+	router.POST(options.BaseURL+"/api/v1/albums/:id/sync", wrapper.SyncAlbum)
+	router.GET(options.BaseURL+"/api/v1/media", wrapper.ListMedia)
+	router.DELETE(options.BaseURL+"/api/v1/media/:id", wrapper.DeleteMedia)
+	router.GET(options.BaseURL+"/api/v1/media/:id", wrapper.GetMedia)
+	router.PUT(options.BaseURL+"/api/v1/media/:id", wrapper.UpdateMedia)
+	router.GET(options.BaseURL+"/api/v1/media/:id/content", wrapper.GetMediaContent)
+	router.GET(options.BaseURL+"/api/v1/media/:id/thumbnail", wrapper.GetMediaThumbnail)
 }

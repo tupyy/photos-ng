@@ -7,18 +7,57 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for ListMediaParamsType.
 const (
-	BearerAuthScopes = "BearerAuth.Scopes"
+	Photo ListMediaParamsType = "photo"
+	Video ListMediaParamsType = "video"
+)
+
+// Defines values for ListMediaParamsSortBy.
+const (
+	CapturedAt ListMediaParamsSortBy = "capturedAt"
+	Filename   ListMediaParamsSortBy = "filename"
+	Type       ListMediaParamsSortBy = "type"
+)
+
+// Defines values for ListMediaParamsSortOrder.
+const (
+	Asc  ListMediaParamsSortOrder = "asc"
+	Desc ListMediaParamsSortOrder = "desc"
 )
 
 // Album defines model for Album.
 type Album struct {
+	Children *[]struct {
+		Href string `json:"href"`
+		Name string `json:"name"`
+	} `json:"children,omitempty"`
+	Href string `json:"href"`
+
 	// Id Unique identifier for the album
 	Id openapi_types.UUID `json:"id"`
+
+	// Media list of media href
+	Media *[]string `json:"media,omitempty"`
+
+	// Name name of the album
+	Name string `json:"name"`
+
+	// ParentHref href of the parent
+	ParentHref *string `json:"parentHref,omitempty"`
+
+	// Path path of the folder on disk
+	Path string `json:"path"`
 }
 
-// CreateAlbumRequest Request body for creating a new album (currently no additional fields required)
-type CreateAlbumRequest = map[string]interface{}
+// CreateAlbumRequest defines model for CreateAlbumRequest.
+type CreateAlbumRequest struct {
+	// Name Name of the album
+	Name string `json:"name"`
+
+	// Path Path of the folder on disk
+	Path string `json:"path"`
+}
 
 // Error defines model for Error.
 type Error struct {
@@ -32,8 +71,44 @@ type Error struct {
 	Message string `json:"message"`
 }
 
+// ExifHeader defines model for ExifHeader.
+type ExifHeader struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+// Media defines model for Media.
+type Media struct {
+	AlbumHref  string             `json:"albumHref"`
+	CapturedAt openapi_types.Date `json:"capturedAt"`
+
+	// Content href of the endpoint serving the content of the media
+	Content string       `json:"content"`
+	Exif    []ExifHeader `json:"exif"`
+
+	// Filename full path of the media file on the disk
+	Filename string `json:"filename"`
+	Href     string `json:"href"`
+	Id       string `json:"id"`
+
+	// Thumbnail href to thumbnail
+	Thumbnail string `json:"thumbnail"`
+	Type      string `json:"type"`
+}
+
 // UpdateAlbumRequest Request body for updating an album (currently no additional fields to update)
-type UpdateAlbumRequest = map[string]interface{}
+type UpdateAlbumRequest struct {
+	Name string `json:"name"`
+}
+
+// UpdateMediaRequest defines model for UpdateMediaRequest.
+type UpdateMediaRequest struct {
+	// CapturedAt Date when the media was captured
+	CapturedAt *openapi_types.Date `json:"capturedAt,omitempty"`
+
+	// Exif EXIF data for the media
+	Exif *[]ExifHeader `json:"exif,omitempty"`
+}
 
 // BadRequest defines model for BadRequest.
 type BadRequest = Error
@@ -53,8 +128,47 @@ type ListAlbumsParams struct {
 	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
+// ListMediaParams defines parameters for ListMedia.
+type ListMediaParams struct {
+	// Limit Maximum number of media items to return
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of media items to skip
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// AlbumId Filter media by album ID
+	AlbumId *openapi_types.UUID `form:"album_id,omitempty" json:"album_id,omitempty"`
+
+	// Type Filter media by type
+	Type *ListMediaParamsType `form:"type,omitempty" json:"type,omitempty"`
+
+	// StartDate Filter media captured on or after this date
+	StartDate *openapi_types.Date `form:"startDate,omitempty" json:"startDate,omitempty"`
+
+	// EndDate Filter media captured on or before this date
+	EndDate *openapi_types.Date `form:"endDate,omitempty" json:"endDate,omitempty"`
+
+	// SortBy Sort media by field
+	SortBy *ListMediaParamsSortBy `form:"sortBy,omitempty" json:"sortBy,omitempty"`
+
+	// SortOrder Sort order
+	SortOrder *ListMediaParamsSortOrder `form:"sortOrder,omitempty" json:"sortOrder,omitempty"`
+}
+
+// ListMediaParamsType defines parameters for ListMedia.
+type ListMediaParamsType string
+
+// ListMediaParamsSortBy defines parameters for ListMedia.
+type ListMediaParamsSortBy string
+
+// ListMediaParamsSortOrder defines parameters for ListMedia.
+type ListMediaParamsSortOrder string
+
 // CreateAlbumJSONRequestBody defines body for CreateAlbum for application/json ContentType.
 type CreateAlbumJSONRequestBody = CreateAlbumRequest
 
 // UpdateAlbumJSONRequestBody defines body for UpdateAlbum for application/json ContentType.
 type UpdateAlbumJSONRequestBody = UpdateAlbumRequest
+
+// UpdateMediaJSONRequestBody defines body for UpdateMedia for application/json ContentType.
+type UpdateMediaJSONRequestBody = UpdateMediaRequest
