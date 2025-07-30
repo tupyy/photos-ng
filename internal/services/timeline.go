@@ -9,14 +9,6 @@ import (
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 )
 
-// TimelineBucket represents a group of media items organized by date
-type TimelineBucket struct {
-	Year       int
-	Month      int
-	MediaIDs   []string
-	MediaHrefs []string
-}
-
 // TimelineFilter represents filtering criteria for timeline queries
 type TimelineFilter struct {
 	StartDate time.Time
@@ -35,7 +27,7 @@ func NewTimelineService(dt *pg.Datastore) *TimelineService {
 }
 
 // GetTimeline retrieves media organized into timeline buckets
-func (t *TimelineService) GetTimeline(ctx context.Context, filter *TimelineFilter) ([]TimelineBucket, []int, error) {
+func (t *TimelineService) GetTimeline(ctx context.Context, filter *TimelineFilter) (entity.Buckets, []int, error) {
 	// Get all media from the start date onwards
 	// TODO: Add proper date filtering in the query
 	queryOptions := []pg.QueryOption{
@@ -58,12 +50,16 @@ func (t *TimelineService) GetTimeline(ctx context.Context, filter *TimelineFilte
 	// Organize media into buckets
 	buckets := t.organizeBuckets(filteredMedia)
 
-	// Extract available years
-	years := t.extractYears(filteredMedia)
+	// Get years from datastore stats
+	stats, err := t.dt.Stats(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	years := stats.TimelineYears
 
 	// Apply pagination to buckets
 	if filter.Offset >= len(buckets) {
-		buckets = []TimelineBucket{}
+		buckets = entity.Buckets{}
 	} else {
 		end := filter.Offset + filter.Limit
 		if end > len(buckets) {
@@ -76,7 +72,7 @@ func (t *TimelineService) GetTimeline(ctx context.Context, filter *TimelineFilte
 }
 
 // organizeBuckets groups media items by year and month
-func (t *TimelineService) organizeBuckets(media []entity.Media) []TimelineBucket {
+func (t *TimelineService) organizeBuckets(media []entity.Media) entity.Buckets {
 	bucketMap := make(map[string][]entity.Media)
 
 	// Group media by year-month
@@ -86,7 +82,7 @@ func (t *TimelineService) organizeBuckets(media []entity.Media) []TimelineBucket
 	}
 
 	// Convert to bucket slice
-	buckets := make([]TimelineBucket, 0, len(bucketMap))
+	buckets := make(entity.Buckets, 0, len(bucketMap))
 	for dateKey, mediaItems := range bucketMap {
 		// Parse the date key
 		date, err := time.Parse("2006-01", dateKey)
@@ -94,19 +90,10 @@ func (t *TimelineService) organizeBuckets(media []entity.Media) []TimelineBucket
 			continue // Skip invalid dates
 		}
 
-		// Create media ID and href lists
-		mediaIDs := make([]string, 0, len(mediaItems))
-		mediaHrefs := make([]string, 0, len(mediaItems))
-		for _, item := range mediaItems {
-			mediaIDs = append(mediaIDs, item.ID)
-			mediaHrefs = append(mediaHrefs, "/api/v1/media/"+item.ID)
-		}
-
-		bucket := TimelineBucket{
-			Year:       date.Year(),
-			Month:      int(date.Month()),
-			MediaIDs:   mediaIDs,
-			MediaHrefs: mediaHrefs,
+		bucket := entity.Bucket{
+			Year:  date.Year(),
+			Month: int(date.Month()),
+			Media: mediaItems,
 		}
 
 		buckets = append(buckets, bucket)
@@ -121,26 +108,4 @@ func (t *TimelineService) organizeBuckets(media []entity.Media) []TimelineBucket
 	})
 
 	return buckets
-}
-
-// extractYears extracts unique years from media items and sorts them
-func (t *TimelineService) extractYears(media []entity.Media) []int {
-	yearMap := make(map[int]bool)
-
-	for _, item := range media {
-		year := item.CapturedAt.Year()
-		yearMap[year] = true
-	}
-
-	years := make([]int, 0, len(yearMap))
-	for year := range yearMap {
-		years = append(years, year)
-	}
-
-	// Sort years in descending order (most recent first)
-	sort.Slice(years, func(i, j int) bool {
-		return years[i] > years[j]
-	})
-
-	return years
 }

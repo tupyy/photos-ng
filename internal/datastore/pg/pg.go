@@ -48,6 +48,15 @@ func (d *Datastore) QueryMedia(ctx context.Context, opts ...QueryOption) ([]enti
 	return []entity.Media{}, nil
 }
 
+func (d *Datastore) Stats(ctx context.Context) (entity.Stats, error) {
+	// TODO: Implement actual stats query
+	return entity.Stats{
+		CountMedia:    0,
+		CountAlbum:    0,
+		TimelineYears: []int{}, // This should be populated from actual media data
+	}, nil
+}
+
 // WriteTx executes a write transaction with the provided user function.
 // It manages transaction lifecycle and provides a Writer interface for data modifications.
 func (d *Datastore) WriteTx(ctx context.Context, txFn TxUserFunc) error {

@@ -48,10 +48,16 @@ func (s *ServerImpl) GetTimeline(c *gin.Context, params v1.GetTimelineParams) {
 	// Convert service buckets to API buckets
 	apiBuckets := make([]v1.Bucket, 0, len(buckets))
 	for _, bucket := range buckets {
+		// Convert entity media to href strings
+		mediaHrefs := make([]string, 0, len(bucket.Media))
+		for _, media := range bucket.Media {
+			mediaHrefs = append(mediaHrefs, "/api/v1/media/"+media.ID)
+		}
+
 		apiBucket := v1.Bucket{
 			Year:  &bucket.Year,
 			Month: &bucket.Month,
-			Media: &bucket.MediaHrefs,
+			Media: &mediaHrefs,
 		}
 		apiBuckets = append(apiBuckets, apiBucket)
 	}

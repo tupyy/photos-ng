@@ -75,7 +75,7 @@ func (s *ServerImpl) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 	// Convert entity media to API media
 	apiMedia := make([]v1.Media, 0, len(mediaItems))
 	for _, media := range mediaItems {
-		apiMedia = append(apiMedia, v1.NewMediaFromEntity(media))
+		apiMedia = append(apiMedia, v1.NewMedia(media))
 	}
 
 	// TODO: Get total count from service for proper pagination
@@ -116,7 +116,7 @@ func (s *ServerImpl) GetMedia(c *gin.Context, id string) {
 		}
 	}
 
-	c.JSON(http.StatusOK, v1.NewMediaFromEntity(*media))
+	c.JSON(http.StatusOK, v1.NewMedia(*media))
 }
 
 // UpdateMedia handles PUT /api/v1/media/{id} requests to update media metadata.
@@ -169,7 +169,7 @@ func (s *ServerImpl) UpdateMedia(c *gin.Context, id types.UUID) {
 	}
 
 	zap.S().Infow("media updated", "media_id", idStr)
-	c.JSON(http.StatusOK, v1.NewMediaFromEntity(*updatedMedia))
+	c.JSON(http.StatusOK, v1.NewMedia(*updatedMedia))
 }
 
 // DeleteMedia handles DELETE /api/v1/media/{id} requests to delete a media item.
