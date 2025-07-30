@@ -1,0 +1,244 @@
+openapi: 3.0.3
+info:
+  title: Photos NG API
+  description: API for managing albums in Photos NG application
+  version: 1.0.0
+  contact:
+    name: Photos NG Team
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.photos-ng.com
+    description: Production server
+
+paths:
+  /api/v1/albums:
+    get:
+      summary: List all albums
+      description: Retrieve a list of all albums
+      operationId: listAlbums
+      tags:
+        - Albums
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of albums to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of albums to skip
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  albums:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Album'
+                  total:
+                    type: integer
+                    description: Total number of albums
+                  limit:
+                    type: integer
+                    description: Number of albums returned
+                  offset:
+                    type: integer
+                    description: Number of albums skipped
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create a new album
+      description: Create a new album
+      operationId: createAlbum
+      tags:
+        - Albums
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAlbumRequest'
+      responses:
+        '201':
+          description: Album created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/v1/albums/{id}:
+    get:
+      summary: Get album by ID
+      description: Retrieve a specific album by its ID
+      operationId: getAlbum
+      tags:
+        - Albums
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the album to retrieve
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      summary: Update album by ID
+      description: Update a specific album by its ID
+      operationId: updateAlbum
+      tags:
+        - Albums
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the album to update
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAlbumRequest'
+      responses:
+        '200':
+          description: Album updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Delete album by ID
+      description: Delete a specific album by its ID
+      operationId: deleteAlbum
+      tags:
+        - Albums
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the album to delete
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Album deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    Album:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the album
+          example: "123e4567-e89b-12d3-a456-426614174000"
+
+    CreateAlbumRequest:
+      type: object
+      properties: {}
+      description: Request body for creating a new album (currently no additional fields required)
+
+    UpdateAlbumRequest:
+      type: object
+      properties: {}
+      description: Request body for updating an album (currently no additional fields to update)
+
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+        details:
+          type: object
+          description: Additional error details
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "Invalid request parameters"
+            code: "BAD_REQUEST"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "Album not found"
+            code: "NOT_FOUND"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "Internal server error"
+            code: "INTERNAL_ERROR"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []
