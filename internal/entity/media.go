@@ -29,22 +29,22 @@ const (
 )
 
 type Media struct {
-	ID           string
-	Album        Album
-	CapturedAt   time.Time
-	MediaType    MediaType
-	Filename     string
-	Thumbnail    []byte
-	ExifMetadata map[string]any
+	ID         string
+	Album      Album
+	CapturedAt time.Time
+	MediaType  MediaType
+	Filename   string
+	Thumbnail  []byte
+	Exif       map[string]string
 }
 
 func NewMedia(filename string, album Album) Media {
 	return Media{
-		ID:           generateId(fmt.Sprintf("%s%s", filename, album.ID)),
-		Album:        album,
-		Filename:     filename,
-		MediaType:    Photo,
-		ExifMetadata: make(map[string]any),
+		ID:        generateId(fmt.Sprintf("%s%s", filename, album.ID)),
+		Album:     album,
+		Filename:  filename,
+		MediaType: Photo,
+		Exif:      make(map[string]string),
 	}
 }
 
@@ -65,8 +65,8 @@ func (m Media) ContentType() string {
 func (m Media) GetCapturedTime() (time.Time, error) {
 	for i := 1; i <= len(exifCapturedTime); i++ {
 		val := exifCapturedTime[i]
-		if capturedAt, ok := m.ExifMetadata[val[0]]; ok {
-			return time.Parse(val[1], capturedAt.(string))
+		if capturedAt, ok := m.Exif[val[0]]; ok {
+			return time.Parse(val[1], capturedAt)
 		}
 	}
 

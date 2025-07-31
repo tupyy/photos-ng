@@ -5,6 +5,7 @@ package pg
 import (
 	"context"
 
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg/models"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -41,11 +42,108 @@ func NewPostgresDatastore(ctx context.Context, url string, options ...Option) (*
 }
 
 func (d *Datastore) QueryAlbums(ctx context.Context, opts ...QueryOption) ([]entity.Album, error) {
-	return []entity.Album{}, nil
+	// Start with the base listAlbumsStmt and apply any query options
+	query := listAlbumsStmt
+	for _, opt := range opts {
+		query = opt(query)
+	}
+
+	// Build the SQL query
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	// Execute the query
+	rows, err := d.pool.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Scan results into album models
+	albums := models.Albums{}
+	for rows.Next() {
+		var album models.Album
+		err := rows.Scan(
+			&album.ID,
+			&album.CreatedAt,
+			&album.Path,
+			&album.Description,
+			&album.ThumbnailID,
+			&album.ChildID,
+			&album.ChildCreatedAt,
+			&album.ChildPath,
+			&album.ChildDescription,
+			&album.ChildThumbnailID,
+			&album.MediaID,
+			&album.MediaCapturedAt,
+			&album.MediaAlbumID,
+			&album.MediaFileName,
+			&album.MediaThumbnail,
+			&album.MediaExif,
+			&album.MediaMediaType,
+		)
+		if err != nil {
+			return nil, err
+		}
+		albums.Add(album)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Convert to entity albums
+	return albums.Entity(), nil
 }
 
 func (d *Datastore) QueryMedia(ctx context.Context, opts ...QueryOption) ([]entity.Media, error) {
-	return []entity.Media{}, nil
+	// Start with the base listMediaStmt and apply any query options
+	query := listMediaStmt
+	for _, opt := range opts {
+		query = opt(query)
+	}
+
+	// Build the SQL query
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	// Execute the query
+	rows, err := d.pool.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Scan results into media models
+	mediaList := models.MediaList{}
+	for rows.Next() {
+		var media models.Media
+		err := rows.Scan(
+			&media.ID,
+			&media.CreatedAt,
+			&media.CapturedAt,
+			&media.AlbumID,
+			&media.FileName,
+			&media.Thumbnail,
+			&media.Exif,
+			&media.MediaType,
+		)
+		if err != nil {
+			return nil, err
+		}
+		mediaList.Add(media)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Convert to entity media
+	return mediaList.Entity(), nil
 }
 
 func (d *Datastore) Stats(ctx context.Context) (entity.Stats, error) {
