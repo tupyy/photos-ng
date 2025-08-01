@@ -5,7 +5,6 @@ import (
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
-	dtContext "git.tls.tupangiu.ro/cosmin/photos-ng/pkg/context"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -15,8 +14,6 @@ import (
 // Returns HTTP 400 for invalid parameters, HTTP 500 for server errors,
 // or HTTP 200 with the timeline data on success.
 func (s *ServerImpl) GetTimeline(c *gin.Context, params v1.GetTimelineParams) {
-	dt := dtContext.MustFromContext(c)
-
 	// Set default values for pagination
 	limit := 20
 	if params.Limit != nil {
@@ -28,7 +25,6 @@ func (s *ServerImpl) GetTimeline(c *gin.Context, params v1.GetTimelineParams) {
 	}
 
 	// Create timeline service and filter
-	timelineSrv := services.NewTimelineService(dt)
 	filter := &services.TimelineFilter{
 		StartDate: params.StartDate.Time,
 		Limit:     limit,
@@ -36,7 +32,7 @@ func (s *ServerImpl) GetTimeline(c *gin.Context, params v1.GetTimelineParams) {
 	}
 
 	// Get timeline from service
-	buckets, years, err := timelineSrv.GetTimeline(c.Request.Context(), filter)
+	buckets, years, err := s.timelineSrv.GetTimeline(c.Request.Context(), filter)
 	if err != nil {
 		zap.S().Errorw("failed to get timeline", "error", err)
 		c.JSON(http.StatusInternalServerError, v1.Error{

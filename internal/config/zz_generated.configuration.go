@@ -35,6 +35,7 @@ func (c *Config) ToOption() ConfigOption {
 	return func(to *Config) {
 		to.Database = c.Database
 		to.ServerPort = c.ServerPort
+		to.DataRootFolder = c.DataRootFolder
 		to.GinMode = c.GinMode
 		to.Mode = c.Mode
 		to.StaticsFolder = c.StaticsFolder
@@ -48,6 +49,7 @@ func (c *Config) DebugMap() map[string]any {
 	debugMap := map[string]any{}
 	debugMap["Database"] = helpers.DebugValue(c.Database, false)
 	debugMap["ServerPort"] = helpers.DebugValue(c.ServerPort, false)
+	debugMap["DataRootFolder"] = helpers.DebugValue(c.DataRootFolder, false)
 	debugMap["GinMode"] = helpers.DebugValue(c.GinMode, false)
 	debugMap["Mode"] = helpers.DebugValue(c.Mode, false)
 	debugMap["StaticsFolder"] = helpers.DebugValue(c.StaticsFolder, false)
@@ -83,6 +85,13 @@ func WithDatabase(database *Database) ConfigOption {
 func WithServerPort(serverPort int) ConfigOption {
 	return func(c *Config) {
 		c.ServerPort = serverPort
+	}
+}
+
+// WithDataRootFolder returns an option that can set DataRootFolder on a Config
+func WithDataRootFolder(dataRootFolder string) ConfigOption {
+	return func(c *Config) {
+		c.DataRootFolder = dataRootFolder
 	}
 }
 

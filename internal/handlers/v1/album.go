@@ -5,7 +5,6 @@ import (
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
-	dtContext "git.tls.tupangiu.ro/cosmin/photos-ng/pkg/context"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -14,8 +13,6 @@ import (
 // It supports pagination through limit and offset parameters.
 // Returns HTTP 500 for server errors, or HTTP 200 with the album list on success.
 func (s *ServerImpl) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
-	dt := dtContext.MustFromContext(c)
-
 	// Set default values for pagination
 	limit := 20
 	if params.Limit != nil {
@@ -27,13 +24,9 @@ func (s *ServerImpl) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 	}
 
 	// Create album service and filter
-	albumSrv := services.NewAlbumService(dt)
-	filter := &services.AlbumFilter{
-		Limit:  limit,
-		Offset: offset,
-	}
+	opts := services.NewAlbumOptionsWithOptions(services.WithLimit(limit), services.WithOffset(offset))
 
-	albums, err := albumSrv.GetAlbums(c.Request.Context(), filter)
+	albums, err := s.albumSrv.GetAlbums(c.Request.Context(), opts)
 	if err != nil {
 		zap.S().Errorw("failed to get albums", "error", err)
 		c.JSON(http.StatusInternalServerError, v1.Error{
@@ -66,8 +59,6 @@ func (s *ServerImpl) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 // Returns HTTP 400 for validation errors, HTTP 500 for server errors,
 // or HTTP 201 with the created album on success.
 func (s *ServerImpl) CreateAlbum(c *gin.Context) {
-	dt := dtContext.MustFromContext(c)
-
 	var request v1.CreateAlbumRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, v1.Error{
@@ -77,8 +68,7 @@ func (s *ServerImpl) CreateAlbum(c *gin.Context) {
 	}
 
 	// Create album service and create the album
-	albumSrv := services.NewAlbumService(dt)
-	createdAlbum, err := albumSrv.CreateAlbum(c.Request.Context(), request)
+	createdAlbum, err := s.albumSrv.CreateAlbum(c.Request.Context(), request)
 	if err != nil {
 		zap.S().Errorw("failed to create album", "error", err)
 		c.JSON(http.StatusInternalServerError, v1.Error{
@@ -95,11 +85,8 @@ func (s *ServerImpl) CreateAlbum(c *gin.Context) {
 // Returns HTTP 404 if the album is not found, HTTP 500 for server errors,
 // or HTTP 200 with the album data on success.
 func (s *ServerImpl) GetAlbum(c *gin.Context, id string) {
-	dt := dtContext.MustFromContext(c)
-
 	// Create album service and get the album
-	albumSrv := services.NewAlbumService(dt)
-	album, err := albumSrv.GetAlbum(c.Request.Context(), id)
+	album, err := s.albumSrv.GetAlbum(c.Request.Context(), id)
 	if err != nil {
 		switch err.(type) {
 		case *services.ErrResourceNotFound:
@@ -123,8 +110,6 @@ func (s *ServerImpl) GetAlbum(c *gin.Context, id string) {
 // Returns HTTP 400 for validation errors, HTTP 404 if album not found,
 // HTTP 500 for server errors, or HTTP 200 with the updated album on success.
 func (s *ServerImpl) UpdateAlbum(c *gin.Context, id string) {
-	dt := dtContext.MustFromContext(c)
-
 	var request v1.UpdateAlbumRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, v1.Error{
@@ -134,8 +119,7 @@ func (s *ServerImpl) UpdateAlbum(c *gin.Context, id string) {
 	}
 
 	// Create album service and update the album
-	albumSrv := services.NewAlbumService(dt)
-	updatedAlbum, err := albumSrv.UpdateAlbum(c.Request.Context(), id, request)
+	updatedAlbum, err := s.albumSrv.UpdateAlbum(c.Request.Context(), id, request)
 	if err != nil {
 		switch err.(type) {
 		case *services.ErrResourceNotFound:
@@ -160,11 +144,8 @@ func (s *ServerImpl) UpdateAlbum(c *gin.Context, id string) {
 // Returns HTTP 404 if album not found, HTTP 500 for server errors,
 // or HTTP 204 on successful deletion.
 func (s *ServerImpl) DeleteAlbum(c *gin.Context, id string) {
-	dt := dtContext.MustFromContext(c)
-
 	// Create album service and delete the album
-	albumSrv := services.NewAlbumService(dt)
-	err := albumSrv.DeleteAlbum(c.Request.Context(), id)
+	err := s.albumSrv.DeleteAlbum(c.Request.Context(), id)
 	if err != nil {
 		switch err.(type) {
 		case *services.ErrResourceNotFound:
@@ -189,11 +170,7 @@ func (s *ServerImpl) DeleteAlbum(c *gin.Context, id string) {
 // Returns HTTP 404 if album not found, HTTP 500 for server errors,
 // or HTTP 200 with sync results on success.
 func (s *ServerImpl) SyncAlbum(c *gin.Context, id string) {
-	dt := dtContext.MustFromContext(c)
-
-	// Create album service and sync the album
-	albumSrv := services.NewAlbumService(dt)
-	syncedItems, err := albumSrv.SyncAlbum(c.Request.Context(), id)
+	syncedItems, err := s.albumSrv.SyncAlbum(c.Request.Context(), id)
 	if err != nil {
 		switch err.(type) {
 		case *services.ErrResourceNotFound:

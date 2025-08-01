@@ -2,61 +2,11 @@ package services
 
 import (
 	"context"
-	"time"
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 )
-
-// MediaFilter represents filtering criteria for media queries
-type MediaFilter struct {
-	Limit      int
-	Offset     int
-	AlbumID    *string
-	MediaType  *string
-	StartDate  *time.Time
-	EndDate    *time.Time
-	SortBy     string
-	Descending bool
-}
-
-// QueriesFn returns a slice of query options based on the media filter criteria
-func (mf *MediaFilter) QueriesFn() []pg.QueryOption {
-	qf := []pg.QueryOption{}
-
-	// Add pagination
-	if mf.Limit > 0 {
-		qf = append(qf, pg.Limit(mf.Limit))
-	}
-	if mf.Offset > 0 {
-		qf = append(qf, pg.Offset(mf.Offset))
-	}
-
-	// Add album filter
-	if mf.AlbumID != nil {
-		qf = append(qf, pg.FilterByColumnName("album_id", *mf.AlbumID))
-	}
-
-	// Add media type filter
-	if mf.MediaType != nil {
-		qf = append(qf, pg.FilterByColumnName("media_type", *mf.MediaType))
-	}
-
-	// Add date range filters
-	// TODO: Implement date range filtering in query options
-	// For now, we'll filter in the service layer after querying
-
-	// Add sorting
-	if mf.SortBy != "" {
-		qf = append(qf, pg.SortByColumn(mf.SortBy, mf.Descending))
-	} else {
-		// Default sort by captured_at descending
-		qf = append(qf, pg.SortByColumn("captured_at", true))
-	}
-
-	return qf
-}
 
 // MediaService provides business logic for media operations
 type MediaService struct {
@@ -69,7 +19,7 @@ func NewMediaService(dt *pg.Datastore) *MediaService {
 }
 
 // GetMedia retrieves a list of media items based on the provided filter criteria
-func (m *MediaService) GetMedia(ctx context.Context, filter *MediaFilter) ([]entity.Media, error) {
+func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]entity.Media, error) {
 	media, err := m.dt.QueryMedia(ctx, filter.QueriesFn()...)
 	if err != nil {
 		return nil, err
@@ -121,11 +71,11 @@ func (m *MediaService) UpdateMedia(ctx context.Context, id string, request v1.Up
 		media.CapturedAt = request.CapturedAt.Time
 	}
 	if request.Exif != nil {
-		if media.ExifMetadata == nil {
-			media.ExifMetadata = make(map[string]interface{})
+		if media.Exif == nil {
+			media.Exif = make(map[string]string)
 		}
 		for _, exif := range *request.Exif {
-			media.ExifMetadata[exif.Key] = exif.Value
+			media.Exif[exif.Key] = exif.Value
 		}
 	}
 

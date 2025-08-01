@@ -1,13 +1,23 @@
 package v1
 
+import (
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
+)
+
 // ServerImpl implements the V1 API handlers for the photos-ng application.
 // It contains the business logic for handling HTTP requests and responses
 // for all V1 endpoints including albums, media, and timeline.
-type ServerImpl struct{}
+type ServerImpl struct {
+	albumSrv    *services.AlbumService
+	mediaSrv    *services.MediaService
+	timelineSrv *services.TimelineService
+}
 
-// NewServer creates and returns a new instance of ServerImpl.
-// This constructor initializes the server implementation that will handle
-// all V1 API requests for the photos-ng application.
-func NewServer() *ServerImpl {
-	return &ServerImpl{}
+func NewServerV1(dt *pg.Datastore, rootFolder string) *ServerImpl {
+	return &ServerImpl{
+		albumSrv:    services.NewAlbumService(dt, rootFolder),
+		mediaSrv:    services.NewMediaService(dt),
+		timelineSrv: services.NewTimelineService(dt),
+	}
 }

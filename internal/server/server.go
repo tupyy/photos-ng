@@ -74,7 +74,6 @@ func NewRunnableServer(cfg *RunnableServerConfig) Server {
 		router.Use(
 			middlewares.Headers(),
 			middlewares.Logger(),
-			middlewares.DatastoreMiddleware(cfg.Datastore),
 			ginzap.RecoveryWithZap(zap.S().Desugar(), true),
 		)
 		registerHandlersFn(router)

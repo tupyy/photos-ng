@@ -15,9 +15,10 @@ type Album struct {
 
 func NewAlbum(folderPath string) Album {
 	return Album{
-		ID:       generateId(folderPath),
-		Path:     folderPath,
-		Children: make([]Album, 0),
-		Media:    make([]Media, 0),
+		ID:        generateId(folderPath),
+		Path:      folderPath,
+		CreatedAt: time.Now(),
+		Children:  make([]Album, 0),
+		Media:     make([]Media, 0),
 	}
 }

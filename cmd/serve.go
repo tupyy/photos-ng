@@ -53,11 +53,10 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 			}
 
 			// Create v1 server implementation
-			v1Server := v1handlers.NewServer()
+			v1Server := v1handlers.NewServerV1(dt, config.DataRootFolder)
 
 			server := server.NewRunnableServer(
 				server.NewRunnableServerConfigWithOptionsAndDefaults(
-					server.WithDatastore(dt),
 					server.WithGraceTimeout(1*time.Second),
 					server.WithPort(config.ServerPort),
 					server.WithRegisterHandlers(string(ApiV1), func(r *gin.RouterGroup) {
@@ -108,4 +107,5 @@ func registerServerFlags(flagSet *pflag.FlagSet, config *config.Config) {
 	flagSet.StringVar(&config.GinMode, "server-gin-mode", config.GinMode, "gin mode: either release or debug. It applies only on server-type web")
 	flagSet.StringVar(&config.Mode, "server-mode", config.Mode, "server mod: dev or prod")
 	flagSet.StringVar(&config.StaticsFolder, "statics-folder", config.StaticsFolder, "path to statics")
+	flagSet.StringVar(&config.DataRootFolder, "data-root-folder", config.DataRootFolder, "path to the root folder container media")
 }

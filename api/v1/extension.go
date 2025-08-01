@@ -26,8 +26,8 @@ func NewAlbum(album entity.Album) Album {
 				Href string `json:"href"`
 				Name string `json:"name"`
 			}{
-				Href: "/api/v1/albums/" + childID,
-				Name: childID, // Using ID as name for now
+				Href: "/api/v1/albums/" + childID.ID,
+				Name: childID.ID, // Using ID as name for now
 			})
 		}
 		apiAlbum.Children = &children
@@ -57,11 +57,11 @@ func NewMedia(media entity.Media) Media {
 	capturedAt := types.Date{Time: media.CapturedAt}
 
 	// Convert EXIF data
-	exifHeaders := make([]ExifHeader, 0, len(media.ExifMetadata))
-	for key, value := range media.ExifMetadata {
+	exifHeaders := make([]ExifHeader, 0, len(media.Exif))
+	for key, value := range media.Exif {
 		exifHeaders = append(exifHeaders, ExifHeader{
 			Key:   key,
-			Value: value.(string), // Assuming string values for now
+			Value: value,
 		})
 	}
 

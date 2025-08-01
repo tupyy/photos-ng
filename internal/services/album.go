@@ -8,56 +8,20 @@ import (
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 )
 
-// AlbumFilter represents filtering criteria for album queries
-type AlbumFilter struct {
-	Limit      int
-	Offset     int
-	ParentID   *string
-	SortBy     string
-	Descending bool
-}
-
-// QueriesFn returns a slice of query options based on the album filter criteria
-func (af *AlbumFilter) QueriesFn() []pg.QueryOption {
-	qf := []pg.QueryOption{}
-
-	// Add pagination
-	if af.Limit > 0 {
-		qf = append(qf, pg.Limit(af.Limit))
-	}
-	if af.Offset > 0 {
-		qf = append(qf, pg.Offset(af.Offset))
-	}
-
-	// Add parent filter
-	if af.ParentID != nil {
-		qf = append(qf, pg.FilterByColumnName("parent", *af.ParentID))
-	}
-
-	// Add sorting
-	if af.SortBy != "" {
-		qf = append(qf, pg.SortByColumn(af.SortBy, af.Descending))
-	} else {
-		// Default sort by created_at descending
-		qf = append(qf, pg.SortByColumn("created_at", true))
-	}
-
-	return qf
-}
-
 // AlbumService provides business logic for album operations
 type AlbumService struct {
-	dt *pg.Datastore
+	dt         *pg.Datastore
+	rootFolder string
 }
 
 // NewAlbumService creates a new instance of AlbumService with the provided datastore
-func NewAlbumService(dt *pg.Datastore) *AlbumService {
+func NewAlbumService(dt *pg.Datastore, rootFolder string) *AlbumService {
 	return &AlbumService{dt: dt}
 }
 
 // GetAlbums retrieves a list of albums based on the provided filter criteria
-func (a *AlbumService) GetAlbums(ctx context.Context, filter *AlbumFilter) ([]entity.Album, error) {
-	return a.dt.QueryAlbums(ctx, filter.QueriesFn()...)
+func (a *AlbumService) GetAlbums(ctx context.Context, opts *AlbumOptions) ([]entity.Album, error) {
+	return a.dt.QueryAlbums(ctx, opts.QueriesFn()...)
 }
 
 // GetAlbum retrieves a specific album by its ID
@@ -80,7 +44,7 @@ func (a *AlbumService) CreateAlbum(ctx context.Context, request v1.CreateAlbumRe
 		ID:       "album-" + request.Name, // TODO: Generate proper ID
 		Path:     request.Name,
 		Parent:   request.ParentId,
-		Children: []string{},
+		Children: []entity.Album{},
 		Media:    []entity.Media{},
 	}
 

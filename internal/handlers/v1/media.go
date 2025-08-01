@@ -5,7 +5,6 @@ import (
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
-	dtContext "git.tls.tupangiu.ro/cosmin/photos-ng/pkg/context"
 	"github.com/gin-gonic/gin"
 	"github.com/oapi-codegen/runtime/types"
 	"go.uber.org/zap"
@@ -15,8 +14,6 @@ import (
 // It supports filtering by album, type, date range, and includes sorting and pagination.
 // Returns HTTP 500 for server errors, or HTTP 200 with the media list on success.
 func (s *ServerImpl) ListMedia(c *gin.Context, params v1.ListMediaParams) {
-	dt := dtContext.MustFromContext(c)
-
 	// Set default values for pagination
 	limit := 20
 	if params.Limit != nil {
@@ -27,42 +24,38 @@ func (s *ServerImpl) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 		offset = *params.Offset
 	}
 
-	// Build media filter from parameters
-	filter := &services.MediaFilter{
-		Limit:  limit,
-		Offset: offset,
-	}
+	// Build media opt from parameters
+	opt := &services.MediaOptions{}
 
 	// Add album filter
 	if params.AlbumId != nil {
-		filter.AlbumID = params.AlbumId
+		opt.AlbumID = params.AlbumId
 	}
 
 	// Add media type filter
 	if params.Type != nil {
 		mediaType := string(*params.Type)
-		filter.MediaType = &mediaType
+		opt.MediaType = &mediaType
 	}
 
 	// Add date range filters
 	if params.StartDate != nil {
-		filter.StartDate = &params.StartDate.Time
+		opt.StartDate = &params.StartDate.Time
 	}
 	if params.EndDate != nil {
-		filter.EndDate = &params.EndDate.Time
+		opt.EndDate = &params.EndDate.Time
 	}
 
 	// Add sorting
 	if params.SortBy != nil {
-		filter.SortBy = string(*params.SortBy)
+		opt.SortBy = string(*params.SortBy)
 		if params.SortOrder != nil {
-			filter.Descending = *params.SortOrder == v1.Desc
+			opt.Descending = *params.SortOrder == v1.Desc
 		}
 	}
 
 	// Create media service and get media
-	mediaSrv := services.NewMediaService(dt)
-	mediaItems, err := mediaSrv.GetMedia(c.Request.Context(), filter)
+	mediaItems, err := s.mediaSrv.GetMedia(c.Request.Context(), opt)
 	if err != nil {
 		zap.S().Errorw("failed to get media", "error", err)
 		c.JSON(http.StatusInternalServerError, v1.Error{
@@ -94,11 +87,8 @@ func (s *ServerImpl) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 // Returns HTTP 404 if the media is not found, HTTP 500 for server errors,
 // or HTTP 200 with the media data on success.
 func (s *ServerImpl) GetMedia(c *gin.Context, id string) {
-	dt := dtContext.MustFromContext(c)
-
 	// Create media service and get the media
-	mediaSrv := services.NewMediaService(dt)
-	media, err := mediaSrv.GetMediaByID(c.Request.Context(), id)
+	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
 	if err != nil {
 		switch err.(type) {
 		case *services.ErrResourceNotFound:
@@ -122,8 +112,6 @@ func (s *ServerImpl) GetMedia(c *gin.Context, id string) {
 // Returns HTTP 400 for validation errors, HTTP 404 if media not found,
 // HTTP 500 for server errors, or HTTP 200 with the updated media on success.
 func (s *ServerImpl) UpdateMedia(c *gin.Context, id types.UUID) {
-	dt := dtContext.MustFromContext(c)
-
 	var request v1.UpdateMediaRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, v1.Error{
@@ -135,8 +123,7 @@ func (s *ServerImpl) UpdateMedia(c *gin.Context, id types.UUID) {
 	idStr := id.String()
 
 	// Create media service and update the media
-	mediaSrv := services.NewMediaService(dt)
-	updatedMedia, err := mediaSrv.UpdateMedia(c.Request.Context(), idStr, request)
+	updatedMedia, err := s.mediaSrv.UpdateMedia(c.Request.Context(), idStr, request)
 	if err != nil {
 		switch err.(type) {
 		case *services.ErrResourceNotFound:
@@ -161,11 +148,8 @@ func (s *ServerImpl) UpdateMedia(c *gin.Context, id types.UUID) {
 // Returns HTTP 404 if media not found, HTTP 500 for server errors,
 // or HTTP 204 on successful deletion.
 func (s *ServerImpl) DeleteMedia(c *gin.Context, id string) {
-	dt := dtContext.MustFromContext(c)
-
 	// Create media service and delete the media
-	mediaSrv := services.NewMediaService(dt)
-	err := mediaSrv.DeleteMedia(c.Request.Context(), id)
+	err := s.mediaSrv.DeleteMedia(c.Request.Context(), id)
 	if err != nil {
 		switch err.(type) {
 		case *services.ErrResourceNotFound:
@@ -190,13 +174,10 @@ func (s *ServerImpl) DeleteMedia(c *gin.Context, id string) {
 // Returns HTTP 404 if media not found, HTTP 500 for server errors,
 // or the binary media content with appropriate content-type on success.
 func (s *ServerImpl) GetMediaContent(c *gin.Context, id types.UUID) {
-	dt := dtContext.MustFromContext(c)
-
 	idStr := id.String()
 
 	// Create media service and get media content
-	mediaSrv := services.NewMediaService(dt)
-	media, content, err := mediaSrv.GetMediaContent(c.Request.Context(), idStr)
+	media, content, err := s.mediaSrv.GetMediaContent(c.Request.Context(), idStr)
 	if err != nil {
 		switch err.(type) {
 		case *services.ErrResourceNotFound:
@@ -225,11 +206,8 @@ func (s *ServerImpl) GetMediaContent(c *gin.Context, id types.UUID) {
 // Returns HTTP 404 if media not found, HTTP 500 for server errors,
 // or the binary thumbnail data on success.
 func (s *ServerImpl) GetMediaThumbnail(c *gin.Context, id string) {
-	dt := dtContext.MustFromContext(c)
-
 	// Create media service and get media thumbnail
-	mediaSrv := services.NewMediaService(dt)
-	media, thumbnail, err := mediaSrv.GetMediaThumbnail(c.Request.Context(), id)
+	media, thumbnail, err := s.mediaSrv.GetMediaThumbnail(c.Request.Context(), id)
 	if err != nil {
 		switch err.(type) {
 		case *services.ErrResourceNotFound:
