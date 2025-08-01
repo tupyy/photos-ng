@@ -2,21 +2,23 @@ package services
 
 import (
 	"context"
+	"errors"
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 )
 
 // AlbumService provides business logic for album operations
 type AlbumService struct {
-	dt         *pg.Datastore
-	rootFolder string
+	dt *pg.Datastore
+	fs *fs.FsDatastore
 }
 
-// NewAlbumService creates a new instance of AlbumService with the provided datastore
-func NewAlbumService(dt *pg.Datastore, rootFolder string) *AlbumService {
-	return &AlbumService{dt: dt}
+// NewAlbumService creates a new instance of AlbumService with the provided datastores
+func NewAlbumService(dt *pg.Datastore, fsDatastore *fs.FsDatastore) *AlbumService {
+	return &AlbumService{dt: dt, fs: fsDatastore}
 }
 
 // GetAlbums retrieves a list of albums based on the provided filter criteria
@@ -32,24 +34,41 @@ func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, 
 	}
 
 	if len(albums) == 0 {
-		return nil, &ErrResourceNotFound{Resource: "album", ID: id}
+		return nil, NewErrAlbumNotFound(id)
 	}
 
 	return &albums[0], nil
 }
 
-// CreateAlbum creates a new album using the v1 API request
-func (a *AlbumService) CreateAlbum(ctx context.Context, request v1.CreateAlbumRequest) (*entity.Album, error) {
-	album := entity.Album{
-		ID:       "album-" + request.Name, // TODO: Generate proper ID
-		Path:     request.Name,
-		Parent:   request.ParentId,
-		Children: []entity.Album{},
-		Media:    []entity.Media{},
+// CreateAlbum creates a new album using an entity.Album
+func (a *AlbumService) WriteAlbum(ctx context.Context, album entity.Album) (*entity.Album, error) {
+	// Check if the album already exists
+	isAlbumExists := false
+	_, err := a.GetAlbum(ctx, album.ID)
+	if err == nil && errors.Is(err, NewErrAlbumNotFound(album.ID)) {
+		isAlbumExists = true
 	}
 
-	// TODO: Implement actual album creation in datastore
-	// For now, return the album as-is (stub implementation)
+	// Create the album in the datastore using a write transaction
+	err = a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
+		// Write the album to database
+		if err := writer.WriteAlbum(ctx, album); err != nil {
+			return err
+		}
+
+		// If it's a new album, create the folder on disk
+		if !isAlbumExists {
+			if err := a.fs.CreateFolder(ctx, album.Path); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return &album, nil
 }
 
@@ -83,8 +102,20 @@ func (a *AlbumService) DeleteAlbum(ctx context.Context, id string) error {
 		return err
 	}
 
-	// TODO: Implement album deletion in datastore
-	// For now, this is a stub implementation
+	// Delete the album from the datastore using a write transaction
+	err = a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
+		// Delete the album from the database
+		if err := writer.DeleteAlbum(ctx, id); err != nil {
+			return err
+		}
+
+		// Delete the album folder from the file system
+		return a.fs.DeleteFolder(ctx, id)
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

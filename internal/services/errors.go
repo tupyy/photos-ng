@@ -4,12 +4,40 @@ import "fmt"
 
 // ErrResourceNotFound is returned when a requested resource is not found
 type ErrResourceNotFound struct {
-	Resource string
-	ID       string
+	error
 }
 
-func (e *ErrResourceNotFound) Error() string {
-	return fmt.Sprintf("%s with ID '%s' not found", e.Resource, e.ID)
+func NewErrAlbumNotFound(id string) *ErrResourceNotFound {
+	return &ErrResourceNotFound{fmt.Errorf("album %s not found", id)}
+}
+
+func NewErrMediaNotFound(id string) *ErrResourceNotFound {
+	return &ErrResourceNotFound{fmt.Errorf("media %s not found", id)}
+}
+
+// ErrResourceExistsAlready is returned when trying to create a resource that already exists
+type ErrResourceExistsAlready struct {
+	error
+}
+
+func NewErrAlbumExistsAlready(id string) *ErrResourceExistsAlready {
+	return &ErrResourceExistsAlready{fmt.Errorf("album %s already exists", id)}
+}
+
+func NewErrMediaExistsAlready(id string) *ErrResourceExistsAlready {
+	return &ErrResourceExistsAlready{fmt.Errorf("media %s already exists", id)}
+}
+
+// IsErrResourceNotFound checks if an error is a resource not found error
+func IsErrResourceNotFound(err error) bool {
+	_, ok := err.(*ErrResourceNotFound)
+	return ok
+}
+
+// IsErrResourceExistsAlready checks if an error is a resource exists already error
+func IsErrResourceExistsAlready(err error) bool {
+	_, ok := err.(*ErrResourceExistsAlready)
+	return ok
 }
 
 // ErrInvalidInput is returned when input validation fails

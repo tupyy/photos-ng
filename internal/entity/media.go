@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"path"
 	"strings"
 	"time"
 )
+
+type MediaContentFn func() (io.Reader, error)
 
 type Thumbnail struct {
 	Path string
@@ -35,6 +38,7 @@ type Media struct {
 	MediaType  MediaType
 	Filename   string
 	Thumbnail  []byte
+	Content    MediaContentFn
 	Exif       map[string]string
 }
 
