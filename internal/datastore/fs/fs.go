@@ -30,8 +30,19 @@ func (fs *FsDatastore) Read(ctx context.Context, filepath string) entity.MediaCo
 	}
 }
 
-func (fs *FsDatastore) Write(ctx context.Context, filepath string, r io.Reader) error {
-	return nil
+func (fs *FsDatastore) Write(ctx context.Context, filePath string, r io.Reader) error {
+	fullPath := filepath.Join(fs.rootFolder, filePath)
+
+	// Create the file (album folder should already exist)
+	file, err := os.Create(fullPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Copy content to file
+	_, err = io.Copy(file, r)
+	return err
 }
 
 // CreateFolder creates a directory on the filesystem.

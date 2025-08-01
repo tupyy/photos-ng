@@ -2,8 +2,10 @@ package services
 
 import (
 	"context"
+	"errors"
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 )
@@ -11,11 +13,12 @@ import (
 // MediaService provides business logic for media operations
 type MediaService struct {
 	dt *pg.Datastore
+	fs *fs.FsDatastore
 }
 
-// NewMediaService creates a new instance of MediaService with the provided datastore
-func NewMediaService(dt *pg.Datastore) *MediaService {
-	return &MediaService{dt: dt}
+// NewMediaService creates a new instance of MediaService with the provided datastores
+func NewMediaService(dt *pg.Datastore, fsDatastore *fs.FsDatastore) *MediaService {
+	return &MediaService{dt: dt, fs: fsDatastore}
 }
 
 // GetMedia retrieves a list of media items based on the provided filter criteria
@@ -52,10 +55,48 @@ func (m *MediaService) GetMediaByID(ctx context.Context, id string) (*entity.Med
 	}
 
 	if len(media) == 0 {
-		return nil, &ErrResourceNotFound{Resource: "media", ID: id}
+		return nil, NewErrMediaNotFound(id)
 	}
 
 	return &media[0], nil
+}
+
+// WriteMedia creates or updates a media item and writes its content to disk
+func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*entity.Media, error) {
+	// Check if the media already exists
+	isMediaExists := true
+	_, err := m.GetMediaByID(ctx, media.ID)
+	if err == nil && errors.Is(err, NewErrMediaNotFound(media.ID)) {
+		isMediaExists = false
+	}
+
+	// Write the media to the datastore using a write transaction
+	err = m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
+		// Write the media to database
+		if err := writer.WriteMedia(ctx, media); err != nil {
+			return err
+		}
+
+		// If it's a new media and has content, write the file to disk
+		if !isMediaExists {
+			content, err := media.Content()
+			if err != nil {
+				return err
+			}
+
+			// Write the file to disk using the media's filepath
+			if err := m.fs.Write(ctx, media.Filepath(), content); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &media, nil
 }
 
 // UpdateMedia updates an existing media item using the v1 API request
@@ -79,8 +120,17 @@ func (m *MediaService) UpdateMedia(ctx context.Context, id string, request v1.Up
 		}
 	}
 
-	// TODO: Implement media update in datastore
-	// For now, return the updated media (stub implementation)
+	// Clear the content function to avoid writing file content during update
+	media.Content = nil
+
+	// Update the media metadata in the datastore using a write transaction
+	err = m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
+		return writer.WriteMedia(ctx, *media)
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return media, nil
 }
 
@@ -92,35 +142,14 @@ func (m *MediaService) DeleteMedia(ctx context.Context, id string) error {
 		return err
 	}
 
-	// TODO: Implement media deletion in datastore
-	// For now, this is a stub implementation
+	// Delete the media from the datastore using a write transaction
+	err = m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
+		// Delete the media from the database
+		return writer.DeleteMedia(ctx, id)
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
-}
-
-// GetMediaContent retrieves the file content for a media item
-func (m *MediaService) GetMediaContent(ctx context.Context, id string) (*entity.Media, []byte, error) {
-	media, err := m.GetMediaByID(ctx, id)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// TODO: Implement actual file reading
-	// For now, return placeholder content
-	content := []byte("placeholder media content")
-
-	return media, content, nil
-}
-
-// GetMediaThumbnail retrieves the thumbnail for a media item
-func (m *MediaService) GetMediaThumbnail(ctx context.Context, id string) (*entity.Media, []byte, error) {
-	media, err := m.GetMediaByID(ctx, id)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if !media.HasThumbnail() {
-		return nil, nil, &ErrResourceNotFound{Resource: "thumbnail", ID: id}
-	}
-
-	return media, media.Thumbnail, nil
 }

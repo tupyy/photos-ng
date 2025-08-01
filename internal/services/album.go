@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
@@ -72,28 +71,6 @@ func (a *AlbumService) WriteAlbum(ctx context.Context, album entity.Album) (*ent
 	return &album, nil
 }
 
-// UpdateAlbum updates an existing album using the v1 API request
-func (a *AlbumService) UpdateAlbum(ctx context.Context, id string, request v1.UpdateAlbumRequest) (*entity.Album, error) {
-	// Get the existing album
-	album, err := a.GetAlbum(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	// Apply updates if provided
-	if request.Name != nil {
-		album.Path = *request.Name // Using name as path for now
-	}
-	// TODO: Add description field to entity.Album if needed
-	// if request.Description != nil {
-	//     album.Description = *request.Description
-	// }
-
-	// TODO: Implement album update in datastore
-	// For now, return the updated album (stub implementation)
-	return album, nil
-}
-
 // DeleteAlbum deletes an album by ID
 func (a *AlbumService) DeleteAlbum(ctx context.Context, id string) error {
 	// Check if album exists
@@ -104,13 +81,14 @@ func (a *AlbumService) DeleteAlbum(ctx context.Context, id string) error {
 
 	// Delete the album from the datastore using a write transaction
 	err = a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
-		// Delete the album from the database
-		if err := writer.DeleteAlbum(ctx, id); err != nil {
+		// Delete the album folder from the file system
+		if err := a.fs.DeleteFolder(ctx, id); err != nil {
 			return err
 		}
 
-		// Delete the album folder from the file system
-		return a.fs.DeleteFolder(ctx, id)
+		// Delete the album from the database
+		return writer.DeleteAlbum(ctx, id)
+
 	})
 	if err != nil {
 		return err
