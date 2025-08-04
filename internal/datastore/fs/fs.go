@@ -11,15 +11,15 @@ import (
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 )
 
-type FsDatastore struct {
+type Datastore struct {
 	rootFolder string
 }
 
-func NewFsDatastore(rootFolder string) *FsDatastore {
-	return &FsDatastore{rootFolder: rootFolder}
+func NewFsDatastore(rootFolder string) *Datastore {
+	return &Datastore{rootFolder: rootFolder}
 }
 
-func (fs *FsDatastore) Read(ctx context.Context, filepath string) entity.MediaContentFn {
+func (fs *Datastore) Read(ctx context.Context, filepath string) entity.MediaContentFn {
 	return func() (io.Reader, error) {
 		data, err := os.ReadFile(path.Join(fs.rootFolder, filepath))
 		if err != nil {
@@ -30,7 +30,7 @@ func (fs *FsDatastore) Read(ctx context.Context, filepath string) entity.MediaCo
 	}
 }
 
-func (fs *FsDatastore) Write(ctx context.Context, filePath string, r io.Reader) error {
+func (fs *Datastore) Write(ctx context.Context, filePath string, r io.Reader) error {
 	fullPath := filepath.Join(fs.rootFolder, filePath)
 
 	// Create the file (album folder should already exist)
@@ -47,7 +47,7 @@ func (fs *FsDatastore) Write(ctx context.Context, filePath string, r io.Reader) 
 
 // CreateFolder creates a directory on the filesystem.
 // This operation is idempotent - it will not fail if the directory already exists.
-func (fs *FsDatastore) CreateFolder(ctx context.Context, folderPath string) error {
+func (fs *Datastore) CreateFolder(ctx context.Context, folderPath string) error {
 	fullPath := filepath.Join(fs.rootFolder, folderPath)
 
 	// os.MkdirAll is idempotent - it creates the directory and any necessary parents,
@@ -68,7 +68,7 @@ func (fs *FsDatastore) CreateFolder(ctx context.Context, folderPath string) erro
 
 // DeleteFolder removes a directory from the filesystem.
 // This operation is idempotent - it will not fail if the directory doesn't exist.
-func (fs *FsDatastore) DeleteFolder(ctx context.Context, folderPath string) error {
+func (fs *Datastore) DeleteFolder(ctx context.Context, folderPath string) error {
 	fullPath := filepath.Join(fs.rootFolder, folderPath)
 
 	// Check if the path exists
