@@ -12,11 +12,11 @@ import (
 // AlbumService provides business logic for album operations
 type AlbumService struct {
 	dt *pg.Datastore
-	fs *fs.FsDatastore
+	fs *fs.Datastore
 }
 
 // NewAlbumService creates a new instance of AlbumService with the provided datastores
-func NewAlbumService(dt *pg.Datastore, fsDatastore *fs.FsDatastore) *AlbumService {
+func NewAlbumService(dt *pg.Datastore, fsDatastore *fs.Datastore) *AlbumService {
 	return &AlbumService{dt: dt, fs: fsDatastore}
 }
 
@@ -43,13 +43,12 @@ func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, 
 func (a *AlbumService) WriteAlbum(ctx context.Context, album entity.Album) (*entity.Album, error) {
 	// Check if the album already exists
 	isAlbumExists := false
-	_, err := a.GetAlbum(ctx, album.ID)
-	if err == nil && errors.Is(err, NewErrAlbumNotFound(album.ID)) {
+	if _, err := a.GetAlbum(ctx, album.ID); err != nil && errors.Is(err, NewErrAlbumNotFound(album.ID)) {
 		isAlbumExists = true
 	}
 
 	// Create the album in the datastore using a write transaction
-	err = a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
+	err := a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
 		// Write the album to database
 		if err := writer.WriteAlbum(ctx, album); err != nil {
 			return err
@@ -74,13 +73,12 @@ func (a *AlbumService) WriteAlbum(ctx context.Context, album entity.Album) (*ent
 // DeleteAlbum deletes an album by ID
 func (a *AlbumService) DeleteAlbum(ctx context.Context, id string) error {
 	// Check if album exists
-	_, err := a.GetAlbum(ctx, id)
-	if err != nil {
+	if _, err := a.GetAlbum(ctx, id); err != nil {
 		return err
 	}
 
 	// Delete the album from the datastore using a write transaction
-	err = a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
+	err := a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
 		// Delete the album folder from the file system
 		if err := a.fs.DeleteFolder(ctx, id); err != nil {
 			return err

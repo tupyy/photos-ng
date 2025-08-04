@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"time"
+
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	"github.com/oapi-codegen/runtime/types"
 )
@@ -75,5 +77,47 @@ func NewMedia(media entity.Media) Media {
 		Thumbnail:  "/api/v1/media/" + media.ID + "/thumbnail",
 		Href:       "/api/v1/media/" + media.ID,
 		Exif:       exifHeaders,
+	}
+}
+
+// Entity converts a v1.CreateAlbumRequest to an entity.Album for business logic processing.
+// This method transforms the HTTP request data into the internal domain model representation.
+func (r CreateAlbumRequest) Entity() entity.Album {
+	album := entity.Album{
+		ID:        "album-" + r.Name, // TODO: Generate proper ID
+		Path:      r.Name,
+		Parent:    r.ParentId,
+		Children:  []entity.Album{},
+		Media:     []entity.Media{},
+		CreatedAt: time.Now(),
+	}
+
+	return album
+}
+
+// Entity converts a v1.UpdateAlbumRequest to an entity.Album for business logic processing.
+// This method applies the updates to an existing album entity.
+func (r UpdateAlbumRequest) ApplyTo(album *entity.Album) {
+	if r.Name != nil {
+		album.Path = *r.Name // Using name as path for now
+	}
+	if r.Description != nil {
+		album.Description = r.Description
+	}
+}
+
+// Entity converts a v1.UpdateMediaRequest to updates for an entity.Media.
+// This method applies the updates to an existing media entity.
+func (r UpdateMediaRequest) ApplyTo(media *entity.Media) {
+	if r.CapturedAt != nil {
+		media.CapturedAt = r.CapturedAt.Time
+	}
+	if r.Exif != nil {
+		if media.Exif == nil {
+			media.Exif = make(map[string]string)
+		}
+		for _, exif := range *r.Exif {
+			media.Exif[exif.Key] = exif.Value
+		}
 	}
 }

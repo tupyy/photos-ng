@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
@@ -13,11 +12,11 @@ import (
 // MediaService provides business logic for media operations
 type MediaService struct {
 	dt *pg.Datastore
-	fs *fs.FsDatastore
+	fs *fs.Datastore
 }
 
 // NewMediaService creates a new instance of MediaService with the provided datastores
-func NewMediaService(dt *pg.Datastore, fsDatastore *fs.FsDatastore) *MediaService {
+func NewMediaService(dt *pg.Datastore, fsDatastore *fs.Datastore) *MediaService {
 	return &MediaService{dt: dt, fs: fsDatastore}
 }
 
@@ -99,39 +98,20 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 	return &media, nil
 }
 
-// UpdateMedia updates an existing media item using the v1 API request
-func (m *MediaService) UpdateMedia(ctx context.Context, id string, request v1.UpdateMediaRequest) (*entity.Media, error) {
-	// Get the existing media
-	media, err := m.GetMediaByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	// Apply updates if provided
-	if request.CapturedAt != nil {
-		media.CapturedAt = request.CapturedAt.Time
-	}
-	if request.Exif != nil {
-		if media.Exif == nil {
-			media.Exif = make(map[string]string)
-		}
-		for _, exif := range *request.Exif {
-			media.Exif[exif.Key] = exif.Value
-		}
-	}
-
+// UpdateMedia updates an existing media item using an entity.Media
+func (m *MediaService) UpdateMedia(ctx context.Context, media entity.Media) (*entity.Media, error) {
 	// Clear the content function to avoid writing file content during update
 	media.Content = nil
 
 	// Update the media metadata in the datastore using a write transaction
-	err = m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
-		return writer.WriteMedia(ctx, *media)
+	err := m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
+		return writer.WriteMedia(ctx, media)
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return media, nil
+	return &media, nil
 }
 
 // DeleteMedia deletes a media item by ID
