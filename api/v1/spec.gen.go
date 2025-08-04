@@ -14,43 +14,43 @@ import (
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// List all albums
-	// (GET /api/v1/albums)
+	// (GET /albums)
 	ListAlbums(c *gin.Context, params ListAlbumsParams)
 	// Create a new album
-	// (POST /api/v1/albums)
+	// (POST /albums)
 	CreateAlbum(c *gin.Context)
 	// Delete album by ID
-	// (DELETE /api/v1/albums/{id})
+	// (DELETE /albums/{id})
 	DeleteAlbum(c *gin.Context, id string)
 	// Get album by ID
-	// (GET /api/v1/albums/{id})
+	// (GET /albums/{id})
 	GetAlbum(c *gin.Context, id string)
 	// Update album by ID
-	// (PUT /api/v1/albums/{id})
+	// (PUT /albums/{id})
 	UpdateAlbum(c *gin.Context, id string)
 	// Sync album
-	// (POST /api/v1/albums/{id}/sync)
+	// (POST /albums/{id}/sync)
 	SyncAlbum(c *gin.Context, id string)
 	// List all media
-	// (GET /api/v1/media)
+	// (GET /media)
 	ListMedia(c *gin.Context, params ListMediaParams)
 	// Delete media by ID
-	// (DELETE /api/v1/media/{id})
+	// (DELETE /media/{id})
 	DeleteMedia(c *gin.Context, id string)
 	// Get media by ID
-	// (GET /api/v1/media/{id})
+	// (GET /media/{id})
 	GetMedia(c *gin.Context, id string)
 	// Update media by ID
-	// (PUT /api/v1/media/{id})
+	// (PUT /media/{id})
 	UpdateMedia(c *gin.Context, id string)
 	// Get media content
-	// (GET /api/v1/media/{id}/content)
+	// (GET /media/{id}/content)
 	GetMediaContent(c *gin.Context, id string)
 	// Get media thumbnail
-	// (GET /api/v1/media/{id}/thumbnail)
+	// (GET /media/{id}/thumbnail)
 	GetMediaThumbnail(c *gin.Context, id string)
 	// Get timeline buckets
-	// (GET /api/v1/timeline)
+	// (GET /timeline)
 	GetTimeline(c *gin.Context, params GetTimelineParams)
 }
 
@@ -485,17 +485,17 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 		ErrorHandler:       errorHandler,
 	}
 
-	router.GET(options.BaseURL+"/api/v1/albums", wrapper.ListAlbums)
-	router.POST(options.BaseURL+"/api/v1/albums", wrapper.CreateAlbum)
-	router.DELETE(options.BaseURL+"/api/v1/albums/:id", wrapper.DeleteAlbum)
-	router.GET(options.BaseURL+"/api/v1/albums/:id", wrapper.GetAlbum)
-	router.PUT(options.BaseURL+"/api/v1/albums/:id", wrapper.UpdateAlbum)
-	router.POST(options.BaseURL+"/api/v1/albums/:id/sync", wrapper.SyncAlbum)
-	router.GET(options.BaseURL+"/api/v1/media", wrapper.ListMedia)
-	router.DELETE(options.BaseURL+"/api/v1/media/:id", wrapper.DeleteMedia)
-	router.GET(options.BaseURL+"/api/v1/media/:id", wrapper.GetMedia)
-	router.PUT(options.BaseURL+"/api/v1/media/:id", wrapper.UpdateMedia)
-	router.GET(options.BaseURL+"/api/v1/media/:id/content", wrapper.GetMediaContent)
-	router.GET(options.BaseURL+"/api/v1/media/:id/thumbnail", wrapper.GetMediaThumbnail)
-	router.GET(options.BaseURL+"/api/v1/timeline", wrapper.GetTimeline)
+	router.GET(options.BaseURL+"/albums", wrapper.ListAlbums)
+	router.POST(options.BaseURL+"/albums", wrapper.CreateAlbum)
+	router.DELETE(options.BaseURL+"/albums/:id", wrapper.DeleteAlbum)
+	router.GET(options.BaseURL+"/albums/:id", wrapper.GetAlbum)
+	router.PUT(options.BaseURL+"/albums/:id", wrapper.UpdateAlbum)
+	router.POST(options.BaseURL+"/albums/:id/sync", wrapper.SyncAlbum)
+	router.GET(options.BaseURL+"/media", wrapper.ListMedia)
+	router.DELETE(options.BaseURL+"/media/:id", wrapper.DeleteMedia)
+	router.GET(options.BaseURL+"/media/:id", wrapper.GetMedia)
+	router.PUT(options.BaseURL+"/media/:id", wrapper.UpdateMedia)
+	router.GET(options.BaseURL+"/media/:id/content", wrapper.GetMediaContent)
+	router.GET(options.BaseURL+"/media/:id/thumbnail", wrapper.GetMediaThumbnail)
+	router.GET(options.BaseURL+"/timeline", wrapper.GetTimeline)
 }

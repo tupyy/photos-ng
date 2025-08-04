@@ -12,7 +12,7 @@ servers:
     description: Production server
 
 paths:
-  /api/v1/albums:
+  /albums:
     get:
       summary: List all albums
       description: Retrieve a list of all albums
@@ -70,7 +70,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/v1/albums/{id}:
+  /albums/{id}:
     get:
       summary: Get album by ID
       description: Retrieve a specific album by its ID
@@ -148,7 +148,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/v1/albums/{id}/sync:
+  /albums/{id}/sync:
     post:
       summary: Sync album
       description: Synchronize an album with the file system
@@ -174,7 +174,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/v1/media:
+  /media:
     get:
       summary: List all media
       description: Retrieve a list of all media items
@@ -256,7 +256,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/v1/media/{id}:
+  /media/{id}:
     get:
       summary: Get media by ID
       description: Retrieve a specific media item by its ID
@@ -334,7 +334,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/v1/media/{id}/thumbnail:
+  /media/{id}/thumbnail:
     get:
       summary: Get media thumbnail
       description: Retrieve the thumbnail image for a media item
@@ -361,7 +361,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/v1/media/{id}/content:
+  /media/{id}/content:
     get:
       summary: Get media content
       description: Retrieve the full content of a media item
@@ -392,7 +392,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/v1/timeline:
+  /timeline:
     get:
       summary: Get timeline buckets
       description: Retrieve a timeline of media organized in buckets
@@ -458,7 +458,7 @@ components:
           description: Unique identifier for the album
         href:
           type: string
-          example: "/api/v1/albums/album_id"
+          example: "/albums/album_id"
         name:
           type: string
           description: name of the album
@@ -498,10 +498,10 @@ components:
           type: string
         href:
           type: string
-          example: "/api/v1/media/some_id"
+          example: "/media/some_id"
         albumHref:
           type: string
-          example: "/api/v1/albums/album_id"
+          example: "/albums/album_id"
         capturedAt:
           type: string
           format: date
@@ -516,11 +516,11 @@ components:
         thumbnail:
           type: string
           description: href to thumbnail
-          example: "/api/v1/media/{id}/thumbnail"
+          example: "/media/{id}/thumbnail"
         content:
           type: string
           description: href of the endpoint serving the content of the media
-          example: "/api/v1/media/{id}/content"
+          example: "/media/{id}/content"
         exif:
           type: array
           items:
