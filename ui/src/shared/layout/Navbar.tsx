@@ -27,8 +27,11 @@ const Navbar: React.FC<NavbarProps> = () => {
           {/* Left - Brand and Navigation Icons */}
           <div className="flex items-center space-x-6">
             <div className="flex items-center">
-              <Link to="/" className="text-xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                Photos NG
+              <Link to="/" className="flex items-center text-gray-900 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Photos NG">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
               </Link>
             </div>
             
@@ -40,7 +43,7 @@ const Navbar: React.FC<NavbarProps> = () => {
                   className={`flex items-center p-2 rounded-lg transition-colors ${
                     location.pathname === item.path
                       ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20'
-                      : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-gray-800'
+                      : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-gray-800'
                   }`}
                   title={item.label}
                 >
@@ -58,7 +61,7 @@ const Navbar: React.FC<NavbarProps> = () => {
             <button
               type="button"
               onClick={toggleTheme}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              className="p-2 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-gray-200 transition-colors"
               title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             >
               {theme === 'dark' ? (
