@@ -98,12 +98,7 @@ func (r CreateAlbumRequest) Entity() entity.Album {
 // Entity converts a v1.UpdateAlbumRequest to an entity.Album for business logic processing.
 // This method applies the updates to an existing album entity.
 func (r UpdateAlbumRequest) ApplyTo(album *entity.Album) {
-	if r.Name != nil {
-		album.Path = *r.Name // Using name as path for now
-	}
-	if r.Description != nil {
-		album.Description = r.Description
-	}
+	album.Description = &r.Description
 }
 
 // Entity converts a v1.UpdateMediaRequest to updates for an entity.Media.

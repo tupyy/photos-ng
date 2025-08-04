@@ -160,8 +160,7 @@ type SyncAlbumResponse struct {
 
 // UpdateAlbumRequest Request body for updating an album
 type UpdateAlbumRequest struct {
-	Description *string `json:"description,omitempty"`
-	Name        *string `json:"name,omitempty"`
+	Description string `json:"description"`
 }
 
 // UpdateMediaRequest defines model for UpdateMediaRequest.

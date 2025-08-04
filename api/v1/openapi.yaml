@@ -376,7 +376,6 @@ paths:
           description: The ID of the media item
           schema:
             type: string
-            format: uuid
       responses:
         '200':
           description: Successful response
@@ -570,10 +569,10 @@ components:
       type: object
       description: Request body for updating an album
       properties:
-        name:
-          type: string
         description:
           type: string
+      required:
+        - description
 
 
     UpdateMediaRequest:

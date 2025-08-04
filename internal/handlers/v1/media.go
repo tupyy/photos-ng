@@ -111,7 +111,7 @@ func (s *ServerImpl) GetMedia(c *gin.Context, id string) {
 // UpdateMedia handles PUT /api/v1/media/{id} requests to update media metadata.
 // Returns HTTP 400 for validation errors, HTTP 404 if media not found,
 // HTTP 500 for server errors, or HTTP 200 with the updated media on success.
-func (s *ServerImpl) UpdateMedia(c *gin.Context, id types.UUID) {
+func (s *ServerImpl) UpdateMedia(c *gin.Context, id string) {
 	var request v1.UpdateMediaRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, v1.Error{
@@ -120,10 +120,8 @@ func (s *ServerImpl) UpdateMedia(c *gin.Context, id types.UUID) {
 		return
 	}
 
-	idStr := id.String()
-
-	// Create media service and update the media
-	updatedMedia, err := s.mediaSrv.UpdateMedia(c.Request.Context(), idStr, request)
+	// Get the existing media and apply updates
+	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
 	if err != nil {
 		switch err.(type) {
 		case *services.ErrResourceNotFound:
@@ -132,7 +130,7 @@ func (s *ServerImpl) UpdateMedia(c *gin.Context, id types.UUID) {
 			})
 			return
 		default:
-			zap.S().Errorw("failed to update media", "error", err, "media_id", idStr)
+			zap.S().Errorw("failed to get media for update", "error", err, "media_id", id)
 			c.JSON(http.StatusInternalServerError, v1.Error{
 				Message: err.Error(),
 			})
@@ -140,7 +138,28 @@ func (s *ServerImpl) UpdateMedia(c *gin.Context, id types.UUID) {
 		}
 	}
 
-	zap.S().Infow("media updated", "media_id", idStr)
+	// Apply updates from request to entity
+	request.ApplyTo(media)
+
+	// Update the media
+	updatedMedia, err := s.mediaSrv.UpdateMedia(c.Request.Context(), *media)
+	if err != nil {
+		switch err.(type) {
+		case *services.ErrResourceNotFound:
+			c.JSON(http.StatusNotFound, v1.Error{
+				Message: err.Error(),
+			})
+			return
+		default:
+			zap.S().Errorw("failed to update media", "error", err, "media_id", id)
+			c.JSON(http.StatusInternalServerError, v1.Error{
+				Message: err.Error(),
+			})
+			return
+		}
+	}
+
+	zap.S().Infow("media updated", "media_id", id)
 	c.JSON(http.StatusOK, v1.NewMedia(*updatedMedia))
 }
 
@@ -174,62 +193,20 @@ func (s *ServerImpl) DeleteMedia(c *gin.Context, id string) {
 // Returns HTTP 404 if media not found, HTTP 500 for server errors,
 // or the binary media content with appropriate content-type on success.
 func (s *ServerImpl) GetMediaContent(c *gin.Context, id types.UUID) {
-	idStr := id.String()
-
-	// Create media service and get media content
-	media, content, err := s.mediaSrv.GetMediaContent(c.Request.Context(), idStr)
-	if err != nil {
-		switch err.(type) {
-		case *services.ErrResourceNotFound:
-			c.JSON(http.StatusNotFound, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		default:
-			zap.S().Errorw("failed to get media content", "error", err, "media_id", idStr)
-			c.JSON(http.StatusInternalServerError, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		}
-	}
-
-	// Set appropriate headers
-	c.Header("Content-Type", media.ContentType())
-	c.Header("Content-Disposition", "inline; filename=\""+media.Filename+"\"")
-
-	zap.S().Infow("serving media content", "media_id", idStr, "filename", media.Filename)
-	c.Data(http.StatusOK, media.ContentType(), content)
+	// TODO: Implement media content serving
+	// For now, return not implemented
+	c.JSON(http.StatusNotImplemented, v1.Error{
+		Message: "Media content serving not yet implemented",
+	})
 }
 
 // GetMediaThumbnail handles GET /api/v1/media/{id}/thumbnail requests to serve media thumbnails.
 // Returns HTTP 404 if media not found, HTTP 500 for server errors,
 // or the binary thumbnail data on success.
 func (s *ServerImpl) GetMediaThumbnail(c *gin.Context, id string) {
-	// Create media service and get media thumbnail
-	media, thumbnail, err := s.mediaSrv.GetMediaThumbnail(c.Request.Context(), id)
-	if err != nil {
-		switch err.(type) {
-		case *services.ErrResourceNotFound:
-			c.JSON(http.StatusNotFound, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		default:
-			zap.S().Errorw("failed to get media thumbnail", "error", err, "media_id", id)
-			c.JSON(http.StatusInternalServerError, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		}
-	}
-
-	_ = media // Use media if needed for additional logic
-
-	// Serve thumbnail
-	c.Header("Content-Type", "image/jpeg")            // Assume JPEG thumbnails
-	c.Header("Cache-Control", "public, max-age=3600") // Cache for 1 hour
-
-	zap.S().Infow("serving media thumbnail", "media_id", id)
-	c.Data(http.StatusOK, "image/jpeg", thumbnail)
+	// TODO: Implement media thumbnail serving
+	// For now, return not implemented
+	c.JSON(http.StatusNotImplemented, v1.Error{
+		Message: "Media thumbnail serving not yet implemented",
+	})
 }

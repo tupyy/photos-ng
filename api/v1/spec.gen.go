@@ -46,7 +46,7 @@ type ServerInterface interface {
 	UpdateMedia(c *gin.Context, id openapi_types.UUID)
 	// Get media content
 	// (GET /api/v1/media/{id}/content)
-	GetMediaContent(c *gin.Context, id openapi_types.UUID)
+	GetMediaContent(c *gin.Context, id string)
 	// Get media thumbnail
 	// (GET /api/v1/media/{id}/thumbnail)
 	GetMediaThumbnail(c *gin.Context, id string)
@@ -367,7 +367,7 @@ func (siw *ServerInterfaceWrapper) GetMediaContent(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id openapi_types.UUID
+	var id string
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
