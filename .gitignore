@@ -4,3 +4,4 @@ tools/
 sql/.pgpass
 vendor/
 ui/node_modules/
+ui/build

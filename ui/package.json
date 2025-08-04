@@ -1,0 +1,87 @@
+{
+  "name": "ui",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.8.2",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.6.4",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "@types/jest": "^27.5.2",
+    "@types/node": "^16.18.126",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "axios": "^1.11.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^7.7.1",
+    "react-scripts": "5.0.1",
+    "typescript": "^4.9.5",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "css:build": "tailwindcss -i ./src/index.css -o ./src/styles.css --content \"./src/**/*.{js,jsx,ts,tsx}\"",
+    "css:watch": "tailwindcss -i ./src/index.css -o ./src/styles.css --content \"./src/**/*.{js,jsx,ts,tsx}\" --watch",
+    "prebuild": "npm run css:build",
+    "build": "webpack --config webpack.prod.js",
+    "start": "npm run css:build && webpack serve --config webpack.dev.js",
+    "start:dev": "npm run css:build && webpack serve --config webpack.dev.js",
+    "test": "react-scripts test",
+    "test:coverage": "react-scripts test --coverage --watchAll=false",
+    "eject": "react-scripts eject",
+    "serve": "serve -s dist -p 3001",
+    "serve:dev": "serve -s dist -p 3002",
+    "generate:api": "openapi-generator-cli generate -i ../api/v1/openapi.yaml -g typescript-axios -o src/generated -c openapi-generator-config.json",
+    "generate:api:clean": "rimraf src/generated && npm run generate:api",
+    "generate:api:watch": "nodemon --watch ../api/v1/openapi.yaml --exec \"npm run generate:api\"",
+    "postinstall": "npm run generate:api",
+    "clean": "rimraf dist"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.21.4",
+    "@types/react-router-dom": "^5.3.3",
+    "autoprefixer": "^10.4.21",
+    "copy-webpack-plugin": "^13.0.0",
+    "cross-env": "^10.0.0",
+    "css-loader": "^7.1.2",
+    "css-minimizer-webpack-plugin": "^7.0.2",
+    "dotenv-webpack": "^8.1.1",
+    "html-webpack-plugin": "^5.6.3",
+    "http-proxy-middleware": "^3.0.5",
+    "mini-css-extract-plugin": "^2.9.3",
+    "nodemon": "^3.1.10",
+    "postcss": "^8.5.6",
+    "rimraf": "^6.0.1",
+    "serve": "^14.2.4",
+    "style-loader": "^4.0.0",
+    "tailwindcss": "^3.4.17",
+    "terser-webpack-plugin": "^5.3.14",
+    "ts-loader": "^9.5.2",
+    "tsconfig-paths-webpack-plugin": "^4.2.0",
+    "webpack": "^5.101.0",
+    "webpack-bundle-analyzer": "^4.10.2",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.2",
+    "webpack-merge": "^6.0.1"
+  }
+}

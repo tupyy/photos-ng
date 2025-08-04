@@ -1,0 +1,4 @@
+/* This file is used as input for Tailwind CSS generation */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
