@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/oapi-codegen/runtime"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // ServerInterface represents all server handlers.
@@ -43,7 +42,7 @@ type ServerInterface interface {
 	GetMedia(c *gin.Context, id string)
 	// Update media by ID
 	// (PUT /api/v1/media/{id})
-	UpdateMedia(c *gin.Context, id openapi_types.UUID)
+	UpdateMedia(c *gin.Context, id string)
 	// Get media content
 	// (GET /api/v1/media/{id}/content)
 	GetMediaContent(c *gin.Context, id string)
@@ -343,7 +342,7 @@ func (siw *ServerInterfaceWrapper) UpdateMedia(c *gin.Context) {
 	var err error
 
 	// ------------- Path parameter "id" -------------
-	var id openapi_types.UUID
+	var id string
 
 	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {

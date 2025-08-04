@@ -31,7 +31,7 @@ func (w *Writer) WriteAlbum(ctx context.Context, album entity.Album) error {
 			album.CreatedAt,
 			album.Path,
 			album.Description,
-			album.Parent,
+			album.ParentId,
 			album.Thumbnail,
 		).
 		Suffix("ON CONFLICT (" + albumID + ") DO UPDATE SET " +

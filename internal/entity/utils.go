@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func generateId(path string) string {
+func GenerateId(path string) string {
 	cleanPath := strings.TrimRight(path, string(os.PathSeparator))
 	h := sha256.New()
 	h.Write([]byte(cleanPath))

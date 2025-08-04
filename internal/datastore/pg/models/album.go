@@ -33,7 +33,7 @@ func (aa Albums) Entity() []entity.Album {
 			album.CreatedAt = row.CreatedAt
 			album.Path = row.Path
 			album.Description = row.Description
-			album.Parent = row.ParentID
+			album.ParentId = row.ParentID
 			if row.ThumbnailID != nil {
 				album.Thumbnail = row.ThumbnailID
 			}

@@ -1,10 +1,17 @@
 package services
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // ErrResourceNotFound is returned when a requested resource is not found
 type ErrResourceNotFound struct {
 	error
+}
+
+func NewErrResourceNotFound(err error) *ErrResourceNotFound {
+	return &ErrResourceNotFound{err}
 }
 
 func NewErrAlbumNotFound(id string) *ErrResourceNotFound {
@@ -38,6 +45,14 @@ func IsErrResourceNotFound(err error) bool {
 func IsErrResourceExistsAlready(err error) bool {
 	_, ok := err.(*ErrResourceExistsAlready)
 	return ok
+}
+
+type ErrUpdateAlbum struct {
+	error
+}
+
+func NewErrUpdateAlbum(reason string) *ErrUpdateAlbum {
+	return &ErrUpdateAlbum{errors.New(reason)}
 }
 
 // ErrInvalidInput is returned when input validation fails

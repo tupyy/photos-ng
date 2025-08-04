@@ -6,7 +6,6 @@ import (
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
 	"github.com/gin-gonic/gin"
-	"github.com/oapi-codegen/runtime/types"
 	"go.uber.org/zap"
 )
 
@@ -192,7 +191,7 @@ func (s *ServerImpl) DeleteMedia(c *gin.Context, id string) {
 // GetMediaContent handles GET /api/v1/media/{id}/content requests to serve the full media content.
 // Returns HTTP 404 if media not found, HTTP 500 for server errors,
 // or the binary media content with appropriate content-type on success.
-func (s *ServerImpl) GetMediaContent(c *gin.Context, id types.UUID) {
+func (s *ServerImpl) GetMediaContent(c *gin.Context, id string) {
 	// TODO: Implement media content serving
 	// For now, return not implemented
 	c.JSON(http.StatusNotImplemented, v1.Error{

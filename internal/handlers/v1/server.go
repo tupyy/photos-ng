@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
 )
@@ -16,8 +17,8 @@ type ServerImpl struct {
 
 func NewServerV1(dt *pg.Datastore, rootFolder string) *ServerImpl {
 	return &ServerImpl{
-		albumSrv:    services.NewAlbumService(dt, rootFolder),
-		mediaSrv:    services.NewMediaService(dt),
+		albumSrv:    services.NewAlbumService(dt, fs.NewFsDatastore(rootFolder)),
+		mediaSrv:    services.NewMediaService(dt, fs.NewFsDatastore(rootFolder)),
 		timelineSrv: services.NewTimelineService(dt),
 	}
 }

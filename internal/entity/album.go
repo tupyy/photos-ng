@@ -8,14 +8,14 @@ type Album struct {
 	Path        string
 	Description *string
 	Thumbnail   *string
-	Parent      *string
+	ParentId    *string
 	Children    []Album
 	Media       []Media
 }
 
 func NewAlbum(folderPath string) Album {
 	return Album{
-		ID:        generateId(folderPath),
+		ID:        GenerateId(folderPath),
 		Path:      folderPath,
 		CreatedAt: time.Now(),
 		Children:  make([]Album, 0),

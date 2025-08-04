@@ -294,7 +294,6 @@ paths:
           description: The ID of the media item to update
           schema:
             type: string
-            format: uuid
       requestBody:
         required: true
         content:
@@ -464,6 +463,9 @@ components:
         parentHref:
           type: string
           description: href of the parent
+        thumbnail:
+          type: string
+          description: href of the thumbnail
         description:
           type: string
         children:
@@ -571,8 +573,9 @@ components:
       properties:
         description:
           type: string
-      required:
-        - description
+        thumbnail:
+          type: string
+          description: id of the media used as thumbnail
 
 
     UpdateMediaRequest:

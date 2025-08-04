@@ -68,7 +68,7 @@ func (s *ServerImpl) CreateAlbum(c *gin.Context) {
 	}
 
 	// Convert request to entity and create the album
-	createdAlbum, err := s.albumSrv.WriteAlbum(c.Request.Context(), request.Entity())
+	createdAlbum, err := s.albumSrv.CreateAlbum(c.Request.Context(), request.Entity())
 	if err != nil {
 		zap.S().Errorw("failed to create album", "error", err)
 		c.JSON(http.StatusInternalServerError, v1.Error{
@@ -140,11 +140,16 @@ func (s *ServerImpl) UpdateAlbum(c *gin.Context, id string) {
 	request.ApplyTo(album)
 
 	// Update the album
-	updatedAlbum, err := s.albumSrv.WriteAlbum(c.Request.Context(), *album)
+	updatedAlbum, err := s.albumSrv.UpdateAlbum(c.Request.Context(), *album)
 	if err != nil {
 		switch err.(type) {
 		case *services.ErrResourceNotFound:
 			c.JSON(http.StatusNotFound, v1.Error{
+				Message: err.Error(),
+			})
+			return
+		case *services.ErrUpdateAlbum:
+			c.JSON(http.StatusBadRequest, v1.Error{
 				Message: err.Error(),
 			})
 			return

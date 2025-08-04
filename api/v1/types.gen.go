@@ -49,6 +49,9 @@ type Album struct {
 
 	// Path path of the folder on disk
 	Path string `json:"path"`
+
+	// Thumbnail href of the thumbnail
+	Thumbnail *string `json:"thumbnail,omitempty"`
 }
 
 // Bucket defines model for Bucket.
@@ -160,7 +163,10 @@ type SyncAlbumResponse struct {
 
 // UpdateAlbumRequest Request body for updating an album
 type UpdateAlbumRequest struct {
-	Description string `json:"description"`
+	Description *string `json:"description,omitempty"`
+
+	// Thumbnail id of the media used as thumbnail
+	Thumbnail *string `json:"thumbnail,omitempty"`
 }
 
 // UpdateMediaRequest defines model for UpdateMediaRequest.

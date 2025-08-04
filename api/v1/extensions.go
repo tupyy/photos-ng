@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"fmt"
 	"time"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
@@ -45,9 +46,14 @@ func NewAlbum(album entity.Album) Album {
 	}
 
 	// Set parent href if parent exists
-	if album.Parent != nil {
-		parentHref := "/api/v1/albums/" + *album.Parent
+	if album.ParentId != nil {
+		parentHref := "/api/v1/albums/" + *album.ParentId
 		apiAlbum.ParentHref = &parentHref
+	}
+
+	if album.Thumbnail != nil {
+		thumbnail := fmt.Sprintf("/api/v1/media/%s/thumbnail", *album.Thumbnail)
+		apiAlbum.Thumbnail = &thumbnail
 	}
 
 	return apiAlbum
@@ -84,9 +90,9 @@ func NewMedia(media entity.Media) Media {
 // This method transforms the HTTP request data into the internal domain model representation.
 func (r CreateAlbumRequest) Entity() entity.Album {
 	album := entity.Album{
-		ID:        "album-" + r.Name, // TODO: Generate proper ID
+		ID:        entity.GenerateId(r.Name),
 		Path:      r.Name,
-		Parent:    r.ParentId,
+		ParentId:  r.ParentId,
 		Children:  []entity.Album{},
 		Media:     []entity.Media{},
 		CreatedAt: time.Now(),
@@ -98,7 +104,8 @@ func (r CreateAlbumRequest) Entity() entity.Album {
 // Entity converts a v1.UpdateAlbumRequest to an entity.Album for business logic processing.
 // This method applies the updates to an existing album entity.
 func (r UpdateAlbumRequest) ApplyTo(album *entity.Album) {
-	album.Description = &r.Description
+	album.Description = r.Description
+	album.Thumbnail = r.Thumbnail
 }
 
 // Entity converts a v1.UpdateMediaRequest to updates for an entity.Media.

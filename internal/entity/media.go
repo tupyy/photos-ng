@@ -44,7 +44,7 @@ type Media struct {
 
 func NewMedia(filename string, album Album) Media {
 	return Media{
-		ID:        generateId(fmt.Sprintf("%s%s", filename, album.ID)),
+		ID:        GenerateId(fmt.Sprintf("%s%s", filename, album.ID)),
 		Album:     album,
 		Filename:  filename,
 		MediaType: Photo,
