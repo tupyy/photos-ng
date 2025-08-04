@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"errors"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
@@ -65,7 +64,7 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 	// Check if the media already exists
 	isMediaExists := true
 	_, err := m.GetMediaByID(ctx, media.ID)
-	if err == nil && errors.Is(err, NewErrMediaNotFound(media.ID)) {
+	if err != nil && IsErrResourceNotFound(err) {
 		isMediaExists = false
 	}
 

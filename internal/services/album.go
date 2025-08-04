@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path"
 
@@ -44,9 +43,9 @@ func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, 
 // CreateAlbum creates a new album using an entity.Album
 func (a *AlbumService) CreateAlbum(ctx context.Context, album entity.Album) (*entity.Album, error) {
 	// Check if the album already exists
-	isAlbumExists := false
-	if _, err := a.GetAlbum(ctx, album.ID); err != nil && errors.Is(err, NewErrAlbumNotFound(album.ID)) {
-		isAlbumExists = true
+	isAlbumExists := true
+	if _, err := a.GetAlbum(ctx, album.ID); err != nil && IsErrResourceNotFound(err) {
+		isAlbumExists = false
 	}
 
 	// Get parent if parentID exists and recompute path and id of the new album.
@@ -96,7 +95,7 @@ func (a *AlbumService) UpdateAlbum(ctx context.Context, album entity.Album) (*en
 
 	// if thumbnail is present, check if the media belongs to the album
 	if album.Thumbnail != nil {
-		media, err := a.dt.QueryMedia(ctx, pg.FilterByAlbumId(*album.Thumbnail), pg.FilterByColumnName("album_id", existingAlbum.ID), pg.Limit(1))
+		media, err := a.dt.QueryMedia(ctx, pg.FilterByMediaId(*album.Thumbnail), pg.FilterByColumnName("album_id", existingAlbum.ID), pg.Limit(1))
 		if err != nil {
 			return nil, err
 		}
@@ -104,6 +103,8 @@ func (a *AlbumService) UpdateAlbum(ctx context.Context, album entity.Album) (*en
 		if len(media) == 0 {
 			return nil, NewErrUpdateAlbum(fmt.Sprintf("thumbnail %s does not exists in the album", *album.Thumbnail))
 		}
+
+		existingAlbum.Thumbnail = album.Thumbnail
 	}
 
 	// Write the album in the datastore using a write transaction
