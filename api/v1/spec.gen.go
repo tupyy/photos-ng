@@ -416,18 +416,19 @@ func (siw *ServerInterfaceWrapper) GetTimeline(c *gin.Context) {
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetTimelineParams
 
-	// ------------- Required query parameter "startDate" -------------
+	// ------------- Optional query parameter "startDate" -------------
 
-	if paramValue := c.Query("startDate"); paramValue != "" {
-
-	} else {
-		siw.ErrorHandler(c, fmt.Errorf("Query argument startDate is required, but not found"), http.StatusBadRequest)
+	err = runtime.BindQueryParameter("form", true, false, "startDate", c.Request.URL.Query(), &params.StartDate)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter startDate: %w", err), http.StatusBadRequest)
 		return
 	}
 
-	err = runtime.BindQueryParameter("form", true, true, "startDate", c.Request.URL.Query(), &params.StartDate)
+	// ------------- Optional query parameter "endDate" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "endDate", c.Request.URL.Query(), &params.EndDate)
 	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter startDate: %w", err), http.StatusBadRequest)
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter endDate: %w", err), http.StatusBadRequest)
 		return
 	}
 

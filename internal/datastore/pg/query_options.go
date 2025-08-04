@@ -6,6 +6,8 @@
 package pg
 
 import (
+	"time"
+
 	sq "github.com/Masterminds/squirrel"
 )
 
@@ -132,5 +134,28 @@ func FilterByColumnName(columnName string, value string) QueryOption {
 			return orig
 		}
 		return orig.Where(sq.Eq{columnName: value})
+	}
+}
+
+func FilterByMediaDate(start, end *time.Time) func(orig sq.SelectBuilder) sq.SelectBuilder {
+	return func(orig sq.SelectBuilder) sq.SelectBuilder {
+		if start != nil && end != nil {
+			return orig.Where(
+				sq.And{
+					sq.GtOrEq{"captured_at": start},
+					sq.LtOrEq{"captured_at": end},
+				},
+			)
+		}
+
+		if start != nil {
+			return orig.Where(sq.GtOrEq{"captured_at": start})
+		}
+
+		if end != nil {
+			return orig.Where(sq.LtOrEq{"captured_at": end})
+		}
+
+		return orig
 	}
 }

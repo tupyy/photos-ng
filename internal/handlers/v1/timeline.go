@@ -26,9 +26,16 @@ func (s *ServerImpl) GetTimeline(c *gin.Context, params v1.GetTimelineParams) {
 
 	// Create timeline service and filter
 	filter := &services.TimelineFilter{
-		StartDate: params.StartDate.Time,
-		Limit:     limit,
-		Offset:    offset,
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	if params.StartDate != nil {
+		filter.StartDate = &params.StartDate.Time
+	}
+
+	if params.EndDate != nil {
+		filter.EndDate = &params.EndDate.Time
 	}
 
 	// Get timeline from service
@@ -66,6 +73,6 @@ func (s *ServerImpl) GetTimeline(c *gin.Context, params v1.GetTimelineParams) {
 		Offset:  offset,
 	}
 
-	zap.S().Infow("timeline retrieved", "start_date", params.StartDate.Time, "total_buckets", len(buckets), "years_count", len(years))
+	zap.S().Infow("timeline retrieved", "start_date", params.StartDate, "total_buckets", len(buckets), "years_count", len(years))
 	c.JSON(http.StatusOK, response)
 }

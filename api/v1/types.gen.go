@@ -235,7 +235,10 @@ type ListMediaParamsSortOrder string
 // GetTimelineParams defines parameters for GetTimeline.
 type GetTimelineParams struct {
 	// StartDate Start date for the timeline
-	StartDate openapi_types.Date `form:"startDate" json:"startDate"`
+	StartDate *openapi_types.Date `form:"startDate,omitempty" json:"startDate,omitempty"`
+
+	// EndDate Start date for the timeline
+	EndDate *openapi_types.Date `form:"endDate,omitempty" json:"endDate,omitempty"`
 
 	// Limit Maximum number of buckets to return
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`

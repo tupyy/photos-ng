@@ -11,7 +11,8 @@ import (
 
 // TimelineFilter represents filtering criteria for timeline queries
 type TimelineFilter struct {
-	StartDate time.Time
+	StartDate *time.Time
+	EndDate   *time.Time
 	Limit     int
 	Offset    int
 }
@@ -28,9 +29,8 @@ func NewTimelineService(dt *pg.Datastore) *TimelineService {
 
 // GetTimeline retrieves media organized into timeline buckets
 func (t *TimelineService) GetTimeline(ctx context.Context, filter *TimelineFilter) (entity.Buckets, []int, error) {
-	// Get all media from the start date onwards
-	// TODO: Add proper date filtering in the query
 	queryOptions := []pg.QueryOption{
+		pg.FilterByMediaDate(filter.StartDate, filter.EndDate),
 		pg.SortByColumn("captured_at", true), // Most recent first
 	}
 
@@ -39,16 +39,8 @@ func (t *TimelineService) GetTimeline(ctx context.Context, filter *TimelineFilte
 		return nil, nil, err
 	}
 
-	// Filter media by start date
-	filteredMedia := make([]entity.Media, 0)
-	for _, media := range allMedia {
-		if media.CapturedAt.After(filter.StartDate) || media.CapturedAt.Equal(filter.StartDate) {
-			filteredMedia = append(filteredMedia, media)
-		}
-	}
-
 	// Organize media into buckets
-	buckets := t.organizeBuckets(filteredMedia)
+	buckets := t.organizeBuckets(allMedia)
 
 	// Get years from datastore stats
 	stats, err := t.dt.Stats(ctx)

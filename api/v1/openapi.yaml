@@ -402,7 +402,14 @@ paths:
       parameters:
         - name: startDate
           in: query
-          required: true
+          description: Start date for the timeline
+          schema:
+            type: string
+            format: date
+            pattern: '^\d{2}/\d{2}/\d{4}$'
+            example: "01/01/2024"
+        - name: endDate
+          in: query
           description: Start date for the timeline
           schema:
             type: string
@@ -412,7 +419,6 @@ paths:
         - name: limit
           in: query
           description: Maximum number of buckets to return
-          required: false
           schema:
             type: integer
             minimum: 1
@@ -421,7 +427,6 @@ paths:
         - name: offset
           in: query
           description: Number of buckets to skip
-          required: false
           schema:
             type: integer
             minimum: 0
