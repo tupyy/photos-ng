@@ -48,7 +48,7 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 
 // GetMediaByID retrieves a specific media item by its ID
 func (m *MediaService) GetMediaByID(ctx context.Context, id string) (*entity.Media, error) {
-	media, err := m.dt.QueryMedia(ctx, pg.FilterById(id), pg.Limit(1))
+	media, err := m.dt.QueryMedia(ctx, pg.FilterByMediaId(id), pg.Limit(1))
 	if err != nil {
 		return nil, err
 	}

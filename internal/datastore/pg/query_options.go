@@ -9,7 +9,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 )
 
-// FilterById creates a filter that adds a WHERE clause to match a specific ID.
+// FilterByAlbumId creates a filter that adds a WHERE clause to match a specific ID.
 // If the provided ID is empty, the filter is a no-op and returns the original query unchanged.
 // This filter specifically targets the "id" column.
 //
@@ -17,21 +17,20 @@ import (
 //   - id: The ID to filter by. If empty, no filtering is applied.
 //
 // Returns: A QueryOption function that can be applied to a SelectBuilder.
-func FilterById(id string) QueryOption {
-	return func(orig sq.SelectBuilder) sq.SelectBuilder {
-		if id == "" {
-			return orig
-		}
-		return orig.Where(sq.Eq{"id": id})
-	}
+func FilterByAlbumId(id string) QueryOption {
+	return FilterByColumnName("albums.id", id)
+}
+
+func FilterByMediaId(id string) QueryOption {
+	return FilterByColumnName("media.id", id)
 }
 
 func FilterAlbumByParentId(parentId string) QueryOption {
 	return func(orig sq.SelectBuilder) sq.SelectBuilder {
 		if parentId == "" {
-			return orig.Where(sq.Eq{"parent_id": nil})
+			return orig.Where(sq.Eq{"albums.parent_id": nil})
 		}
-		return orig.Where(sq.Eq{"parent_id": parentId})
+		return orig.Where(sq.Eq{"albums.parent_id": parentId})
 	}
 }
 

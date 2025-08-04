@@ -34,7 +34,7 @@ func (w *Writer) WriteAlbum(ctx context.Context, album entity.Album) error {
 			album.ParentId,
 			album.Thumbnail,
 		).
-		Suffix("ON CONFLICT (" + albumID + ") DO UPDATE SET " +
+		Suffix("ON CONFLICT ( id ) DO UPDATE SET " +
 			albumDescription + " = EXCLUDED." + albumDescription + ", " +
 			albumThumbnailID + " = EXCLUDED." + albumThumbnailID)
 
@@ -96,10 +96,10 @@ func (w *Writer) WriteMedia(ctx context.Context, media entity.Media) error {
 }
 
 // DeleteAlbum deletes an album from the database
-func (w *Writer) DeleteAlbum(ctx context.Context, albumID string) error {
+func (w *Writer) DeleteAlbum(ctx context.Context, id string) error {
 	// Build the delete statement
 	stmt := psql.Delete(albumsTable).
-		Where(sq.Eq{albumID: albumID})
+		Where(sq.Eq{albumID: id})
 
 	// Convert to SQL
 	sql, args, err := stmt.ToSql()
@@ -113,10 +113,10 @@ func (w *Writer) DeleteAlbum(ctx context.Context, albumID string) error {
 }
 
 // DeleteMedia deletes a media item from the database
-func (w *Writer) DeleteMedia(ctx context.Context, mediaID string) error {
+func (w *Writer) DeleteMedia(ctx context.Context, id string) error {
 	// Build the delete statement
 	stmt := psql.Delete(mediaTable).
-		Where(sq.Eq{mediaID: mediaID})
+		Where(sq.Eq{mediaID: id})
 
 	// Convert to SQL
 	sql, args, err := stmt.ToSql()

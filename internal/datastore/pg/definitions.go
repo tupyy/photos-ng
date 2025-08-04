@@ -1,6 +1,10 @@
 package pg
 
-import sq "github.com/Masterminds/squirrel"
+import (
+	"fmt"
+
+	sq "github.com/Masterminds/squirrel"
+)
 
 const (
 	albumsTable = "albums"
@@ -45,11 +49,12 @@ var (
 	psql = sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
 	listAlbumsStmt = psql.Select(
-		albumID,
-		albumCreatedAt,
-		albumPath,
-		albumDescription,
-		albumThumbnailID,
+		preffix(albumsTable, albumID),
+		preffix(albumsTable, albumCreatedAt),
+		preffix(albumsTable, albumPath),
+		preffix(albumsTable, albumDescription),
+		preffix(albumsTable, albumParentID),
+		preffix(albumsTable, albumThumbnailID),
 		albumChildID,
 		albumChildCreatedAt,
 		albumChildPath,
@@ -105,3 +110,7 @@ var (
 
 	updateMediaStmt = psql.Update(mediaTable)
 )
+
+func preffix(preffix, columnName string) string {
+	return fmt.Sprintf("%s.%s", preffix, columnName)
+}

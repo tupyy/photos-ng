@@ -29,7 +29,7 @@ func (a *AlbumService) GetAlbums(ctx context.Context, opts *AlbumOptions) ([]ent
 
 // GetAlbum retrieves a specific album by its ID
 func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, error) {
-	albums, err := a.dt.QueryAlbums(ctx, pg.FilterById(id), pg.Limit(1))
+	albums, err := a.dt.QueryAlbums(ctx, pg.FilterByAlbumId(id), pg.Limit(1))
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (a *AlbumService) UpdateAlbum(ctx context.Context, album entity.Album) (*en
 
 	// if thumbnail is present, check if the media belongs to the album
 	if album.Thumbnail != nil {
-		media, err := a.dt.QueryMedia(ctx, pg.FilterById(*album.Thumbnail), pg.FilterByColumnName("album_id", existingAlbum.ID), pg.Limit(1))
+		media, err := a.dt.QueryMedia(ctx, pg.FilterByAlbumId(*album.Thumbnail), pg.FilterByColumnName("album_id", existingAlbum.ID), pg.Limit(1))
 		if err != nil {
 			return nil, err
 		}

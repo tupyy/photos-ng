@@ -70,6 +70,7 @@ func (d *Datastore) QueryAlbums(ctx context.Context, opts ...QueryOption) ([]ent
 			&album.CreatedAt,
 			&album.Path,
 			&album.Description,
+			&album.ParentID,
 			&album.ThumbnailID,
 			&album.ChildID,
 			&album.ChildCreatedAt,
