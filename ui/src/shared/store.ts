@@ -28,6 +28,9 @@ export const selectTimeline = (state: RootState) => state.timeline;
 export const selectSync = (state: RootState) => state.sync;
 
 // Specific selectors
+export const selectAlbumsPageActive = (state: RootState) => state.albums.isPageActive;
+export const selectCurrentAlbum = (state: RootState) => state.albums.currentAlbum;
+
 export const selectAlbumById = (state: RootState, albumId: string) =>
   state.albums.albums.find(album => album.id === albumId);
 

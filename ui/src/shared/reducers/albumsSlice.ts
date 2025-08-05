@@ -55,6 +55,7 @@ export const syncAlbum = createAsyncThunk(
 interface AlbumsState {
   albums: Album[];
   currentAlbum: Album | null;
+  isPageActive: boolean;
   total: number;
   limit: number;
   offset: number;
@@ -73,6 +74,7 @@ interface AlbumsState {
 const initialState: AlbumsState = {
   albums: [],
   currentAlbum: null,
+  isPageActive: false,
   total: 0,
   limit: 20,
   offset: 0,
@@ -86,6 +88,12 @@ const albumsSlice = createSlice({
   name: 'albums',
   initialState,
   reducers: {
+    setPageActive: (state, action: PayloadAction<boolean>) => {
+      state.isPageActive = action.payload;
+    },
+    setCurrentAlbum: (state, action: PayloadAction<Album | null>) => {
+      state.currentAlbum = action.payload;
+    },
     clearCurrentAlbum: (state) => {
       state.currentAlbum = null;
     },
@@ -218,5 +226,5 @@ const albumsSlice = createSlice({
   },
 });
 
-export const { clearCurrentAlbum, clearError, setFilters } = albumsSlice.actions;
+export const { setPageActive, setCurrentAlbum, clearCurrentAlbum, clearError, setFilters } = albumsSlice.actions;
 export default albumsSlice.reducer;
