@@ -36,6 +36,15 @@ func FilterAlbumByParentId(parentId string) QueryOption {
 	}
 }
 
+func FilterAlbumWithParents(hasParent bool) QueryOption {
+	return func(orig sq.SelectBuilder) sq.SelectBuilder {
+		if !hasParent {
+			return orig.Where("albums.parent_id IS NULL")
+		}
+		return orig
+	}
+}
+
 // Limit creates a filter that adds a LIMIT clause to restrict the number of results.
 // If the limit is 0 or negative, no LIMIT clause is added to the query.
 //

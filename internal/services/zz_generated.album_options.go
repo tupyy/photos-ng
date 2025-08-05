@@ -36,6 +36,7 @@ func (a *AlbumOptions) ToOption() AlbumOptionsOption {
 		to.Limit = a.Limit
 		to.Offset = a.Offset
 		to.ParentID = a.ParentID
+		to.HasParent = a.HasParent
 	}
 }
 
@@ -45,6 +46,7 @@ func (a *AlbumOptions) DebugMap() map[string]any {
 	debugMap["Limit"] = helpers.DebugValue(a.Limit, false)
 	debugMap["Offset"] = helpers.DebugValue(a.Offset, false)
 	debugMap["ParentID"] = helpers.DebugValue(a.ParentID, false)
+	debugMap["HasParent"] = helpers.DebugValue(a.HasParent, false)
 	return debugMap
 }
 
@@ -82,5 +84,12 @@ func WithOffset(offset int) AlbumOptionsOption {
 func WithParentID(parentID *string) AlbumOptionsOption {
 	return func(a *AlbumOptions) {
 		a.ParentID = parentID
+	}
+}
+
+// WithHasParent returns an option that can set HasParent on a AlbumOptions
+func WithHasParent(hasParent bool) AlbumOptionsOption {
+	return func(a *AlbumOptions) {
+		a.HasParent = hasParent
 	}
 }

@@ -37,6 +37,12 @@ paths:
             type: integer
             minimum: 0
             default: 0
+        - name: withParent
+          in: query
+          description: If true return albums with parents
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Successful response

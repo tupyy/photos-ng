@@ -8,7 +8,7 @@ function App() {
     <Layout>
       <Routes>
         <Route path="/" element={<TimelinePage />} />
-        <Route path="/albums" element={<AlbumsPage />} />
+        <Route path="/albums/:id?" element={<AlbumsPage />} />
         {/* Fallback route for any unmatched paths */}
         <Route path="*" element={<TimelinePage />} />
       </Routes>

@@ -1,22 +1,37 @@
-import React, { useEffect } from 'react';
-import { useAlbumsApi } from '@hooks/useApi';
-import { Album } from '@generated/models';
+import React, { useMemo } from 'react';
+import { Album as AlbumType } from '@shared/types/Album';
+import Album from './Album';
 
-const AlbumsList: React.FC = () => {
-  const {
-    albums,
-    loading,
-    error,
-    total,
-    fetchAlbums,
-    syncStatus,
-  } = useAlbumsApi();
+export interface AlbumsListProps {
+  albums: AlbumType[];
+  loading?: boolean;
+  error?: string | null;
+  emptyStateTitle?: string;
+  emptyStateMessage?: string;
+}
 
-  useEffect(() => {
-    fetchAlbums({ limit: 20, offset: 0 });
-  }, [fetchAlbums]);
+const AlbumsList: React.FC<AlbumsListProps> = ({
+  albums,
+  loading = false,
+  error = null,
+}) => {
+  const sortedAlbums = useMemo(() => {
+    // Ensure albums is an array to prevent undefined errors
+    const albumsArray = albums || [];
+    return [...albumsArray].sort((a, b) => {
+      // Handle null/undefined names
+      const nameA = a.name || '';
+      const nameB = b.name || '';
 
-  if (loading && albums.length === 0) {
+      // Use localeCompare for proper alphabetical sorting with locale support
+      return nameA.localeCompare(nameB, undefined, {
+        numeric: true,
+        sensitivity: 'base', // Case-insensitive
+      });
+    });
+  }, [albums]);
+
+  if (loading && (!albums || albums.length === 0)) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -34,47 +49,12 @@ const AlbumsList: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {albums.map((album: Album) => (
-          <div
-            key={album.id}
-            className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-          >
-            {album.thumbnail && (
-              <div className="h-48 bg-gray-200">
-                <img
-                  src={album.thumbnail}
-                  alt={album.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
-
-            <div className="p-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {album.name}
-              </h3>
-
-              {album.description && (
-                <p className="text-gray-600 text-sm mb-3">
-                  {album.description}
-                </p>
-              )}
-
-              <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                <span>{album.media?.length || 0} photos</span>
-                <span>{album.children?.length || 0} subalbums</span>
-              </div>
-            </div>
-          </div>
+      {/* Albums Gallery */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        {sortedAlbums.map((album: AlbumType) => (
+          <Album key={album.id} album={album} />
         ))}
       </div>
-
-      {albums.length === 0 && !loading && (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">No albums found.</p>
-        </div>
-      )}
     </div>
   );
 };

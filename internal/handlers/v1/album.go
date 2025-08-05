@@ -23,8 +23,17 @@ func (s *ServerImpl) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 		offset = *params.Offset
 	}
 
+	hasParent := false
+	if params.WithParent != nil {
+		hasParent = *params.WithParent
+	}
+
 	// Create album service and filter
-	opts := services.NewAlbumOptionsWithOptions(services.WithLimit(limit), services.WithOffset(offset))
+	opts := services.NewAlbumOptionsWithOptions(
+		services.WithLimit(limit),
+		services.WithOffset(offset),
+		services.WithHasParent(hasParent),
+	)
 
 	albums, err := s.albumSrv.GetAlbums(c.Request.Context(), opts)
 	if err != nil {

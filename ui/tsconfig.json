@@ -28,6 +28,7 @@
       "@reducers/*": ["shared/reducers/*"],
       "@api/*": ["shared/api/*"],
       "@layout/*": ["shared/layout/*"],
+      "@types/*": ["shared/types/*"],
       "@pages/*": ["pages/*"]
     }
   },

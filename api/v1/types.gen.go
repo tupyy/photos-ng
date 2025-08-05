@@ -197,6 +197,9 @@ type ListAlbumsParams struct {
 
 	// Offset Number of albums to skip
 	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// WithParent If true return albums with parents
+	WithParent *bool `form:"withParent,omitempty" json:"withParent,omitempty"`
 }
 
 // ListMediaParams defines parameters for ListMedia.

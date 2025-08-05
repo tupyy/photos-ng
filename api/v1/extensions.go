@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"path"
 	"time"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
@@ -11,11 +12,14 @@ import (
 // NewAlbum converts an entity.Album to a v1.Album for API responses
 func NewAlbum(album entity.Album) Album {
 	apiAlbum := Album{
-		Id:   album.ID,
-		Name: album.Path, // Using path as name for now since entity doesn't have name
-		Path: album.Path,
-		Href: "/api/v1/albums/" + album.ID,
+		Id:          album.ID,
+		Path:        album.Path,
+		Description: album.Description,
+		Href:        "/api/v1/albums/" + album.ID,
 	}
+
+	_, name := path.Split(album.Path)
+	apiAlbum.Name = name
 
 	// Convert children
 	if len(album.Children) > 0 {

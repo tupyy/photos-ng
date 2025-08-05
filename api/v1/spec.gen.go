@@ -87,6 +87,14 @@ func (siw *ServerInterfaceWrapper) ListAlbums(c *gin.Context) {
 		return
 	}
 
+	// ------------- Optional query parameter "withParent" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "withParent", c.Request.URL.Query(), &params.WithParent)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter withParent: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {

@@ -59,9 +59,10 @@ func (mf *MediaOptions) QueriesFn() []pg.QueryOption {
 //
 //go:generate go run github.com/ecordell/optgen -output zz_generated.album_options.go . AlbumOptions
 type AlbumOptions struct {
-	Limit    int     `debugmap:"visible"`
-	Offset   int     `debugmap:"visible"`
-	ParentID *string `debugmap:"visible"`
+	Limit     int     `debugmap:"visible"`
+	Offset    int     `debugmap:"visible"`
+	ParentID  *string `debugmap:"visible"`
+	HasParent bool    `debugmap:"visible"`
 }
 
 // QueriesFn returns a slice of query options based on the album filter criteria
@@ -75,6 +76,8 @@ func (af *AlbumOptions) QueriesFn() []pg.QueryOption {
 	if af.Offset > 0 {
 		qf = append(qf, pg.Offset(af.Offset))
 	}
+
+	qf = append(qf, pg.FilterAlbumWithParents(af.HasParent))
 
 	// Add parent filter
 	if af.ParentID != nil {

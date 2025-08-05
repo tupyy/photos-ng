@@ -1,37 +1,117 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { Album, CreateAlbumRequest, UpdateAlbumRequest, ListAlbumsResponse } from '@generated/models';
+import { Album as GeneratedAlbum, CreateAlbumRequest, UpdateAlbumRequest, ListAlbumsResponse } from '@generated/models';
+import { Album } from '@shared/types/Album';
 import { albumsApi } from '@api/apiConfig';
+
+// Helper function to fetch children albums (first level only)
+const fetchChildrenAlbums = async (children: any[]): Promise<Album[]> => {
+  const childAlbums: Album[] = [];
+  
+  for (const child of children) {
+    try {
+      // Use the href directly to fetch the album
+      const childResponse = await fetch(child.href);
+      if (!childResponse.ok) {
+        throw new Error(`HTTP ${childResponse.status}`);
+      }
+      const childAlbum = await childResponse.json();
+      
+      // Add the child album as-is (don't fetch children's children)
+      childAlbums.push(childAlbum);
+    } catch (error) {
+      console.warn(`Failed to fetch child album from ${child.href}:`, error);
+      // Add a minimal album object if fetch fails
+      const childId = child.href.split('/').pop() || '';
+      childAlbums.push({
+        id: childId,
+        name: child.name,
+        href: child.href,
+        path: '',
+        description: undefined,
+        thumbnail: undefined,
+        parentHref: undefined,
+        children: undefined,
+        media: undefined,
+      });
+    }
+  }
+  
+  return childAlbums;
+};
 
 // Async thunks
 export const fetchAlbums = createAsyncThunk(
   'albums/fetchAlbums',
   async (params: { limit?: number; offset?: number } = {}) => {
     const response = await albumsApi.listAlbums(params.limit, params.offset);
-    return response.data;
+    const albums = response.data.albums || [];
+    
+    // For each album that has children, fetch the full child album details
+    const enrichedAlbums: Album[] = [];
+    
+    for (const album of albums) {
+      if (album.children && album.children.length > 0) {
+        try {
+          const childrenAlbums = await fetchChildrenAlbums(album.children);
+          enrichedAlbums.push({
+            ...album,
+            children: childrenAlbums,
+          });
+        } catch (error) {
+          console.warn(`Failed to fetch children for album ${album.id}:`, error);
+          // Keep the album with original children structure if fetch fails
+          enrichedAlbums.push(album as Album);
+        }
+      } else {
+        // Album has no children, add as-is
+        enrichedAlbums.push(album as Album);
+      }
+    }
+    
+    return {
+      ...response.data,
+      albums: enrichedAlbums,
+    };
   }
 );
 
 export const fetchAlbumById = createAsyncThunk(
   'albums/fetchAlbumById',
-  async (id: string) => {
+  async (id: string): Promise<Album> => {
     const response = await albumsApi.getAlbum(id);
-    return response.data;
+    const album = response.data;
+    
+    // If the album has children, fetch their full details
+    if (album.children && album.children.length > 0) {
+      try {
+        const childrenAlbums = await fetchChildrenAlbums(album.children);
+        return {
+          ...album,
+          children: childrenAlbums,
+        } as Album;
+      } catch (error) {
+        console.warn(`Failed to fetch children for album ${id}:`, error);
+        return album as Album;
+      }
+    }
+    
+    return album as Album;
   }
 );
 
 export const createAlbum = createAsyncThunk(
   'albums/createAlbum',
-  async (albumData: CreateAlbumRequest) => {
+  async (albumData: CreateAlbumRequest): Promise<Album> => {
     const response = await albumsApi.createAlbum(albumData);
-    return response.data;
+    return response.data as Album;
   }
 );
 
 export const updateAlbum = createAsyncThunk(
   'albums/updateAlbum',
-  async ({ id, albumData }: { id: string; albumData: UpdateAlbumRequest }) => {
+  async ({ id, albumData }: { id: string; albumData: UpdateAlbumRequest }): Promise<Album> => {
     const response = await albumsApi.updateAlbum(id, albumData);
-    return response.data;
+    return response.data as Album;
   }
 );
 
@@ -123,7 +203,7 @@ const albumsSlice = createSlice({
       })
       .addCase(fetchAlbums.fulfilled, (state, action: PayloadAction<ListAlbumsResponse>) => {
         state.loading = false;
-        state.albums = action.payload.albums;
+        state.albums = action.payload.albums as Album[];
         state.total = action.payload.total;
         state.limit = action.payload.limit;
         state.offset = action.payload.offset;
