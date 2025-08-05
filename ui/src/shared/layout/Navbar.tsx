@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from '@shared/contexts';
 import { useAppSelector, selectSync } from '@shared/store';
@@ -10,6 +10,22 @@ const Navbar: React.FC<NavbarProps> = () => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { isInProgress: isSyncInProgress } = useAppSelector(selectSync);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const actionMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
+        setActionMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const navItems = [
     {
@@ -61,7 +77,7 @@ const Navbar: React.FC<NavbarProps> = () => {
           {/* Right side - Action Menu and Theme Toggle */}
           <div className="flex items-center md:order-2 space-x-1 md:space-x-0 rtl:space-x-reverse">
             {/* Action Menu with Spinner */}
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center space-x-1" ref={actionMenuRef}>
               {/* Spinner during sync */}
               {isSyncInProgress && (
                 <div className="flex items-center" role="status">
@@ -84,7 +100,11 @@ const Navbar: React.FC<NavbarProps> = () => {
                   <span className="sr-only">Syncing...</span>
                 </div>
               )}
-              <ActionMenu />
+              <ActionMenu 
+                isOpen={actionMenuOpen}
+                onToggle={() => setActionMenuOpen(!actionMenuOpen)}
+                onClose={() => setActionMenuOpen(false)}
+              />
             </div>
 
             {/* Theme Toggle Button */}

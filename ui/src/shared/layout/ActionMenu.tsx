@@ -1,27 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSync } from '@hooks/useSync';
 
-export interface ActionMenuProps {}
+export interface ActionMenuProps {
+  isOpen: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+}
 
-const ActionMenu: React.FC<ActionMenuProps> = () => {
+const ActionMenu: React.FC<ActionMenuProps> = ({ isOpen, onToggle, onClose }) => {
   const { isInProgress: syncInProgress, progress: syncProgress, start: startSyncAction, cancel: cancelSyncAction } = useSync();
-  const [actionMenuOpen, setActionMenuOpen] = useState(false);
-  const actionMenuRef = useRef<HTMLDivElement>(null);
   const syncPromiseRef = useRef<any>(null);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
-        setActionMenuOpen(false);
-      }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
   // Cleanup sync on component unmount
   useEffect(() => {
@@ -33,7 +23,7 @@ const ActionMenu: React.FC<ActionMenuProps> = () => {
   }, []);
 
   const handleSync = () => {
-    setActionMenuOpen(false);
+    onClose();
     syncPromiseRef.current = startSyncAction();
   };
 
@@ -46,7 +36,7 @@ const ActionMenu: React.FC<ActionMenuProps> = () => {
   };
 
   const handleCreateAlbum = () => {
-    setActionMenuOpen(false);
+    onClose();
     // TODO: Implement create album functionality
     const albumName = prompt('Enter album name:');
     if (albumName) {
@@ -56,10 +46,10 @@ const ActionMenu: React.FC<ActionMenuProps> = () => {
   };
 
   return (
-    <div className="relative" ref={actionMenuRef}>
+    <div className="relative">
       <button
         type="button"
-        onClick={() => setActionMenuOpen(!actionMenuOpen)}
+        onClick={onToggle}
         className="p-2 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-gray-200 transition-colors"
         title="Actions"
       >
@@ -70,7 +60,7 @@ const ActionMenu: React.FC<ActionMenuProps> = () => {
       </button>
 
       {/* Dropdown Menu */}
-      {actionMenuOpen && (
+      {isOpen && (
         <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
           <div className="py-1">
             {syncInProgress ? (
