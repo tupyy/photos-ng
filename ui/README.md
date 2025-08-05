@@ -1,46 +1,193 @@
-# Getting Started with Create React App
+# Photos NG - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern React-based photo management application with TypeScript, Redux, and Tailwind CSS.
 
-## Available Scripts
+## 🚀 Tech Stack
 
-In the project directory, you can run:
+- **React 18** with TypeScript
+- **Redux Toolkit** for state management
+- **Tailwind CSS** for styling
+- **React Router DOM** for navigation
+- **OpenAPI Generator** for API client generation
+- **Webpack** for custom build configuration
+- **Flowbite** for UI components
+- **Axios** for HTTP requests
 
-### `npm start`
+## 📁 Project Structure
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+```
+ui/
+├── src/
+│   ├── generated/          # Auto-generated API clients and types
+│   ├── pages/              # Page components organized by feature
+│   │   ├── albums/         # Albums page and components
+│   │   └── timeline/       # Timeline page and components
+│   ├── shared/             # Shared application code
+│   │   ├── components/     # Reusable UI components
+│   │   ├── hooks/          # Custom React hooks
+│   │   ├── layout/         # Layout components (Navbar, Footer, etc.)
+│   │   ├── reducers/       # Redux slices and state management
+│   │   └── api/            # API configuration
+│   ├── App.tsx             # Main application component
+│   └── index.tsx           # Application entry point
+├── webpack.*.js            # Custom Webpack configurations
+├── tailwind.config.js      # Tailwind CSS configuration
+└── tsconfig.json           # TypeScript configuration
+```
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## 🛠️ Development Setup
 
-### `npm test`
+### Prerequisites
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js (v16 or later)
+- npm
 
-### `npm run build`
+### Installation
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+# Install dependencies
+npm install
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+# Generate API client from OpenAPI spec
+npm run generate:api
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Available Scripts
 
-### `npm run eject`
+| Command | Description |
+|---------|-------------|
+| `npm run start:dev` | Start development server with hot reload |
+| `npm run build` | Build for production |
+| `npm run clean` | Clean build artifacts |
+| `npm run generate:api` | Generate TypeScript API client from OpenAPI spec |
+| `npm run css:build` | Build Tailwind CSS |
+| `npm run css:watch` | Watch and rebuild Tailwind CSS |
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+### Development Server
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+npm run start:dev
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+The application will be available at [http://localhost:3000](http://localhost:3000).
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+## 🎨 Features
 
-## Learn More
+### UI/UX
+- **Dark/Light Theme** - Toggle between themes with persistent preference
+- **Responsive Design** - Mobile-first approach with Tailwind CSS
+- **Modern Layout** - Clean navbar with action menu and progress indicators
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### State Management
+- **Redux Toolkit** - Centralized state management
+- **Async Operations** - Proper handling of API calls with loading states
+- **Type Safety** - Full TypeScript integration
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Navigation
+- **React Router** - Client-side routing
+- **Timeline** - Main photo timeline view (root route)
+- **Albums** - Album management and viewing
+
+### API Integration
+- **OpenAPI Generated Client** - Type-safe API calls
+- **Automatic Sync** - Background synchronization with progress tracking
+- **Error Handling** - Proper error states and user feedback
+
+## 🔧 Configuration
+
+### API Configuration
+
+The API client is configured in `src/shared/api/apiConfig.ts`:
+
+```typescript
+// Development: Uses proxy to localhost:8080
+// Production: Uses REACT_APP_API_URL environment variable
+```
+
+### Theme Configuration
+
+Dark mode is implemented using:
+- Tailwind CSS `dark:` prefixes
+- React Context for theme state
+- Local storage for persistence
+
+### Webpack Configuration
+
+Custom Webpack setup with:
+- **Development**: Hot reload, source maps, proxy configuration
+- **Production**: Minification, optimization, chunking
+
+## 📱 Responsive Design
+
+The application is fully responsive with breakpoints:
+- **Mobile**: < 768px (footer hidden for better UX)
+- **Tablet**: 768px - 1024px
+- **Desktop**: > 1024px
+
+## 🔄 State Management
+
+### Redux Slices
+
+- **Albums**: Album data and operations
+- **Media**: Media/photo data and operations  
+- **Timeline**: Timeline view state
+- **Sync**: Background synchronization state
+
+### Custom Hooks
+
+- `useSync()` - Sync operations and state
+- `useApi()` - API interaction helpers
+
+## 🌐 API Integration
+
+The frontend communicates with the backend API through:
+
+1. **Generated Client**: TypeScript client generated from OpenAPI spec
+2. **Base Path**: `/api/v1` (handled by development proxy)
+3. **Authentication**: Ready for future auth implementation
+4. **Error Handling**: Consistent error management across all API calls
+
+## 🚦 Development Workflow
+
+1. **Start Backend**: Ensure the Go backend is running on port 8080
+2. **Start Frontend**: Run `npm run start:dev` 
+3. **API Changes**: Run `npm run generate:api` after OpenAPI spec updates
+4. **Styling**: Tailwind classes are processed automatically
+
+## 📦 Build Process
+
+The build process includes:
+
+1. **TypeScript Compilation**: Full type checking
+2. **CSS Processing**: Tailwind CSS compilation and purging
+3. **Bundle Optimization**: Code splitting and minification
+4. **Asset Optimization**: Image and resource optimization
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+**API Calls Failing**
+- Ensure backend is running on port 8080
+- Check proxy configuration in Webpack dev config
+
+**Styles Not Loading**
+- Run `npm run css:build` to regenerate Tailwind CSS
+- Check Tailwind config for proper content paths
+
+**Type Errors**
+- Regenerate API client: `npm run generate:api`
+- Check TypeScript configuration and path aliases
+
+### Debug Mode
+
+Enable detailed logging by setting:
+```bash
+DEBUG=true npm run start:dev
+```
+
+---
+
+For more detailed information about specific features, see:
+- [Redux Integration](./README-REDUX.md)
+- [Generated API Documentation](./src/generated/README.md)
