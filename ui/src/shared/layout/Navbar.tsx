@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from '@shared/contexts';
-import { useAppSelector, selectSync, selectAlbumsPageActive } from '@shared/store';
+import { useAppSelector, useAppDispatch, selectSync, selectAlbumsPageActive } from '@shared/store';
+import { setCreateFormOpen } from '@shared/reducers/albumsSlice';
 import ActionMenu from './ActionMenu';
 
 export interface NavbarProps {}
 
 const Navbar: React.FC<NavbarProps> = () => {
   const location = useLocation();
+  const dispatch = useAppDispatch();
   const { theme, toggleTheme } = useTheme();
   const { isInProgress: isSyncInProgress } = useAppSelector(selectSync);
   const isAlbumsPageActive = useAppSelector(selectAlbumsPageActive);
@@ -27,6 +29,10 @@ const Navbar: React.FC<NavbarProps> = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  const handleCreateAlbumFormOpen = () => {
+    dispatch(setCreateFormOpen(true));
+  };
 
   const navItems = [
     {
@@ -106,6 +112,7 @@ const Navbar: React.FC<NavbarProps> = () => {
                   isOpen={actionMenuOpen}
                   onToggle={() => setActionMenuOpen(!actionMenuOpen)}
                   onClose={() => setActionMenuOpen(false)}
+                  onCreateAlbum={handleCreateAlbumFormOpen}
                 />
               </div>
             )}

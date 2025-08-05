@@ -90,12 +90,13 @@ func NewMedia(media entity.Media) Media {
 // This method transforms the HTTP request data into the internal domain model representation.
 func (r CreateAlbumRequest) Entity() entity.Album {
 	album := entity.Album{
-		ID:        entity.GenerateId(r.Name),
-		Path:      r.Name,
-		ParentId:  r.ParentId,
-		Children:  []entity.Album{},
-		Media:     []entity.Media{},
-		CreatedAt: time.Now(),
+		ID:          entity.GenerateId(r.Name),
+		Path:        r.Name,
+		ParentId:    r.ParentId,
+		Description: r.Description,
+		Children:    []entity.Album{},
+		Media:       []entity.Media{},
+		CreatedAt:   time.Now(),
 	}
 
 	return album

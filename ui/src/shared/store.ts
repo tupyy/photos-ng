@@ -29,6 +29,7 @@ export const selectSync = (state: RootState) => state.sync;
 
 // Specific selectors
 export const selectAlbumsPageActive = (state: RootState) => state.albums.isPageActive;
+export const selectAlbumsCreateFormOpen = (state: RootState) => state.albums.isCreateFormOpen;
 export const selectCurrentAlbum = (state: RootState) => state.albums.currentAlbum;
 
 export const selectAlbumById = (state: RootState, albumId: string) =>

@@ -568,6 +568,9 @@ components:
         parentId:
           type: string
           description: Id of the parent
+        description:
+          type: string
+          description: Info about the album
         name:
           type: string
           description: Name of the album

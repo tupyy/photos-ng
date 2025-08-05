@@ -64,6 +64,9 @@ type Bucket struct {
 
 // CreateAlbumRequest defines model for CreateAlbumRequest.
 type CreateAlbumRequest struct {
+	// Description Info about the album
+	Description *string `json:"description,omitempty"`
+
 	// Name Name of the album
 	Name string `json:"name"`
 

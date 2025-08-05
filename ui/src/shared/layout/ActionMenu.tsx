@@ -5,9 +5,10 @@ export interface ActionMenuProps {
   isOpen: boolean;
   onToggle: () => void;
   onClose: () => void;
+  onCreateAlbum: () => void;
 }
 
-const ActionMenu: React.FC<ActionMenuProps> = ({ isOpen, onToggle, onClose }) => {
+const ActionMenu: React.FC<ActionMenuProps> = ({ isOpen, onToggle, onClose, onCreateAlbum }) => {
   const { isInProgress: syncInProgress, progress: syncProgress, start: startSyncAction, cancel: cancelSyncAction } = useSync();
   const syncPromiseRef = useRef<any>(null);
 
@@ -37,12 +38,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ isOpen, onToggle, onClose }) =>
 
   const handleCreateAlbum = () => {
     onClose();
-    // TODO: Implement create album functionality
-    const albumName = prompt('Enter album name:');
-    if (albumName) {
-      console.log('Creating album:', albumName);
-      // TODO: Call API to create album
-    }
+    onCreateAlbum();
   };
 
   return (

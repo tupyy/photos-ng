@@ -27,6 +27,12 @@ export interface CreateAlbumRequest {
      */
     'parentId'?: string;
     /**
+     * Info about the album
+     * @type {string}
+     * @memberof CreateAlbumRequest
+     */
+    'description'?: string;
+    /**
      * Name of the album
      * @type {string}
      * @memberof CreateAlbumRequest

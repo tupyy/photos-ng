@@ -56,6 +56,7 @@ interface AlbumsState {
   albums: Album[];
   currentAlbum: Album | null;
   isPageActive: boolean;
+  isCreateFormOpen: boolean;
   total: number;
   limit: number;
   offset: number;
@@ -75,6 +76,7 @@ const initialState: AlbumsState = {
   albums: [],
   currentAlbum: null,
   isPageActive: false,
+  isCreateFormOpen: false,
   total: 0,
   limit: 20,
   offset: 0,
@@ -90,6 +92,9 @@ const albumsSlice = createSlice({
   reducers: {
     setPageActive: (state, action: PayloadAction<boolean>) => {
       state.isPageActive = action.payload;
+    },
+    setCreateFormOpen: (state, action: PayloadAction<boolean>) => {
+      state.isCreateFormOpen = action.payload;
     },
     setCurrentAlbum: (state, action: PayloadAction<Album | null>) => {
       state.currentAlbum = action.payload;
@@ -226,5 +231,5 @@ const albumsSlice = createSlice({
   },
 });
 
-export const { setPageActive, setCurrentAlbum, clearCurrentAlbum, clearError, setFilters } = albumsSlice.actions;
+export const { setPageActive, setCreateFormOpen, setCurrentAlbum, clearCurrentAlbum, clearError, setFilters } = albumsSlice.actions;
 export default albumsSlice.reducer;

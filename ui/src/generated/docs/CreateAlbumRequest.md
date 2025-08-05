@@ -6,6 +6,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **parentId** | **string** | Id of the parent | [optional] [default to undefined]
+**description** | **string** | Info about the album | [optional] [default to undefined]
 **name** | **string** | Name of the album | [default to undefined]
 
 ## Example
@@ -15,6 +16,7 @@ import { CreateAlbumRequest } from 'photos-ng-api-client';
 
 const instance: CreateAlbumRequest = {
     parentId,
+    description,
     name,
 };
 ```
