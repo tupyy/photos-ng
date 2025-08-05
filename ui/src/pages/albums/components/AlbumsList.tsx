@@ -10,11 +10,7 @@ export interface AlbumsListProps {
   emptyStateMessage?: string;
 }
 
-const AlbumsList: React.FC<AlbumsListProps> = ({
-  albums,
-  loading = false,
-  error = null,
-}) => {
+const AlbumsList: React.FC<AlbumsListProps> = ({ albums, loading = false, error = null }) => {
   const sortedAlbums = useMemo(() => {
     // Ensure albums is an array to prevent undefined errors
     const albumsArray = albums || [];
@@ -50,7 +46,7 @@ const AlbumsList: React.FC<AlbumsListProps> = ({
   return (
     <div className="space-y-6">
       {/* Albums Gallery */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
         {sortedAlbums.map((album: AlbumType) => (
           <Album key={album.id} album={album} />
         ))}
