@@ -1,2 +1,2 @@
-export { default as AlbumsPage } from './AlbumsPage';
-export { default as TimelinePage } from './TimelinePage';
+export { default as AlbumsPage } from './albums';
+export { default as TimelinePage } from './timeline';

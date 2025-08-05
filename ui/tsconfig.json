@@ -22,7 +22,6 @@
     "baseUrl": "src",
     "paths": {
       "@app/*": ["*"],
-      "@components/*": ["components/*"],
       "@shared/*": ["shared/*"],
       "@generated/*": ["generated/*"],
       "@hooks/*": ["shared/hooks/*"],

@@ -1,5 +1,5 @@
 import React from 'react';
-import AlbumsList from '@components/AlbumsList';
+import AlbumsList from './components/AlbumsList';
 
 const AlbumsPage: React.FC = () => {
   return (
