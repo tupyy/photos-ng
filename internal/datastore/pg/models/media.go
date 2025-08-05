@@ -34,6 +34,7 @@ func (mm MediaList) Entity() []entity.Media {
 			CapturedAt: m.CapturedAt,
 			Filename:   m.FileName,
 			Thumbnail:  m.Thumbnail,
+			Hash:       m.Hash,
 			Exif:       exifMetadata,
 			MediaType:  entity.MediaType(m.MediaType),
 			// Album will be populated separately through joins or additional queries
@@ -50,6 +51,7 @@ type Media struct {
 	CapturedAt time.Time        `db:"captured_at"`
 	AlbumID    string           `db:"album_id"`
 	FileName   string           `db:"file_name"`
+	Hash       string           `db:"hash"`
 	Thumbnail  []byte           `db:"thumbnail"`
 	Exif       *json.RawMessage `db:"exif"`
 	MediaType  string           `db:"media_type"`

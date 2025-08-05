@@ -37,6 +37,7 @@ type Media struct {
 	CapturedAt time.Time
 	MediaType  MediaType
 	Filename   string
+	Hash       string
 	Thumbnail  []byte
 	Content    MediaContentFn
 	Exif       map[string]string

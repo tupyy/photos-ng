@@ -14,6 +14,7 @@ CREATE TABLE media (
 	captured_at TIMESTAMP DEFAULT (now() AT TIME ZONE 'UTC') NOT NULL,
     album_id VARCHAR(255) NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
     file_name VARCHAR(255) NOT NULL,
+    hash VARCHAR(255) NOT NULL,
     thumbnail BYTEA,
 	exif JSONB NOT NULL,
     media_type VARCHAR(10) NOT NULL
