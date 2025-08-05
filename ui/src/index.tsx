@@ -7,6 +7,7 @@ import App from '@app/App';
 import { store } from '@shared/store';
 import { ThemeProvider } from '@shared/contexts';
 import reportWebVitals from '@app/reportWebVitals';
+import 'flowbite';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement

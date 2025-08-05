@@ -25,6 +25,7 @@ export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 export const selectAlbums = (state: RootState) => state.albums;
 export const selectMedia = (state: RootState) => state.media;
 export const selectTimeline = (state: RootState) => state.timeline;
+export const selectSync = (state: RootState) => state.sync;
 
 // Specific selectors
 export const selectAlbumById = (state: RootState, albumId: string) =>
