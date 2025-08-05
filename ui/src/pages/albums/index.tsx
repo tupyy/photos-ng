@@ -14,7 +14,7 @@ const AlbumsPage: React.FC = () => {
   const isCreateFormOpen = useAppSelector(selectAlbumsCreateFormOpen);
   const currentAlbum = useAppSelector(selectCurrentAlbum);
   const { albums, loading, error, fetchAlbums, fetchAlbumById: fetchAlbumByIdApi, updateAlbum } = useAlbumsApi();
-  
+
   // State for editable description
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedDescription, setEditedDescription] = useState('');
@@ -72,7 +72,7 @@ const AlbumsPage: React.FC = () => {
 
   const handleDescriptionSave = async () => {
     if (!currentAlbum || !id) return;
-    
+
     try {
       await updateAlbum(id, { description: editedDescription });
       setIsEditingDescription(false);
@@ -98,11 +98,12 @@ const AlbumsPage: React.FC = () => {
   };
 
   // Determine which albums to show
-  const albumsToShow: Album[] = id && currentAlbum
-    ? (currentAlbum.children && currentAlbum.children.length > 0
+  const albumsToShow: Album[] =
+    id && currentAlbum
+      ? currentAlbum.children && currentAlbum.children.length > 0
         ? currentAlbum.children
-        : []) // Empty array if album has no children
-    : albums;
+        : [] // Empty array if album has no children
+      : albums;
 
   return (
     <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -124,10 +125,8 @@ const AlbumsPage: React.FC = () => {
 
             {/* Album Name and Description - Under back button */}
             <div className="mt-4">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {currentAlbum.name}
-              </h1>
-              
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{currentAlbum.name}</h1>
+
               {/* Editable Description */}
               <div className="mt-1">
                 {isEditingDescription ? (
@@ -144,13 +143,13 @@ const AlbumsPage: React.FC = () => {
                     <div className="flex space-x-1">
                       <button
                         onClick={handleDescriptionSave}
-                        className="px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="px-3 py-2 text-sm border border-blue-600 text-blue-600 rounded-md hover:bg-blue-800 hover:text-white dark:hover:bg-blue-900 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         Save
                       </button>
                       <button
                         onClick={handleDescriptionCancel}
-                        className="px-3 py-2 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                        className="px-3 py-2 text-sm border border-gray-400 text-gray-600 hover:bg-gray-600 hover:text-white dark:text-gray-400 dark:border-gray-500 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-500"
                       >
                         Cancel
                       </button>
@@ -196,19 +195,16 @@ const AlbumsPage: React.FC = () => {
           loading={loading}
           error={error}
           emptyStateTitle={id ? 'No sub-albums' : 'No albums yet'}
-          emptyStateMessage={id
-            ? 'This album doesn\'t contain any sub-albums.'
-            : 'Create your first album to get started organizing your photos.'
+          emptyStateMessage={
+            id
+              ? "This album doesn't contain any sub-albums."
+              : 'Create your first album to get started organizing your photos.'
           }
         />
       </div>
 
       {/* Create Album Form Modal */}
-      <CreateAlbumForm
-        isOpen={isCreateFormOpen}
-        onClose={handleCreateFormClose}
-        onSuccess={handleCreateAlbumSuccess}
-      />
+      <CreateAlbumForm isOpen={isCreateFormOpen} onClose={handleCreateFormClose} onSuccess={handleCreateAlbumSuccess} />
     </div>
   );
 };
