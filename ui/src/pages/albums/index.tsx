@@ -16,11 +16,15 @@ const AlbumsPage: React.FC = () => {
   const isCreateFormOpen = useAppSelector(selectAlbumsCreateFormOpen);
   const currentAlbum = useAppSelector(selectCurrentAlbum);
   const { albums, loading, error, fetchAlbums, fetchAlbumById: fetchAlbumByIdApi, updateAlbum } = useAlbumsApi();
-  const { media, loading: mediaLoading, error: mediaError, fetchMedia } = useMediaApi();
+  const { media, loading: mediaLoading, error: mediaError, total: mediaTotal, fetchMedia } = useMediaApi();
 
   // State for editable description
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedDescription, setEditedDescription] = useState('');
+
+  // State for media pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 100;
 
   useEffect(() => {
     // Set page as active when component mounts
@@ -29,10 +33,11 @@ const AlbumsPage: React.FC = () => {
     if (id) {
       // Fetch specific album
       fetchAlbumByIdApi(id);
-      // Fetch media for this album with consistent sorting
+      // Fetch media for this album with consistent sorting and pagination
       fetchMedia({ 
         albumId: id, 
-        limit: 100, 
+        limit: pageSize,
+        offset: (currentPage - 1) * pageSize,
         sortBy: ListMediaSortByEnum.CapturedAt, 
         sortOrder: ListMediaSortOrderEnum.Desc 
       });
@@ -46,7 +51,7 @@ const AlbumsPage: React.FC = () => {
     return () => {
       dispatch(setPageActive(false));
     };
-  }, [dispatch, id, fetchAlbums, fetchAlbumByIdApi, fetchMedia]);
+  }, [dispatch, id, fetchAlbums, fetchAlbumByIdApi, fetchMedia, currentPage, pageSize]);
 
   // Initialize edited description when currentAlbum changes
   useEffect(() => {
@@ -106,6 +111,15 @@ const AlbumsPage: React.FC = () => {
       handleDescriptionCancel();
     }
   };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Reset page when album changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [id]);
 
   // Determine which albums to show
   const albumsToShow: Album[] =
@@ -218,7 +232,11 @@ const AlbumsPage: React.FC = () => {
             media={media} 
             loading={mediaLoading} 
             error={mediaError}
-            albumName={currentAlbum.name} 
+            albumName={currentAlbum.name}
+            total={mediaTotal}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
           />
         )}
       </div>

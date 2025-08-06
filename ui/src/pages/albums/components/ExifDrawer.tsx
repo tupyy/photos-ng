@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Media } from '@generated/models';
 
 interface ExifDrawerProps {
@@ -8,6 +8,23 @@ interface ExifDrawerProps {
 }
 
 const ExifDrawer: React.FC<ExifDrawerProps> = ({ isOpen, media, onClose }) => {
+  // Handle ESC key to close drawer
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen || !media) return null;
 
   // Format EXIF data for display
