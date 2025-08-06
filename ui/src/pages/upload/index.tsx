@@ -111,8 +111,18 @@ const UploadMediaPage: React.FC = () => {
     if (!albumId || files.length === 0) return;
 
     try {
-      const fileIds = files.map(f => f.id);
-      await dispatch(uploadMediaFiles({ fileIds, albumId })).unwrap();
+      // Prepare files with their actual File objects
+      const filesToUpload = files.map(f => ({
+        id: f.id,
+        file: actualFiles[f.id]
+      })).filter(f => f.file); // Filter out any missing files
+
+      if (filesToUpload.length === 0) {
+        console.error('No files available for upload');
+        return;
+      }
+
+      await dispatch(uploadMediaFiles({ files: filesToUpload, albumId })).unwrap();
       
       // Navigate back to album after successful upload
       setTimeout(() => {

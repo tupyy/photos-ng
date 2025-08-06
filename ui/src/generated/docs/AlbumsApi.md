@@ -189,10 +189,12 @@ const apiInstance = new AlbumsApi(configuration);
 
 let limit: number; //Maximum number of albums to return (optional) (default to 20)
 let offset: number; //Number of albums to skip (optional) (default to 0)
+let withParent: boolean; //If true return albums with parents (optional) (default to false)
 
 const { status, data } = await apiInstance.listAlbums(
     limit,
-    offset
+    offset,
+    withParent
 );
 ```
 
@@ -202,6 +204,7 @@ const { status, data } = await apiInstance.listAlbums(
 |------------- | ------------- | ------------- | -------------|
 | **limit** | [**number**] | Maximum number of albums to return | (optional) defaults to 20|
 | **offset** | [**number**] | Number of albums to skip | (optional) defaults to 0|
+| **withParent** | [**boolean**] | If true return albums with parents | (optional) defaults to false|
 
 
 ### Return type

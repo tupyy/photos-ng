@@ -16,6 +16,7 @@ VERSION=$(shell cat VERSION)
 BINARY_NAME=photos-ng
 BINARY_PATH=bin/$(BINARY_NAME)
 MAIN_PATH=./main.go
+TMP_DATA_FOLDER=/tmp/photos-ng
 
 # Generate code (OpenAPI, protobuf, etc.)
 generate:
@@ -32,10 +33,10 @@ build:
 # Run the application
 run:
 	@echo "Create temp data root folder..."
-	@TMP_DIR=$$(mktemp -d /tmp/photos-XXXX); \
+	@mkdir -p $(TMP_DATA_FOLDER) \
 	echo "Using temp directory: $$TMP_DIR"; \
 	echo "Running $(BINARY_NAME)..."; \
-	$(BINARY_PATH) serve --data-root-folder=$$TMP_DIR
+	$(BINARY_PATH) serve --data-root-folder=$(TMP_DATA_FOLDER)
 
 run.ui:
 	cd ./ui && npm run start:dev
@@ -45,6 +46,7 @@ clean:
 	@echo "Cleaning build artifacts..."
 	rm -rf bin/
 	go clean
+	rm -rf $(TMP_DATA_FOLDER)
 	@echo "Clean complete."
 
 # Db tragets

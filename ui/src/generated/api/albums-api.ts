@@ -146,10 +146,11 @@ export const AlbumsApiAxiosParamCreator = function (configuration?: Configuratio
          * @summary List all albums
          * @param {number} [limit] Maximum number of albums to return
          * @param {number} [offset] Number of albums to skip
+         * @param {boolean} [withParent] If true return albums with parents
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listAlbums: async (limit?: number, offset?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        listAlbums: async (limit?: number, offset?: number, withParent?: boolean, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/albums`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -168,6 +169,10 @@ export const AlbumsApiAxiosParamCreator = function (configuration?: Configuratio
 
             if (offset !== undefined) {
                 localVarQueryParameter['offset'] = offset;
+            }
+
+            if (withParent !== undefined) {
+                localVarQueryParameter['withParent'] = withParent;
             }
 
 
@@ -309,11 +314,12 @@ export const AlbumsApiFp = function(configuration?: Configuration) {
          * @summary List all albums
          * @param {number} [limit] Maximum number of albums to return
          * @param {number} [offset] Number of albums to skip
+         * @param {boolean} [withParent] If true return albums with parents
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async listAlbums(limit?: number, offset?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListAlbumsResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.listAlbums(limit, offset, options);
+        async listAlbums(limit?: number, offset?: number, withParent?: boolean, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListAlbumsResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listAlbums(limit, offset, withParent, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AlbumsApi.listAlbums']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -390,11 +396,12 @@ export const AlbumsApiFactory = function (configuration?: Configuration, basePat
          * @summary List all albums
          * @param {number} [limit] Maximum number of albums to return
          * @param {number} [offset] Number of albums to skip
+         * @param {boolean} [withParent] If true return albums with parents
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listAlbums(limit?: number, offset?: number, options?: RawAxiosRequestConfig): AxiosPromise<ListAlbumsResponse> {
-            return localVarFp.listAlbums(limit, offset, options).then((request) => request(axios, basePath));
+        listAlbums(limit?: number, offset?: number, withParent?: boolean, options?: RawAxiosRequestConfig): AxiosPromise<ListAlbumsResponse> {
+            return localVarFp.listAlbums(limit, offset, withParent, options).then((request) => request(axios, basePath));
         },
         /**
          * Synchronize an album with the file system
@@ -461,11 +468,12 @@ export interface AlbumsApiInterface {
      * @summary List all albums
      * @param {number} [limit] Maximum number of albums to return
      * @param {number} [offset] Number of albums to skip
+     * @param {boolean} [withParent] If true return albums with parents
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof AlbumsApiInterface
      */
-    listAlbums(limit?: number, offset?: number, options?: RawAxiosRequestConfig): AxiosPromise<ListAlbumsResponse>;
+    listAlbums(limit?: number, offset?: number, withParent?: boolean, options?: RawAxiosRequestConfig): AxiosPromise<ListAlbumsResponse>;
 
     /**
      * Synchronize an album with the file system
@@ -538,12 +546,13 @@ export class AlbumsApi extends BaseAPI implements AlbumsApiInterface {
      * @summary List all albums
      * @param {number} [limit] Maximum number of albums to return
      * @param {number} [offset] Number of albums to skip
+     * @param {boolean} [withParent] If true return albums with parents
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof AlbumsApi
      */
-    public listAlbums(limit?: number, offset?: number, options?: RawAxiosRequestConfig) {
-        return AlbumsApiFp(this.configuration).listAlbums(limit, offset, options).then((request) => request(this.axios, this.basePath));
+    public listAlbums(limit?: number, offset?: number, withParent?: boolean, options?: RawAxiosRequestConfig) {
+        return AlbumsApiFp(this.configuration).listAlbums(limit, offset, withParent, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

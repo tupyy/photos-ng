@@ -34,6 +34,9 @@ type ServerInterface interface {
 	// List all media
 	// (GET /media)
 	ListMedia(c *gin.Context, params ListMediaParams)
+	// Upload new media
+	// (POST /media)
+	UploadMedia(c *gin.Context)
 	// Delete media by ID
 	// (DELETE /media/{id})
 	DeleteMedia(c *gin.Context, id string)
@@ -296,6 +299,19 @@ func (siw *ServerInterfaceWrapper) ListMedia(c *gin.Context) {
 	siw.Handler.ListMedia(c, params)
 }
 
+// UploadMedia operation middleware
+func (siw *ServerInterfaceWrapper) UploadMedia(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UploadMedia(c)
+}
+
 // DeleteMedia operation middleware
 func (siw *ServerInterfaceWrapper) DeleteMedia(c *gin.Context) {
 
@@ -500,6 +516,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.PUT(options.BaseURL+"/albums/:id", wrapper.UpdateAlbum)
 	router.POST(options.BaseURL+"/albums/:id/sync", wrapper.SyncAlbum)
 	router.GET(options.BaseURL+"/media", wrapper.ListMedia)
+	router.POST(options.BaseURL+"/media", wrapper.UploadMedia)
 	router.DELETE(options.BaseURL+"/media/:id", wrapper.DeleteMedia)
 	router.GET(options.BaseURL+"/media/:id", wrapper.GetMedia)
 	router.PUT(options.BaseURL+"/media/:id", wrapper.UpdateMedia)

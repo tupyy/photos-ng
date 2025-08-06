@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { mediaApi } from '@api/apiConfig';
 
 export interface UploadFile {
   id: string;
@@ -24,35 +25,48 @@ const initialState: UploadState = {
   error: null,
 };
 
-// Stub async thunk for uploading media files
+// Real async thunk for uploading media files to the API
 export const uploadMediaFiles = createAsyncThunk(
   'upload/uploadMediaFiles',
-  async (payload: { fileIds: string[]; albumId: string }, { dispatch, signal, rejectWithValue, getState }) => {
+  async (payload: { files: { id: string; file: File }[]; albumId: string }, { dispatch, signal, rejectWithValue }) => {
     try {
       dispatch(uploadSlice.actions.setAlbumId(payload.albumId));
+      const uploadedFiles: string[] = [];
+      let uploadedCount = 0;
 
-      // Simulate upload progress for each file
-      for (const fileId of payload.fileIds) {
+      // Upload each file individually
+      for (const fileData of payload.files) {
         if (signal.aborted) {
           return rejectWithValue('Upload cancelled');
         }
 
-        dispatch(uploadSlice.actions.updateFileStatus({ id: fileId, status: 'uploading' }));
+        dispatch(uploadSlice.actions.updateFileStatus({ id: fileData.id, status: 'uploading' }));
 
-        // Simulate upload progress
-        for (let progress = 0; progress <= 100; progress += 10) {
-          if (signal.aborted) {
-            return rejectWithValue('Upload cancelled');
-          }
+        try {
+          // Upload file to the API
+          const response = await mediaApi.uploadMedia(
+            fileData.file.name,
+            payload.albumId,
+            fileData.file
+          );
+
+          // Mark as completed
+          dispatch(uploadSlice.actions.updateFileProgress({ id: fileData.id, progress: 100 }));
+          dispatch(uploadSlice.actions.updateFileStatus({ id: fileData.id, status: 'completed' }));
           
-          dispatch(uploadSlice.actions.updateFileProgress({ id: fileId, progress }));
-          await new Promise(resolve => setTimeout(resolve, 200)); // Simulate network delay
+          uploadedFiles.push(response.data.id);
+          uploadedCount++;
+        } catch (error) {
+          console.error(`Failed to upload file ${fileData.file.name}:`, error);
+          dispatch(uploadSlice.actions.updateFileStatus({ 
+            id: fileData.id, 
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Upload failed'
+          }));
         }
-
-        dispatch(uploadSlice.actions.updateFileStatus({ id: fileId, status: 'completed' }));
       }
 
-      return { success: true, uploadedCount: payload.fileIds.length };
+      return { success: true, uploadedCount, uploadedFiles };
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Upload failed');
     }

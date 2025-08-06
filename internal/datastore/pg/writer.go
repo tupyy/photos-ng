@@ -68,6 +68,7 @@ func (w *Writer) WriteMedia(ctx context.Context, media entity.Media) error {
 			mediaThumbnail,
 			mediaExif,
 			mediaMediaType,
+			mediaHash,
 		).
 		Values(
 			media.ID,
@@ -78,6 +79,7 @@ func (w *Writer) WriteMedia(ctx context.Context, media entity.Media) error {
 			media.Thumbnail,
 			exifData,
 			string(media.MediaType),
+			media.Hash,
 		).
 		Suffix("ON CONFLICT (" + mediaID + ") DO UPDATE SET " +
 			mediaCapturedAt + " = EXCLUDED." + mediaCapturedAt + ", " +

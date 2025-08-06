@@ -10,6 +10,7 @@ All URIs are relative to *http://localhost:8080*
 |[**getMediaThumbnail**](#getmediathumbnail) | **GET** /media/{id}/thumbnail | Get media thumbnail|
 |[**listMedia**](#listmedia) | **GET** /media | List all media|
 |[**updateMedia**](#updatemedia) | **PUT** /media/{id} | Update media by ID|
+|[**uploadMedia**](#uploadmedia) | **POST** /media | Upload new media|
 
 # **deleteMedia**
 > deleteMedia()
@@ -350,6 +351,65 @@ No authorization required
 |**200** | Media updated successfully |  -  |
 |**400** | Bad request |  -  |
 |**404** | Resource not found |  -  |
+|**500** | Internal server error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **uploadMedia**
+> Media uploadMedia()
+
+Upload a new media file to an album
+
+### Example
+
+```typescript
+import {
+    MediaApi,
+    Configuration
+} from 'photos-ng-api-client';
+
+const configuration = new Configuration();
+const apiInstance = new MediaApi(configuration);
+
+let filename: string; //Original name of the file (default to undefined)
+let albumId: string; //ID of the album to upload the media to (default to undefined)
+let file: File; //The media file content (default to undefined)
+
+const { status, data } = await apiInstance.uploadMedia(
+    filename,
+    albumId,
+    file
+);
+```
+
+### Parameters
+
+|Name | Type | Description  | Notes|
+|------------- | ------------- | ------------- | -------------|
+| **filename** | [**string**] | Original name of the file | defaults to undefined|
+| **albumId** | [**string**] | ID of the album to upload the media to | defaults to undefined|
+| **file** | [**File**] | The media file content | defaults to undefined|
+
+
+### Return type
+
+**Media**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: multipart/form-data
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+|**201** | Media uploaded successfully |  -  |
+|**400** | Bad request |  -  |
 |**500** | Internal server error |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

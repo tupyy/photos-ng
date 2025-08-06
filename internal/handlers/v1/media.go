@@ -209,3 +209,81 @@ func (s *ServerImpl) GetMediaThumbnail(c *gin.Context, id string) {
 		Message: "Media thumbnail serving not yet implemented",
 	})
 }
+
+// UploadMedia handles POST /api/v1/media requests to upload a new media file.
+// Returns HTTP 400 for validation errors, HTTP 404 if album not found,
+// HTTP 500 for server errors, or HTTP 201 with the created media on success.
+func (s *ServerImpl) UploadMedia(c *gin.Context) {
+	// Parse multipart form
+	err := c.Request.ParseMultipartForm(32 << 20) // 32 MB max
+	if err != nil {
+		zap.S().Errorw("failed to parse multipart form", "error", err)
+		c.JSON(http.StatusBadRequest, v1.Error{
+			Message: "Failed to parse multipart form: " + err.Error(),
+		})
+		return
+	}
+
+	// Get form values
+	filename := c.Request.FormValue("filename")
+	albumId := c.Request.FormValue("albumId")
+
+	if filename == "" {
+		c.JSON(http.StatusBadRequest, v1.Error{
+			Message: "filename is required",
+		})
+		return
+	}
+
+	if albumId == "" {
+		c.JSON(http.StatusBadRequest, v1.Error{
+			Message: "albumId is required",
+		})
+		return
+	}
+
+	// Get the uploaded file
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		zap.S().Errorw("failed to get uploaded file", "error", err)
+		c.JSON(http.StatusBadRequest, v1.Error{
+			Message: "Failed to get uploaded file: " + err.Error(),
+		})
+		return
+	}
+	defer file.Close()
+
+	// Get the album to ensure it exists
+	album, err := s.albumSrv.GetAlbum(c.Request.Context(), albumId)
+	if err != nil {
+		switch err.(type) {
+		case *services.ErrResourceNotFound:
+			c.JSON(http.StatusNotFound, v1.Error{
+				Message: "Album not found: " + albumId,
+			})
+			return
+		default:
+			zap.S().Errorw("failed to get album", "error", err, "album_id", albumId)
+			c.JSON(http.StatusInternalServerError, v1.Error{
+				Message: err.Error(),
+			})
+			return
+		}
+	}
+
+	// Convert request data to entity using the mapping function
+	media := v1.ToMediaEntity(filename, albumId, file, *album)
+
+	// Write the media using the service
+	createdMedia, err := s.mediaSrv.WriteMedia(c.Request.Context(), media)
+	if err != nil {
+		zap.S().Errorw("failed to write media", "error", err, "filename", filename, "album_id", albumId)
+		c.JSON(http.StatusInternalServerError, v1.Error{
+			Message: err.Error(),
+		})
+		return
+	}
+
+	zap.S().Infow("media uploaded successfully", "media_id", createdMedia.ID, "filename", filename, "album_id", albumId)
+	c.JSON(http.StatusCreated, v1.NewMedia(*createdMedia))
+}

@@ -1,7 +1,11 @@
 package services
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"fmt"
+	"io"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
@@ -70,25 +74,49 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 
 	// Write the media to the datastore using a write transaction
 	err = m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
-		// Write the media to database
-		if err := writer.WriteMedia(ctx, media); err != nil {
+		if isMediaExists {
+			return writer.WriteMedia(ctx, media)
+		}
+
+		content, err := media.Content()
+		if err != nil {
 			return err
 		}
 
-		// If it's a new media and has content, write the file to disk
-		if !isMediaExists {
-			content, err := media.Content()
-			if err != nil {
-				return err
-			}
-
-			// Write the file to disk using the media's filepath
-			if err := m.fs.Write(ctx, media.Filepath(), content); err != nil {
-				return err
-			}
+		// Read all content into memory to compute hash and write to disk
+		contentBytes, err := io.ReadAll(content)
+		if err != nil {
+			return fmt.Errorf("failed to read media content: %w", err)
 		}
 
-		return nil
+		// Compute SHA256 hash
+		hash := sha256.Sum256(contentBytes)
+		media.Hash = fmt.Sprintf("%x", hash)
+
+		// process the photo
+		processingSrv, err := NewProcessingMediaService()
+		if err != nil {
+			return err
+		}
+
+		r, exif, err := processingSrv.Process(ctx, bytes.NewReader(contentBytes))
+		if err != nil {
+			return err
+		}
+
+		thumbnail, err := io.ReadAll(r)
+		if err != nil {
+			return fmt.Errorf("failed to read thumbnail reader from processing service: %w", err)
+		}
+		media.Thumbnail = thumbnail
+		media.Exif = exif
+
+		// Write the file to disk using the media's filepath
+		if err := m.fs.Write(ctx, media.Filepath(), bytes.NewReader(contentBytes)); err != nil {
+			return err
+		}
+		// Write the media to database (with computed hash)
+		return writer.WriteMedia(ctx, media)
 	})
 	if err != nil {
 		return nil, err

@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"io"
 	"path"
 	"time"
 
@@ -127,4 +128,21 @@ func (r UpdateMediaRequest) ApplyTo(media *entity.Media) {
 			media.Exif[exif.Key] = exif.Value
 		}
 	}
+}
+
+// ToMediaEntity converts upload request data to an entity.Media for business logic processing.
+// This method transforms the multipart form data into the internal domain model representation.
+func ToMediaEntity(filename, albumId string, fileContent io.Reader, album entity.Album) entity.Media {
+	// Create new media using the entity constructor
+	media := entity.NewMedia(filename, album)
+
+	// Set the content function to return the file reader
+	media.Content = func() (io.Reader, error) {
+		return fileContent, nil
+	}
+
+	// Set current time as captured time (can be updated later from EXIF)
+	media.CapturedAt = time.Now()
+
+	return media
 }

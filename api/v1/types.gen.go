@@ -238,6 +238,18 @@ type ListMediaParamsSortBy string
 // ListMediaParamsSortOrder defines parameters for ListMedia.
 type ListMediaParamsSortOrder string
 
+// UploadMediaMultipartBody defines parameters for UploadMedia.
+type UploadMediaMultipartBody struct {
+	// AlbumId ID of the album to upload the media to
+	AlbumId string `json:"albumId"`
+
+	// File The media file content
+	File openapi_types.File `json:"file"`
+
+	// Filename Original name of the file
+	Filename string `json:"filename"`
+}
+
 // GetTimelineParams defines parameters for GetTimeline.
 type GetTimelineParams struct {
 	// StartDate Start date for the timeline
@@ -258,6 +270,9 @@ type CreateAlbumJSONRequestBody = CreateAlbumRequest
 
 // UpdateAlbumJSONRequestBody defines body for UpdateAlbum for application/json ContentType.
 type UpdateAlbumJSONRequestBody = UpdateAlbumRequest
+
+// UploadMediaMultipartRequestBody defines body for UploadMedia for multipart/form-data ContentType.
+type UploadMediaMultipartRequestBody UploadMediaMultipartBody
 
 // UpdateMediaJSONRequestBody defines body for UpdateMedia for application/json ContentType.
 type UpdateMediaJSONRequestBody = UpdateMediaRequest

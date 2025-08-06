@@ -283,6 +283,61 @@ export const MediaApiAxiosParamCreator = function (configuration?: Configuration
                 options: localVarRequestOptions,
             };
         },
+        /**
+         * Upload a new media file to an album
+         * @summary Upload new media
+         * @param {string} filename Original name of the file
+         * @param {string} albumId ID of the album to upload the media to
+         * @param {File} file The media file content
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        uploadMedia: async (filename: string, albumId: string, file: File, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'filename' is not null or undefined
+            assertParamExists('uploadMedia', 'filename', filename)
+            // verify required parameter 'albumId' is not null or undefined
+            assertParamExists('uploadMedia', 'albumId', albumId)
+            // verify required parameter 'file' is not null or undefined
+            assertParamExists('uploadMedia', 'file', file)
+            const localVarPath = `/media`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+            const localVarFormParams = new ((configuration && configuration.formDataCtor) || FormData)();
+
+
+            if (filename !== undefined) { 
+                localVarFormParams.append('filename', filename as any);
+            }
+    
+            if (albumId !== undefined) { 
+                localVarFormParams.append('albumId', albumId as any);
+            }
+    
+            if (file !== undefined) { 
+                localVarFormParams.append('file', file as any);
+            }
+    
+    
+            localVarHeaderParameter['Content-Type'] = 'multipart/form-data';
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = localVarFormParams;
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
     }
 };
 
@@ -379,6 +434,21 @@ export const MediaApiFp = function(configuration?: Configuration) {
             const localVarOperationServerBasePath = operationServerMap['MediaApi.updateMedia']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
+        /**
+         * Upload a new media file to an album
+         * @summary Upload new media
+         * @param {string} filename Original name of the file
+         * @param {string} albumId ID of the album to upload the media to
+         * @param {File} file The media file content
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async uploadMedia(filename: string, albumId: string, file: File, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Media>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.uploadMedia(filename, albumId, file, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['MediaApi.uploadMedia']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
     }
 };
 
@@ -457,6 +527,18 @@ export const MediaApiFactory = function (configuration?: Configuration, basePath
         updateMedia(id: string, updateMediaRequest: UpdateMediaRequest, options?: RawAxiosRequestConfig): AxiosPromise<Media> {
             return localVarFp.updateMedia(id, updateMediaRequest, options).then((request) => request(axios, basePath));
         },
+        /**
+         * Upload a new media file to an album
+         * @summary Upload new media
+         * @param {string} filename Original name of the file
+         * @param {string} albumId ID of the album to upload the media to
+         * @param {File} file The media file content
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        uploadMedia(filename: string, albumId: string, file: File, options?: RawAxiosRequestConfig): AxiosPromise<Media> {
+            return localVarFp.uploadMedia(filename, albumId, file, options).then((request) => request(axios, basePath));
+        },
     };
 };
 
@@ -533,6 +615,18 @@ export interface MediaApiInterface {
      * @memberof MediaApiInterface
      */
     updateMedia(id: string, updateMediaRequest: UpdateMediaRequest, options?: RawAxiosRequestConfig): AxiosPromise<Media>;
+
+    /**
+     * Upload a new media file to an album
+     * @summary Upload new media
+     * @param {string} filename Original name of the file
+     * @param {string} albumId ID of the album to upload the media to
+     * @param {File} file The media file content
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof MediaApiInterface
+     */
+    uploadMedia(filename: string, albumId: string, file: File, options?: RawAxiosRequestConfig): AxiosPromise<Media>;
 
 }
 
@@ -621,6 +715,20 @@ export class MediaApi extends BaseAPI implements MediaApiInterface {
      */
     public updateMedia(id: string, updateMediaRequest: UpdateMediaRequest, options?: RawAxiosRequestConfig) {
         return MediaApiFp(this.configuration).updateMedia(id, updateMediaRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Upload a new media file to an album
+     * @summary Upload new media
+     * @param {string} filename Original name of the file
+     * @param {string} albumId ID of the album to upload the media to
+     * @param {File} file The media file content
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof MediaApi
+     */
+    public uploadMedia(filename: string, albumId: string, file: File, options?: RawAxiosRequestConfig) {
+        return MediaApiFp(this.configuration).uploadMedia(filename, albumId, file, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

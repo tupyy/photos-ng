@@ -63,6 +63,7 @@ Class | Method | HTTP request | Description
 *MediaApi* | [**getMediaThumbnail**](docs/MediaApi.md#getmediathumbnail) | **GET** /media/{id}/thumbnail | Get media thumbnail
 *MediaApi* | [**listMedia**](docs/MediaApi.md#listmedia) | **GET** /media | List all media
 *MediaApi* | [**updateMedia**](docs/MediaApi.md#updatemedia) | **PUT** /media/{id} | Update media by ID
+*MediaApi* | [**uploadMedia**](docs/MediaApi.md#uploadmedia) | **POST** /media | Upload new media
 *TimelineApi* | [**getTimeline**](docs/TimelineApi.md#gettimeline) | **GET** /timeline | Get timeline buckets
 
 

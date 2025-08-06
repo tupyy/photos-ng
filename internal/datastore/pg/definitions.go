@@ -33,6 +33,7 @@ const (
 	mediaThumbnail  = "thumbnail"
 	mediaExif       = "exif"
 	mediaMediaType  = "media_type"
+	mediaHash       = "hash"
 
 	// Media table columns for join scenarios
 	mediaIDJoin         = "media.id as media_id"

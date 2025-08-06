@@ -261,6 +261,49 @@ paths:
                 $ref: '#/components/schemas/ListMediaResponse'
         '500':
           $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Upload new media
+      description: Upload a new media file to an album
+      operationId: uploadMedia
+      tags:
+        - Media
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - filename
+                - albumId
+                - file
+              properties:
+                filename:
+                  type: string
+                  description: Original name of the file
+                  example: "vacation_photo.jpg"
+                albumId:
+                  type: string
+                  description: ID of the album to upload the media to
+                  example: "album-123"
+                file:
+                  type: string
+                  format: binary
+                  description: The media file content
+            encoding:
+              file:
+                contentType: image/jpeg, image/png
+      responses:
+        '201':
+          description: Media uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Media'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /media/{id}:
     get:
