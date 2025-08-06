@@ -4,7 +4,13 @@
 .DEFAULT_GOAL := help
 
 PODMAN ?= podman
+APP_IMAGE = photos-ng:latest
+REGISTRY = quay.io/ctupangiu/photos-ng
+REMOTE_TAG ?= latest
+
 POSTGRES_IMAGE ?= docker.io/library/postgres:17
+GIT_COMMIT=$(shell git rev-list -1 HEAD --abbrev-commit)
+VERSION=$(shell cat VERSION)
 
 # Project variables
 BINARY_NAME=photos-ng
@@ -20,7 +26,7 @@ generate:
 # Build the application
 build:
 	@echo "Building $(BINARY_NAME)..."
-	go build -o $(BINARY_PATH) $(MAIN_PATH)
+	go build -ldflags="-X main.sha=${GIT_COMMIT}" -o $(BINARY_PATH) $(MAIN_PATH)
 	@echo "Build complete: $(BINARY_PATH)"
 
 # Run the application
@@ -51,6 +57,25 @@ db.stop:
 db.migrate:
 	GOOSE_DRIVER=postgres GOOSE_DBSTRING=$(CONNSTR) GOOSE_MIGRATION_DIR=$(CURDIR)/internal/datastore/pg/migrations/sql goose up
 
+
+#####################
+# Container targets #
+#####################
+
+# Build the application image
+podman.build: ## Build the Finante application container
+	podman build -f Containerfile --build-arg GIT_SHA=$(GIT_COMMIT) -t $(APP_IMAGE) .
+
+# Tag image for remote registry
+podman.tag: ## Tag the local image for remote registry
+	podman tag $(APP_IMAGE) $(REGISTRY):$(REMOTE_TAG)
+
+# Push image to remote registry
+podman.push: podman.tag ## Push the container image to quay.io/ctupangiu/finance
+	podman push $(REGISTRY):$(REMOTE_TAG)
+
+# Build and push in one command
+deploy.image: podman.build podman.push ## Build and push the container image to remote registry
 # Display help information
 help:
 	@echo "Available targets:"
