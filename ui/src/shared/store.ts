@@ -50,4 +50,9 @@ export const selectTimelineBucketsByYear = (state: RootState, year: number) =>
 export const selectTimelineBucketsByYearAndMonth = (state: RootState, year: number, month: number) =>
   state.timeline.buckets.filter(bucket => bucket.year === year && bucket.month === month);
 
+// Upload selectors
+export const selectUpload = (state: RootState) => state.upload;
+export const selectUploadFiles = (state: RootState) => state.upload.files;
+export const selectUploadIsUploading = (state: RootState) => state.upload.isUploading;
+
 export default store;

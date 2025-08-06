@@ -6,9 +6,11 @@ export interface ActionMenuProps {
   onToggle: () => void;
   onClose: () => void;
   onCreateAlbum: () => void;
+  onUploadMedia?: () => void;
+  showUploadMedia?: boolean;
 }
 
-const ActionMenu: React.FC<ActionMenuProps> = ({ isOpen, onToggle, onClose, onCreateAlbum }) => {
+const ActionMenu: React.FC<ActionMenuProps> = ({ isOpen, onToggle, onClose, onCreateAlbum, onUploadMedia, showUploadMedia = false }) => {
   const { isInProgress: syncInProgress, progress: syncProgress, start: startSyncAction, cancel: cancelSyncAction } = useSync();
   const syncPromiseRef = useRef<any>(null);
 
@@ -39,6 +41,13 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ isOpen, onToggle, onClose, onCr
   const handleCreateAlbum = () => {
     onClose();
     onCreateAlbum();
+  };
+
+  const handleUploadMedia = () => {
+    onClose();
+    if (onUploadMedia) {
+      onUploadMedia();
+    }
   };
 
   return (
@@ -110,6 +119,18 @@ const ActionMenu: React.FC<ActionMenuProps> = ({ isOpen, onToggle, onClose, onCr
                   </svg>
                   Create Album
                 </button>
+                
+                {showUploadMedia && onUploadMedia && (
+                  <button
+                    onClick={handleUploadMedia}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-3">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                    </svg>
+                    Upload Media
+                  </button>
+                )}
               </>
             )}
           </div>

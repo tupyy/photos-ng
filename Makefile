@@ -31,8 +31,14 @@ build:
 
 # Run the application
 run:
-	@echo "Running $(BINARY_NAME)..."
-	$(BINARY_PATH) serve
+	@echo "Create temp data root folder..."
+	@TMP_DIR=$$(mktemp -d /tmp/photos-XXXX); \
+	echo "Using temp directory: $$TMP_DIR"; \
+	echo "Running $(BINARY_NAME)..."; \
+	$(BINARY_PATH) serve --data-root-folder=$$TMP_DIR
+
+run.ui:
+	cd ./ui && npm run start:dev
 
 # Clean build artifacts
 clean:

@@ -3,6 +3,7 @@ import albumsReducer from './albumsSlice';
 import mediaReducer from './mediaSlice';
 import timelineReducer from './timelineSlice';
 import syncReducer from './syncSlice';
+import uploadReducer from './uploadSlice';
 
 // Combine all reducers
 const rootReducer = combineReducers({
@@ -10,6 +11,7 @@ const rootReducer = combineReducers({
   media: mediaReducer,
   timeline: timelineReducer,
   sync: syncReducer,
+  upload: uploadReducer,
 });
 
 export type RootState = ReturnType<typeof rootReducer>;

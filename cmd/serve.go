@@ -46,6 +46,10 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 				return fmt.Errorf("statics folder should be provided in prod mod")
 			}
 
+			if config.DataRootFolder == "" {
+				return fmt.Errorf("data root folder cannot be empty")
+			}
+
 			// init datastore
 			dt, err := pg.NewPostgresDatastore(context.Background(), config.Database.URI)
 			if err != nil {

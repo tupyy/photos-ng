@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '@shared/contexts';
-import { useAppSelector, useAppDispatch, selectSync, selectAlbumsPageActive } from '@shared/store';
+import { useAppSelector, useAppDispatch, selectSync, selectAlbumsPageActive, selectCurrentAlbum } from '@shared/store';
 import { setCreateFormOpen } from '@shared/reducers/albumsSlice';
 import ActionMenu from './ActionMenu';
 
@@ -9,10 +9,12 @@ export interface NavbarProps {}
 
 const Navbar: React.FC<NavbarProps> = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { theme, toggleTheme } = useTheme();
   const { isInProgress: isSyncInProgress } = useAppSelector(selectSync);
   const isAlbumsPageActive = useAppSelector(selectAlbumsPageActive);
+  const currentAlbum = useAppSelector(selectCurrentAlbum);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
@@ -32,6 +34,12 @@ const Navbar: React.FC<NavbarProps> = () => {
 
   const handleCreateAlbumFormOpen = () => {
     dispatch(setCreateFormOpen(true));
+  };
+
+  const handleUploadMedia = () => {
+    if (currentAlbum) {
+      navigate(`/upload/${currentAlbum.id}`);
+    }
   };
 
   const navItems = [
@@ -113,6 +121,8 @@ const Navbar: React.FC<NavbarProps> = () => {
                   onToggle={() => setActionMenuOpen(!actionMenuOpen)}
                   onClose={() => setActionMenuOpen(false)}
                   onCreateAlbum={handleCreateAlbumFormOpen}
+                  onUploadMedia={handleUploadMedia}
+                  showUploadMedia={!!currentAlbum}
                 />
               </div>
             )}

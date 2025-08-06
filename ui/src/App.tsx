@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Layout } from '@shared/layout';
-import { AlbumsPage, TimelinePage } from '@app/pages';
+import { AlbumsPage, TimelinePage, UploadMediaPage } from '@app/pages';
 
 function App() {
   return (
@@ -9,6 +9,7 @@ function App() {
       <Routes>
         <Route path="/" element={<TimelinePage />} />
         <Route path="/albums/:id?" element={<AlbumsPage />} />
+        <Route path="/upload/:albumId" element={<UploadMediaPage />} />
         {/* Fallback route for any unmatched paths */}
         <Route path="*" element={<TimelinePage />} />
       </Routes>
