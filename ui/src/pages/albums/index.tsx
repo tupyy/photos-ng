@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector, selectAlbumsCreateFormOpen, selectCurrentAlbum } from '@shared/store';
 import { setPageActive, setCreateFormOpen, fetchAlbumById, setCurrentAlbum } from '@shared/reducers/albumsSlice';
-import { useAlbumsApi } from '@hooks/useApi';
+import { useAlbumsApi, useMediaApi } from '@shared/hooks/useApi';
+import { ListMediaSortByEnum, ListMediaSortOrderEnum } from '@generated/api/media-api';
 import { Album } from '@shared/types/Album';
 import AlbumsList from './components/AlbumsList';
 import CreateAlbumForm from './components/CreateAlbumForm';
+import MediaGallery from './components/MediaGallery';
 
 const AlbumsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +16,7 @@ const AlbumsPage: React.FC = () => {
   const isCreateFormOpen = useAppSelector(selectAlbumsCreateFormOpen);
   const currentAlbum = useAppSelector(selectCurrentAlbum);
   const { albums, loading, error, fetchAlbums, fetchAlbumById: fetchAlbumByIdApi, updateAlbum } = useAlbumsApi();
+  const { media, loading: mediaLoading, error: mediaError, fetchMedia } = useMediaApi();
 
   // State for editable description
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -26,6 +29,13 @@ const AlbumsPage: React.FC = () => {
     if (id) {
       // Fetch specific album
       fetchAlbumByIdApi(id);
+      // Fetch media for this album with consistent sorting
+      fetchMedia({ 
+        albumId: id, 
+        limit: 100, 
+        sortBy: ListMediaSortByEnum.CapturedAt, 
+        sortOrder: ListMediaSortOrderEnum.Desc 
+      });
     } else {
       // Fetch root albums and clear current album
       fetchAlbums({ limit: 20, offset: 0 });
@@ -36,7 +46,7 @@ const AlbumsPage: React.FC = () => {
     return () => {
       dispatch(setPageActive(false));
     };
-  }, [dispatch, id, fetchAlbums, fetchAlbumByIdApi]);
+  }, [dispatch, id, fetchAlbums, fetchAlbumByIdApi, fetchMedia]);
 
   // Initialize edited description when currentAlbum changes
   useEffect(() => {
@@ -201,6 +211,16 @@ const AlbumsPage: React.FC = () => {
               : 'Create your first album to get started organizing your photos.'
           }
         />
+
+        {/* Media Gallery - Show only when viewing a specific album */}
+        {id && currentAlbum && (
+          <MediaGallery 
+            media={media} 
+            loading={mediaLoading} 
+            error={mediaError}
+            albumName={currentAlbum.name} 
+          />
+        )}
       </div>
 
       {/* Create Album Form Modal */}

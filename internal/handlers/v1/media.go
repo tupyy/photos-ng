@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"fmt"
 	"net/http"
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
@@ -47,7 +48,12 @@ func (s *ServerImpl) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 
 	// Add sorting
 	if params.SortBy != nil {
-		opt.SortBy = string(*params.SortBy)
+		switch string(*params.SortBy) {
+		case "capturedAt":
+			opt.SortBy = services.SortByCapturedAt
+		default:
+			opt.SortBy = string(*params.SortBy)
+		}
 		if params.SortOrder != nil {
 			opt.Descending = *params.SortOrder == v1.Desc
 		}
@@ -203,11 +209,39 @@ func (s *ServerImpl) GetMediaContent(c *gin.Context, id string) {
 // Returns HTTP 404 if media not found, HTTP 500 for server errors,
 // or the binary thumbnail data on success.
 func (s *ServerImpl) GetMediaThumbnail(c *gin.Context, id string) {
-	// TODO: Implement media thumbnail serving
-	// For now, return not implemented
-	c.JSON(http.StatusNotImplemented, v1.Error{
-		Message: "Media thumbnail serving not yet implemented",
-	})
+	// Get the media from service
+	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
+	if err != nil {
+		switch err.(type) {
+		case *services.ErrResourceNotFound:
+			c.JSON(http.StatusNotFound, v1.Error{
+				Message: "Media not found: " + id,
+			})
+			return
+		default:
+			zap.S().Errorw("failed to get media", "error", err, "media_id", id)
+			c.JSON(http.StatusInternalServerError, v1.Error{
+				Message: err.Error(),
+			})
+			return
+		}
+	}
+
+	// Check if media has thumbnail
+	if !media.HasThumbnail() {
+		c.JSON(http.StatusNotFound, v1.Error{
+			Message: "Thumbnail not available for media: " + id,
+		})
+		return
+	}
+
+	// Set appropriate headers for thumbnail
+	c.Header("Content-Type", "image/jpeg")             // Thumbnails are typically JPEG
+	c.Header("Cache-Control", "public, max-age=86400") // Cache for 24 hours
+	c.Header("Content-Length", fmt.Sprintf("%d", len(media.Thumbnail)))
+
+	// Serve the thumbnail data
+	c.Data(http.StatusOK, "image/jpeg", media.Thumbnail)
 }
 
 // UploadMedia handles POST /api/v1/media requests to upload a new media file.

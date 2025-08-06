@@ -6,6 +6,10 @@ import (
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 )
 
+const (
+	SortByCapturedAt string = "captured_at"
+)
+
 //go:generate go run github.com/ecordell/optgen -output zz_generated.media_options.go . MediaOptions
 type MediaOptions struct {
 	MediaLimit  int        `debugmap:"visible"`
