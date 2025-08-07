@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '@shared/contexts';
 import { useAppSelector, useAppDispatch, selectSync, selectAlbumsPageActive, selectCurrentAlbum } from '@shared/store';
 import { setCreateFormOpen } from '@shared/reducers/albumsSlice';
+import { BuildInfo } from '@shared/components';
 import ActionMenu from './ActionMenu';
 
 export interface NavbarProps {}
@@ -89,8 +90,11 @@ const Navbar: React.FC<NavbarProps> = () => {
             </div>
           </div>
 
-          {/* Right side - Action Menu and Theme Toggle */}
-          <div className="flex items-center md:order-2 space-x-1 md:space-x-0">
+          {/* Right side - Build Info, Action Menu and Theme Toggle */}
+          <div className="flex items-center md:order-2 space-x-3 md:space-x-2">
+            {/* Build Info */}
+            <BuildInfo />
+            
             {/* Action Menu with Spinner - Only show when albums page is active */}
             {isAlbumsPageActive && (
               <div className="flex items-center space-x-1" ref={actionMenuRef}>

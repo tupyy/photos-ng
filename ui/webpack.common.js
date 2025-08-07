@@ -5,10 +5,28 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 const Dotenv = require('dotenv-webpack');
+const webpack = require('webpack');
+const { execSync } = require('child_process');
 
 const ASSET_PATH = process.env.ASSET_PATH || '/';
 
+// Get git commit hash from environment variable or git command (fallback for local dev)
+const getGitCommit = () => {
+  // First try environment variable (used in container builds)
+  if (process.env.GIT_SHA) {
+    return process.env.GIT_SHA;
+  }
+  
+  // Fallback to git command for local development
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+  } catch (e) {
+    return 'unknown';
+  }
+};
+
 module.exports = (env) => {
+  
   return {
     entry: './src/index.tsx',
     module: {
@@ -53,6 +71,9 @@ module.exports = (env) => {
       new Dotenv({
         systemvars: true,
         silent: true,
+      }),
+      new webpack.DefinePlugin({
+        'process.env.GIT_COMMIT': JSON.stringify(getGitCommit()),
       }),
     ],
     resolve: {
