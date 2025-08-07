@@ -343,7 +343,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
       <div className="sticky top-0 z-30 bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-gray-700 pb-4 mb-6 backdrop-blur-sm bg-opacity-95 dark:bg-opacity-95">
         <div className="flex items-center justify-between pt-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Photos ({allMedia.length})
+            Photos ({total})
             {isSelectionMode && selectedMediaIds.size > 0 && (
               <span className="ml-2 text-sm text-blue-600 dark:text-blue-400">
                 ({selectedMediaIds.size} selected)
