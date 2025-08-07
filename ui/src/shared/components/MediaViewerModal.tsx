@@ -5,7 +5,7 @@ interface MediaViewerModalProps {
   isOpen: boolean;
   media: Media[];
   currentIndex: number;
-  onClose: () => void;
+  onClose: (currentMedia?: Media) => void;
   onIndexChange: (index: number) => void;
 }
 
@@ -36,7 +36,7 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
 
       switch (event.key) {
         case 'Escape':
-          onClose();
+          onClose(currentMedia);
           break;
         case 'ArrowLeft':
           event.preventDefault();
@@ -90,12 +90,12 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black bg-opacity-90 transition-opacity duration-300"
-        onClick={onClose}
+        onClick={() => onClose(currentMedia)}
       />
 
       {/* Close Button - Fixed at top */}
       <button
-        onClick={onClose}
+        onClick={() => onClose(currentMedia)}
         className="fixed top-4 right-4 z-50 p-3 rounded-full bg-black bg-opacity-70 text-white hover:bg-opacity-90 transition-colors shadow-lg"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

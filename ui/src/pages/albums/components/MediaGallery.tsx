@@ -164,8 +164,23 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
     setIsViewerOpen(true);
   };
 
-  const handleViewerClose = () => {
+  const handleViewerClose = (currentMedia?: Media) => {
     setIsViewerOpen(false);
+    
+    // Scroll to the media that was being viewed when modal was closed
+    if (currentMedia) {
+      // Use setTimeout to ensure modal is fully closed before scrolling
+      setTimeout(() => {
+        const mediaElement = document.querySelector(`[data-media-id="${currentMedia.id}"]`);
+        if (mediaElement) {
+          mediaElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
+          });
+        }
+      }, 100);
+    }
   };
 
   const handleIndexChange = (index: number) => {

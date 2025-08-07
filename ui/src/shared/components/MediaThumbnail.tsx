@@ -37,6 +37,7 @@ const MediaThumbnail: React.FC<MediaThumbnailProps> = ({ media, onInfoClick, onC
           : 'hover:opacity-80'
       }`}
       onClick={handleClick}
+      data-media-id={media.id}
     >
       <img
         src={media.thumbnail}
