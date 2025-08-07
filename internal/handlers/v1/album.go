@@ -44,14 +44,26 @@ func (s *ServerImpl) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 		return
 	}
 
+	// Get total count for pagination (without limit/offset)
+	totalOpts := services.NewAlbumOptionsWithOptions(
+		services.WithHasParent(hasParent),
+		// No limit/offset for total count
+	)
+	allAlbums, err := s.albumSrv.GetAlbums(c.Request.Context(), totalOpts)
+	if err != nil {
+		zap.S().Errorw("failed to get total albums count", "error", err)
+		c.JSON(http.StatusInternalServerError, v1.Error{
+			Message: err.Error(),
+		})
+		return
+	}
+	total := len(allAlbums)
+
 	// Convert entity albums to API albums
 	apiAlbums := make([]v1.Album, 0, len(albums))
 	for _, album := range albums {
 		apiAlbums = append(apiAlbums, v1.NewAlbum(album))
 	}
-
-	// TODO: Get total count from service for proper pagination
-	total := len(apiAlbums)
 
 	response := v1.ListAlbumsResponse{
 		Albums: apiAlbums,

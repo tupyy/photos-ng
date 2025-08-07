@@ -70,16 +70,13 @@ type AlbumOptions struct {
 }
 
 // QueriesFn returns a slice of query options based on the album filter criteria
+// Note: Pagination (Limit/Offset) is removed because it interferes with JOIN queries
+// and causes incorrect media counts. Album pagination should be handled at the application level.
 func (af *AlbumOptions) QueriesFn() []pg.QueryOption {
 	qf := []pg.QueryOption{}
 
-	// Add pagination
-	if af.Limit > 0 {
-		qf = append(qf, pg.Limit(af.Limit))
-	}
-	if af.Offset > 0 {
-		qf = append(qf, pg.Offset(af.Offset))
-	}
+	// Note: Pagination removed due to JOIN query issues
+	// TODO: Implement pagination at application level after query execution
 
 	qf = append(qf, pg.FilterAlbumWithParents(af.HasParent))
 

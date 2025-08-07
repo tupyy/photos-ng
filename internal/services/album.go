@@ -22,13 +22,33 @@ func NewAlbumService(dt *pg.Datastore, fsDatastore *fs.Datastore) *AlbumService 
 }
 
 // GetAlbums retrieves a list of albums based on the provided filter criteria
+// Handles pagination at the application level to avoid issues with JOIN queries
 func (a *AlbumService) GetAlbums(ctx context.Context, opts *AlbumOptions) ([]entity.Album, error) {
-	return a.dt.QueryAlbums(ctx, opts.QueriesFn()...)
+	// Get all albums matching the filter criteria (without pagination)
+	allAlbums, err := a.dt.QueryAlbums(ctx, opts.QueriesFn()...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply pagination at the application level
+	start := opts.Offset
+	end := opts.Offset + opts.Limit
+
+	// Handle bounds
+	if start >= len(allAlbums) {
+		return []entity.Album{}, nil
+	}
+	if end > len(allAlbums) || opts.Limit <= 0 {
+		end = len(allAlbums)
+	}
+
+	// Return the paginated slice
+	return allAlbums[start:end], nil
 }
 
 // GetAlbum retrieves a specific album by its ID
 func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, error) {
-	albums, err := a.dt.QueryAlbums(ctx, pg.FilterByAlbumId(id), pg.Limit(1))
+	albums, err := a.dt.QueryAlbums(ctx, pg.FilterByAlbumId(id))
 	if err != nil {
 		return nil, err
 	}
