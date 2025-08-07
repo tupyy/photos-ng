@@ -29,6 +29,17 @@ func (mm MediaList) Entity() []entity.Media {
 			exifMetadata = make(map[string]string)
 		}
 
+		// Create the album entity from joined data
+		album := entity.Album{
+			ID:          m.AlbumID,
+			CreatedAt:   m.AlbumJoinCreatedAt,
+			Path:        m.AlbumJoinPath,
+			Description: m.AlbumJoinDescription,
+			Thumbnail:   m.AlbumJoinThumbnailID,
+			Children:    []entity.Album{},
+			Media:       []entity.Media{},
+		}
+
 		media := entity.Media{
 			ID:         m.ID,
 			CapturedAt: m.CapturedAt,
@@ -37,7 +48,7 @@ func (mm MediaList) Entity() []entity.Media {
 			Hash:       m.Hash,
 			Exif:       exifMetadata,
 			MediaType:  entity.MediaType(m.MediaType),
-			// Album will be populated separately through joins or additional queries
+			Album:      album,
 		}
 		mediaList = append(mediaList, media)
 	}
@@ -51,8 +62,14 @@ type Media struct {
 	CapturedAt time.Time        `db:"captured_at"`
 	AlbumID    string           `db:"album_id"`
 	FileName   string           `db:"file_name"`
-	Hash       string           `db:"hash"`
 	Thumbnail  []byte           `db:"thumbnail"`
+	Hash       string           `db:"hash"`
 	Exif       *json.RawMessage `db:"exif"`
 	MediaType  string           `db:"media_type"`
+
+	// Album fields from join
+	AlbumJoinCreatedAt   time.Time `db:"album_created_at"`
+	AlbumJoinPath        string    `db:"album_path"`
+	AlbumJoinDescription *string   `db:"album_description"`
+	AlbumJoinThumbnailID *string   `db:"album_thumbnail_id"`
 }

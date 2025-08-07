@@ -1,14 +1,17 @@
+import React from 'react';
 import { Media } from '@generated/models';
 
 interface MediaThumbnailProps {
   media: Media;
   onInfoClick: (media: Media) => void;
+  onClick?: (media: Media) => void;
 }
 
-const MediaThumbnail: React.FC<MediaThumbnailProps> = ({ media, onInfoClick }) => {
+const MediaThumbnail: React.FC<MediaThumbnailProps> = ({ media, onInfoClick, onClick }) => {
   const handleClick = () => {
-    // TODO: Implement modal or lightbox for viewing full image
-    console.log('Media clicked:', media);
+    if (onClick) {
+      onClick(media);
+    }
   };
 
   const handleInfoClick = (e: React.MouseEvent) => {

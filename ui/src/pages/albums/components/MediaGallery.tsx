@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Media } from '@generated/models';
 import MediaThumbnail from '@app/shared/components/MediaThumbnail';
 import ExifDrawer from '@app/shared/components/ExifDrawer';
+import { MediaViewerModal } from '@app/shared/components';
 
 interface MediaGalleryProps {
   media: Media[];
@@ -26,6 +27,10 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
 }) => {
   const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  
+  // Media viewer modal state
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
   // Sort media locally: maintain API global sorting by capturedAt (desc), but add secondary sort by filename for items with same timestamp within this page
   const sortedMedia = React.useMemo(() => {
@@ -53,6 +58,21 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   const handleCloseDrawer = () => {
     setIsDrawerOpen(false);
     setSelectedMedia(null);
+  };
+
+  // Media viewer modal handlers
+  const handleMediaClick = (mediaItem: Media) => {
+    const index = sortedMedia.findIndex(m => m.id === mediaItem.id);
+    setCurrentMediaIndex(index);
+    setIsViewerOpen(true);
+  };
+
+  const handleViewerClose = () => {
+    setIsViewerOpen(false);
+  };
+
+  const handleIndexChange = (index: number) => {
+    setCurrentMediaIndex(index);
   };
   if (loading) {
     return (
@@ -103,7 +123,12 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Photos ({sortedMedia.length})</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
         {sortedMedia.map((mediaItem) => (
-          <MediaThumbnail key={mediaItem.id} media={mediaItem} onInfoClick={handleInfoClick} />
+          <MediaThumbnail 
+            key={mediaItem.id} 
+            media={mediaItem} 
+            onInfoClick={handleInfoClick}
+            onClick={handleMediaClick}
+          />
         ))}
       </div>
 
@@ -114,6 +139,15 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
 
       {/* EXIF Drawer */}
       <ExifDrawer isOpen={isDrawerOpen} media={selectedMedia} onClose={handleCloseDrawer} />
+
+      {/* Media Viewer Modal */}
+      <MediaViewerModal
+        isOpen={isViewerOpen}
+        media={sortedMedia}
+        currentIndex={currentMediaIndex}
+        onClose={handleViewerClose}
+        onIndexChange={handleIndexChange}
+      />
     </div>
   );
 };

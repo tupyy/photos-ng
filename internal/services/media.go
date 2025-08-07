@@ -60,7 +60,12 @@ func (m *MediaService) GetMediaByID(ctx context.Context, id string) (*entity.Med
 		return nil, NewErrMediaNotFound(id)
 	}
 
-	return &media[0], nil
+	processedMedia := media[0]
+
+	// Populate the content function using the filesystem datastore
+	processedMedia.Content = m.fs.Read(ctx, processedMedia.Filepath())
+
+	return &processedMedia, nil
 }
 
 // WriteMedia creates or updates a media item and writes its content to disk

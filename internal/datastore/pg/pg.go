@@ -129,9 +129,14 @@ func (d *Datastore) QueryMedia(ctx context.Context, opts ...QueryOption) ([]enti
 			&media.CapturedAt,
 			&media.AlbumID,
 			&media.FileName,
+			&media.Hash,
 			&media.Thumbnail,
 			&media.Exif,
 			&media.MediaType,
+			&media.AlbumJoinCreatedAt,
+			&media.AlbumJoinPath,
+			&media.AlbumJoinDescription,
+			&media.AlbumJoinThumbnailID,
 		)
 		if err != nil {
 			return nil, err

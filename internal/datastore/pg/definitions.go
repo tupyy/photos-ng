@@ -35,6 +35,12 @@ const (
 	mediaMediaType  = "media_type"
 	mediaHash       = "hash"
 
+	// Album table columns for media select join scenarios
+	albumMediaCreatedAt   = "albums.created_at as album_created_at"
+	albumMediaPath        = "albums.path as album_path"
+	albumMediaDescription = "albums.description as album_description"
+	albumMediaThumbnailID = "albums.thumbnail_id as album_thumbnail_id"
+
 	// Media table columns for join scenarios
 	mediaIDJoin         = "media.id as media_id"
 	mediaCreatedAtJoin  = "media.created_at as media_created_at"
@@ -74,16 +80,22 @@ var (
 		LeftJoin("media as media on media.album_id = albums.id")
 
 	listMediaStmt = psql.Select(
-		mediaID,
-		mediaCreatedAt,
-		mediaCapturedAt,
-		mediaAlbumID,
-		mediaFileName,
-		mediaThumbnail,
-		mediaExif,
-		mediaMediaType,
+		preffix(mediaTable, mediaID),
+		preffix(mediaTable, mediaCreatedAt),
+		preffix(mediaTable, mediaCapturedAt),
+		preffix(mediaTable, mediaAlbumID),
+		preffix(mediaTable, mediaFileName),
+		preffix(mediaTable, mediaHash),
+		preffix(mediaTable, mediaThumbnail),
+		preffix(mediaTable, mediaExif),
+		preffix(mediaTable, mediaMediaType),
+		albumMediaCreatedAt,
+		albumMediaPath,
+		albumMediaDescription,
+		albumMediaThumbnailID,
 	).
-		From(mediaTable)
+		From(mediaTable).
+		InnerJoin("albums on albums.id = media.album_id")
 
 	insertAlbumStmt = psql.Insert(albumsTable).
 			Columns(

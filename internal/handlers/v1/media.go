@@ -198,11 +198,49 @@ func (s *ServerImpl) DeleteMedia(c *gin.Context, id string) {
 // Returns HTTP 404 if media not found, HTTP 500 for server errors,
 // or the binary media content with appropriate content-type on success.
 func (s *ServerImpl) GetMediaContent(c *gin.Context, id string) {
-	// TODO: Implement media content serving
-	// For now, return not implemented
-	c.JSON(http.StatusNotImplemented, v1.Error{
-		Message: "Media content serving not yet implemented",
-	})
+	// Get the media from service
+	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
+	if err != nil {
+		switch err.(type) {
+		case *services.ErrResourceNotFound:
+			c.JSON(http.StatusNotFound, v1.Error{
+				Message: "Media not found: " + id,
+			})
+			return
+		default:
+			zap.S().Errorw("failed to get media", "error", err, "media_id", id)
+			c.JSON(http.StatusInternalServerError, v1.Error{
+				Message: err.Error(),
+			})
+			return
+		}
+	}
+
+	// Check if content function is available
+	if media.Content == nil {
+		zap.S().Errorw("media content function not available", "media_id", id)
+		c.JSON(http.StatusInternalServerError, v1.Error{
+			Message: "Media content not available",
+		})
+		return
+	}
+
+	// Read the media content from filesystem
+	contentReader, err := media.Content()
+	if err != nil {
+		zap.S().Errorw("failed to read media content", "error", err, "media_id", id, "filepath", media.Filepath())
+		c.JSON(http.StatusInternalServerError, v1.Error{
+			Message: "Failed to read media content: " + err.Error(),
+		})
+		return
+	}
+
+	// Set appropriate headers for content
+	c.Header("Content-Type", media.ContentType())
+	c.Header("Cache-Control", "public, max-age=86400") // Cache for 24 hours
+
+	// Stream the content to the client
+	c.DataFromReader(http.StatusOK, -1, media.ContentType(), contentReader, nil)
 }
 
 // GetMediaThumbnail handles GET /api/v1/media/{id}/thumbnail requests to serve media thumbnails.
