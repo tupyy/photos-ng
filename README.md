@@ -1,14 +1,109 @@
-# Photos NG API
+# Photos NG
 
-A RESTful API for managing albums and media in the Photos NG application. This API provides comprehensive CRUD operations for organizing and accessing photo and video collections.
+A full-stack photo management application built with Go backend and React frontend. Photos NG provides comprehensive photo and video organization, browsing, and management capabilities with a modern, responsive user interface.
 
 ## Overview
 
-The Photos NG API is built using OpenAPI 3.0 specification and provides endpoints for:
-- Managing photo albums and their metadata
-- Accessing and organizing media files (photos and videos)
-- Timeline-based media browsing
-- File system synchronization
+Photos NG consists of:
+- **Backend API**: RESTful API built with Go, Gin, and PostgreSQL
+- **Frontend UI**: Modern React application with TypeScript and Tailwind CSS
+- **Database**: PostgreSQL for metadata storage
+- **File Storage**: Local filesystem for media files
+
+## Features
+
+### Core Functionality
+- 📁 **Album Management**: Create, organize, and manage photo albums with hierarchical structure
+- 🖼️ **Media Organization**: Upload, view, and organize photos and videos
+- 📊 **Statistics Dashboard**: View total media counts and available years
+- ⏱️ **Timeline View**: Browse media by date with year navigation
+- 🔍 **Advanced Filtering**: Filter by album, media type, and date ranges
+- 📱 **Responsive Design**: Works seamlessly on desktop and mobile devices
+
+### Recent Improvements
+- ✨ **Enhanced Pagination**: Client-side pagination for album media views
+- 🚀 **Performance Optimization**: Efficient media loading using href-based pagination
+- 📈 **Accurate Counters**: Album titles show total media count across all pages
+- 🎯 **Smart Navigation**: Improved user experience with proper loading states
+
+### Technical Features
+- 🔄 **File System Sync**: Synchronize albums with file system changes
+- 🏷️ **EXIF Data Support**: Extract and display photo metadata
+- 🖼️ **Thumbnail Generation**: Automatic thumbnail creation for fast loading
+- 📤 **Bulk Operations**: Select and manage multiple media items
+- 🎨 **Dark Mode**: Full dark mode support throughout the application
+
+## Architecture
+
+### Frontend (React + TypeScript)
+- **Location**: `ui/` directory
+- **Framework**: React 18 with TypeScript
+- **Styling**: Tailwind CSS for responsive design
+- **State Management**: Redux Toolkit for centralized state
+- **API Client**: Auto-generated from OpenAPI specification
+- **Build Tool**: Webpack with custom configuration
+
+### Backend (Go)
+- **Location**: Root directory
+- **Framework**: Gin web framework
+- **Database**: PostgreSQL with custom query builder
+- **Code Generation**: OpenAPI code generation for consistency
+- **Architecture**: Clean architecture with separate layers (handlers, services, datastore)
+
+### Pagination Implementation
+
+Photos NG uses an innovative pagination approach for album media:
+
+1. **Album Data**: Albums contain arrays of media href references
+2. **Client-Side Pagination**: Media hrefs are paginated locally using JavaScript
+3. **On-Demand Loading**: Only media objects for the current page are fetched via API
+4. **Performance**: Reduces server load and improves user experience
+
+```
+Album contains: ["/api/v1/media/1", "/api/v1/media/2", ..., "/api/v1/media/100"]
+Page 1: Fetch media objects for hrefs 1-20
+Page 2: Fetch media objects for hrefs 21-40
+```
+
+This approach provides:
+- ✅ Fast initial album loading
+- ✅ Efficient memory usage
+- ✅ Accurate pagination counts
+- ✅ Reduced API calls
+
+## Quick Start
+
+### Prerequisites
+- Go 1.21+
+- Node.js 18+
+- PostgreSQL 14+
+
+### Backend Setup
+```bash
+# Clone and build backend
+make build
+
+# Setup database (update connection string in config)
+make migrate
+
+# Run backend server
+make run
+```
+
+### Frontend Setup
+```bash
+# Install dependencies
+cd ui && npm install
+
+# Generate API client from OpenAPI spec
+npm run generate:api
+
+# Start development server
+npm run dev
+
+# Or build for production
+npm run build
+```
 
 ## API Specification
 
@@ -153,33 +248,26 @@ Retrieve the full content of a media item.
 
 **Response:** Binary image/video data
 
-### Timeline
+### Statistics
 
-#### `GET /api/v1/timeline`
-Retrieve a timeline of media organized in buckets.
+#### `GET /api/v1/stats`
+Retrieve application statistics including media and album counts.
 
-**Parameters:**
-- `startDate` (required): Start date for timeline (DD/MM/YYYY)
-- `limit` (optional): Maximum number of buckets (1-100, default: 20)
-- `offset` (optional): Number of buckets to skip (default: 0)
-
-**Response:** Paginated list of timeline buckets with available years
+**Response:** Application statistics
 
 **Example Response:**
 ```json
 {
-  "buckets": [
-    {
-      "date": "01/01/2024",
-      "media": ["media_href_1", "media_href_2"]
-    }
-  ],
-  "years": [2020, 2021, 2022, 2023, 2024],
-  "total": 25,
-  "limit": 20,
-  "offset": 0
+  "years": [2024, 2023, 2022],
+  "countMedia": 1250,
+  "countAlbum": 45
 }
 ```
+
+**Properties:**
+- `years`: Array of years that contain media (sorted descending)
+- `countMedia`: Total number of media items in the system
+- `countAlbum`: Total number of albums in the system
 
 ## Data Models
 
@@ -221,11 +309,12 @@ Retrieve a timeline of media organized in buckets.
 }
 ```
 
-### Bucket
+### StatsResponse
 ```json
 {
-  "date": "01/01/2024",
-  "media": ["string"]
+  "years": [2024, 2023, 2022],
+  "countMedia": 1250,
+  "countAlbum": 45
 }
 ```
 
@@ -313,19 +402,70 @@ The OpenAPI specification can be used to generate:
 ### File Organization
 
 ```
-api/v1/
-├── openapi.yaml          # OpenAPI 3.0 specification
-└── [generated files]     # Auto-generated from spec
-
-cmd/
-├── migrate.go           # Database migration command
-└── serve.go            # Server command
-
-config/                 # Configuration management
-internal/               # Internal application code
-pkg/                   # Shared packages
-server/                # HTTP server implementation
+photos-ng/
+├── api/v1/                    # API specification and generated code
+│   ├── openapi.yaml          # OpenAPI 3.0 specification
+│   ├── extensions.go         # Custom API extensions
+│   └── [generated files]     # Auto-generated from spec
+├── cmd/                      # CLI commands
+│   ├── migrate.go           # Database migration command
+│   └── serve.go            # Server startup command
+├── internal/                # Internal application code
+│   ├── config/             # Configuration management
+│   ├── datastore/          # Database layer (PostgreSQL)
+│   ├── entity/             # Domain models
+│   ├── handlers/           # HTTP request handlers
+│   ├── server/             # HTTP server setup
+│   └── services/           # Business logic layer
+├── pkg/                     # Shared packages
+│   ├── encoder/            # Media processing
+│   ├── logger/             # Logging utilities
+│   └── processing/         # Background processing
+├── ui/                      # Frontend React application
+│   ├── src/
+│   │   ├── generated/      # Auto-generated API client
+│   │   ├── pages/          # React page components
+│   │   ├── shared/         # Shared components and utilities
+│   │   └── ...
+│   ├── package.json        # Frontend dependencies
+│   └── webpack.*.js        # Build configuration
+├── main.go                  # Application entry point
+├── Makefile                # Build automation
+└── README.md               # This file
 ```
+
+## Recent Changes
+
+### v1.2.0 - Pagination & Performance Improvements
+- ✨ **Smart Pagination**: Implemented client-side pagination for album media views
+- 🚀 **Performance**: Reduced API calls by using href-based media loading
+- 📊 **Statistics**: Added `/stats` endpoint replacing timeline functionality
+- 🎯 **UX**: Album titles now show accurate total media counts
+- 🐛 **Fixes**: Corrected album media counting issues with JOIN queries
+
+### v1.1.0 - Album Enhancements
+- 📁 **Hierarchical Albums**: Support for nested album structures
+- 🖼️ **Media Management**: Improved media organization within albums
+- 🔄 **File Sync**: Enhanced file system synchronization
+- 🎨 **UI Polish**: Better responsive design and dark mode support
+
+## Roadmap
+
+### Planned Features
+- 🔍 **Search**: Full-text search across media metadata and filenames
+- 🏷️ **Tagging**: Add custom tags to media items for better organization
+- 👥 **User Management**: Multi-user support with authentication
+- ☁️ **Cloud Storage**: Support for cloud storage backends (S3, etc.)
+- 📱 **Mobile App**: Native mobile applications for iOS and Android
+- 🤖 **AI Features**: Automatic tagging using computer vision
+- 📊 **Analytics**: Advanced usage analytics and insights
+
+### Technical Improvements
+- 🔧 **API Versioning**: Better API version management
+- 🧪 **Testing**: Comprehensive test coverage
+- 📦 **Containerization**: Docker support for easy deployment
+- 🔒 **Security**: Enhanced security features and audit logging
+- ⚡ **Caching**: Redis-based caching for improved performance
 
 ## License
 
