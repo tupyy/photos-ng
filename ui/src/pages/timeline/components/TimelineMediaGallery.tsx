@@ -126,88 +126,91 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
   }, [groupedMedia]);
 
   /**
+   * Ref to track the last detected year to avoid unnecessary updates
+   */
+  const lastDetectedYear = React.useRef<number | null>(null);
+
+  /**
    * Set up intersection observer to detect which year is currently visible
    */
   React.useEffect(() => {
     if (!onVisibleYearChange || groupedMedia.length === 0) return;
-
+    
+    // Use only intersection observer for better performance
+    // Remove scroll listener completely to eliminate scroll jank
     const observer = new IntersectionObserver(
       (entries) => {
-        // Filter intersecting entries and sort by their position
-        const intersectingEntries = entries
-          .filter(entry => entry.isIntersecting)
-          .sort((a, b) => {
-            const rectA = a.boundingClientRect;
-            const rectB = b.boundingClientRect;
-            return rectA.top - rectB.top;
-          });
+        // Use requestAnimationFrame to ensure smooth scrolling
+        requestAnimationFrame(() => {
+          // Filter intersecting entries and find the topmost one
+          const intersectingEntries = entries
+            .filter(entry => entry.isIntersecting && entry.intersectionRatio > 0)
+            .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
 
-        if (intersectingEntries.length > 0) {
-          // Use the topmost intersecting entry
-          const topEntry = intersectingEntries[0];
-          const yearMatch = topEntry.target.id.match(/year-(\d+)/);
-          if (yearMatch) {
-            const year = parseInt(yearMatch[1], 10);
-            onVisibleYearChange(year);
+          if (intersectingEntries.length > 0) {
+            const topEntry = intersectingEntries[0];
+            const yearMatch = topEntry.target.id.match(/year-(\d+)/);
+            if (yearMatch) {
+              const year = parseInt(yearMatch[1], 10);
+              // Only update if the year actually changed
+              if (lastDetectedYear.current !== year) {
+                lastDetectedYear.current = year;
+                onVisibleYearChange(year);
+              }
+            }
+          }
+        });
+      },
+      {
+        root: null,
+        rootMargin: '-100px 0px -70% 0px', // More conservative margins
+        threshold: 0 // Single threshold for minimal callbacks
+      }
+    );
+
+    // Add a small invisible element at the very top to detect when we're at the beginning
+    const topDetector = document.createElement('div');
+    topDetector.id = 'timeline-top-detector';
+    topDetector.style.position = 'absolute';
+    topDetector.style.top = '0';
+    topDetector.style.height = '1px';
+    topDetector.style.width = '100%';
+    topDetector.style.pointerEvents = 'none';
+    
+    const timelineContainer = document.querySelector('.timeline-container') || document.body;
+    timelineContainer.appendChild(topDetector);
+    
+    // Observer for top detector
+    const topObserver = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && groupedMedia.length > 0) {
+          const firstYear = groupedMedia[0]?.year;
+          if (firstYear && lastDetectedYear.current !== firstYear) {
+            lastDetectedYear.current = firstYear;
+            onVisibleYearChange(firstYear);
           }
         }
       },
       {
-        root: null, // Use viewport as root
-        rootMargin: '-50px 0px -50% 0px', // More lenient margins
-        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1.0] // More thresholds for better detection
+        root: null,
+        rootMargin: '0px',
+        threshold: 0
       }
     );
+    
+    topObserver.observe(topDetector);
 
-    // Also add a scroll listener as a fallback for edge cases
-    const handleScroll = () => {
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      
-      // If we're near the top of the page, select the first (most recent) year
-      if (scrollTop < 200) {
-        const firstYear = groupedMedia[0]?.year;
-        if (firstYear) {
-          onVisibleYearChange(firstYear);
-        }
-        return;
-      }
-
-      // Find the year that's currently visible
-      const yearElements = document.querySelectorAll('[id^="year-"]');
-      let closestYear = null;
-      let closestDistance = Infinity;
-
-      yearElements.forEach(element => {
-        const rect = element.getBoundingClientRect();
-        const distance = Math.abs(rect.top);
-        
-        if (distance < closestDistance && rect.top <= window.innerHeight / 2) {
-          closestDistance = distance;
-          const yearMatch = element.id.match(/year-(\d+)/);
-          if (yearMatch) {
-            closestYear = parseInt(yearMatch[1], 10);
-          }
-        }
-      });
-
-      if (closestYear) {
-        onVisibleYearChange(closestYear);
-      }
-    };
-
-    // Observe all year anchor elements
+    // Observe year anchor elements
     const yearElements = document.querySelectorAll('[id^="year-"]');
     yearElements.forEach(element => observer.observe(element));
 
-    // Add scroll listener as fallback
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    // Initial check
-    handleScroll();
-
     return () => {
       observer.disconnect();
-      window.removeEventListener('scroll', handleScroll);
+      topObserver.disconnect();
+      if (topDetector.parentNode) {
+        topDetector.parentNode.removeChild(topDetector);
+      }
     };
   }, [groupedMedia, onVisibleYearChange]);
 
