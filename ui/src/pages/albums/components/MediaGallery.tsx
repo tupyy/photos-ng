@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Media } from '@generated/models';
 import MediaThumbnail from '@app/shared/components/MediaThumbnail';
 import ExifDrawer from '@app/shared/components/ExifDrawer';
-import { MediaViewerModal } from '@app/shared/components';
+import { MediaViewerModal, ConfirmDeleteModal, Alert } from '@app/shared/components';
 import { useMediaApi, useAlbumsApi } from '@shared/hooks/useApi';
 
 interface MediaGalleryProps {
@@ -15,6 +15,7 @@ interface MediaGalleryProps {
   currentPage?: number;
   pageSize?: number;
   onPageChange?: (page: number) => void;
+  onMediaDeleted?: () => void;
 }
 
 const MediaGallery: React.FC<MediaGalleryProps> = ({
@@ -27,6 +28,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   currentPage = 1,
   pageSize = 100,
   onPageChange,
+  onMediaDeleted,
 }) => {
   const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -41,9 +43,36 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSettingThumbnail, setIsSettingThumbnail] = useState(false);
 
+  // Modal and alert state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [alert, setAlert] = useState<{
+    type: 'success' | 'error' | 'warning' | 'info';
+    title?: string;
+    message: string;
+    visible: boolean;
+  }>({
+    type: 'info',
+    message: '',
+    visible: false,
+  });
+
   // API hooks
   const { deleteMedia } = useMediaApi();
   const { updateAlbum } = useAlbumsApi();
+
+  // Alert helper functions
+  const showAlert = (type: 'success' | 'error' | 'warning' | 'info', message: string, title?: string) => {
+    setAlert({
+      type,
+      title,
+      message,
+      visible: true,
+    });
+  };
+
+  const hideAlert = () => {
+    setAlert(prev => ({ ...prev, visible: false }));
+  };
 
   // Helper function to get the start of the week (Monday) for a given date
   const getWeekStart = (date: Date) => {
@@ -168,35 +197,53 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
     setSelectedMediaIds(new Set());
   };
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
     if (selectedMediaIds.size === 0) return;
+    setShowDeleteModal(true);
+  };
 
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ${selectedMediaIds.size} photo${selectedMediaIds.size === 1 ? '' : 's'}? This action cannot be undone.`
-    );
-
-    if (!confirmed) return;
-
+  const confirmDelete = async () => {
     setIsDeleting(true);
+    setShowDeleteModal(false);
 
     try {
       // Delete media one by one
       const deletePromises = Array.from(selectedMediaIds).map(id => deleteMedia(id));
       await Promise.all(deletePromises);
 
+      const deletedCount = selectedMediaIds.size;
+
       // Clear selection and exit selection mode
       setSelectedMediaIds(new Set());
       setIsSelectionMode(false);
 
-      // Optionally refresh the media list here if needed
-      // This depends on how your parent component manages the media state
+      // Notify parent component to refresh album data
+      // This is important in case any of the deleted media was used as the album thumbnail
+      if (onMediaDeleted) {
+        onMediaDeleted();
+      }
+
+      // Show success alert
+      showAlert(
+        'success',
+        `Successfully deleted ${deletedCount} ${deletedCount === 1 ? 'photo' : 'photos'}.`,
+        'Deletion Complete!'
+      );
 
     } catch (error) {
       console.error('Failed to delete media:', error);
-      alert('Failed to delete some photos. Please try again.');
+      showAlert(
+        'error',
+        'Failed to delete some photos. Please try again.',
+        'Deletion Failed!'
+      );
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
   };
 
   const handleSetThumbnail = async () => {
@@ -213,9 +260,20 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
       setSelectedMediaIds(new Set());
       setIsSelectionMode(false);
 
+      // Show success alert
+      showAlert(
+        'success',
+        'The album thumbnail has been updated successfully.',
+        'Thumbnail Updated!'
+      );
+
     } catch (error) {
       console.error('Failed to set album thumbnail:', error);
-      alert('Failed to set album thumbnail. Please try again.');
+      showAlert(
+        'error',
+        'Failed to set album thumbnail. Please try again.',
+        'Update Failed!'
+      );
     } finally {
       setIsSettingThumbnail(false);
     }
@@ -266,68 +324,70 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
 
   return (
     <div className="mt-8">
-      {/* Header with selection controls */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Photos ({allMedia.length})
-          {isSelectionMode && selectedMediaIds.size > 0 && (
-            <span className="ml-2 text-sm text-blue-600 dark:text-blue-400">
-              ({selectedMediaIds.size} selected)
-            </span>
-          )}
-        </h2>
+      {/* Sticky Header with selection controls */}
+      <div className="sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 pb-4 mb-6 backdrop-blur-sm bg-opacity-95 dark:bg-opacity-95">
+        <div className="flex items-center justify-between pt-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Photos ({allMedia.length})
+            {isSelectionMode && selectedMediaIds.size > 0 && (
+              <span className="ml-2 text-sm text-blue-600 dark:text-blue-400">
+                ({selectedMediaIds.size} selected)
+              </span>
+            )}
+          </h2>
 
-        <div className="flex items-center space-x-2">
-          {isSelectionMode ? (
-            <>
-              <button
-                onClick={selectAllMedia}
-                disabled={isDeleting || isSettingThumbnail}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-              >
-                Select All
-              </button>
-              <button
-                onClick={clearSelection}
-                disabled={isDeleting || isSettingThumbnail}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-              >
-                Clear
-              </button>
-              {selectedMediaIds.size === 1 && albumId && (
+          <div className="flex items-center space-x-2">
+            {isSelectionMode ? (
+              <>
                 <button
-                  onClick={handleSetThumbnail}
+                  onClick={selectAllMedia}
                   disabled={isDeleting || isSettingThumbnail}
-                  className="px-3 py-1 text-sm border border-green-300 rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 dark:bg-green-900/20 dark:border-green-600 dark:text-green-300 dark:hover:bg-green-900/30"
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                 >
-                  {isSettingThumbnail ? 'Setting...' : 'Set Album Thumbnail'}
+                  Select All
                 </button>
-              )}
-              {selectedMediaIds.size > 0 && (
                 <button
-                  onClick={handleDeleteSelected}
+                  onClick={clearSelection}
                   disabled={isDeleting || isSettingThumbnail}
-                  className="px-3 py-1 text-sm border border-red-300 rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 dark:bg-red-900/20 dark:border-red-600 dark:text-red-300 dark:hover:bg-red-900/30"
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                 >
-                  {isDeleting ? 'Deleting...' : `Delete (${selectedMediaIds.size})`}
+                  Clear
                 </button>
-              )}
+                {selectedMediaIds.size === 1 && albumId && (
+                  <button
+                    onClick={handleSetThumbnail}
+                    disabled={isDeleting || isSettingThumbnail}
+                    className="px-3 py-1 text-sm border border-green-300 rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 dark:bg-green-900/20 dark:border-green-600 dark:text-green-300 dark:hover:bg-green-900/30"
+                  >
+                    {isSettingThumbnail ? 'Setting...' : 'Set Album Thumbnail'}
+                  </button>
+                )}
+                {selectedMediaIds.size > 0 && (
+                  <button
+                    onClick={handleDeleteSelected}
+                    disabled={isDeleting || isSettingThumbnail}
+                    className="px-3 py-1 text-sm border border-red-300 rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 dark:bg-red-900/20 dark:border-red-600 dark:text-red-300 dark:hover:bg-red-900/30"
+                  >
+                    {isDeleting ? 'Deleting...' : `Delete (${selectedMediaIds.size})`}
+                  </button>
+                )}
+                <button
+                  onClick={toggleSelectionMode}
+                  disabled={isDeleting || isSettingThumbnail}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
               <button
                 onClick={toggleSelectionMode}
-                disabled={isDeleting || isSettingThumbnail}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
               >
-                Cancel
+                Select Photos
               </button>
-            </>
-          ) : (
-            <button
-              onClick={toggleSelectionMode}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-            >
-              Select Photos
-            </button>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
@@ -372,6 +432,24 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
         currentIndex={currentMediaIndex}
         onClose={handleViewerClose}
         onIndexChange={handleIndexChange}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={showDeleteModal}
+        itemCount={selectedMediaIds.size}
+        isDeleting={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
+
+      {/* Alert */}
+      <Alert
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        isVisible={alert.visible}
+        onDismiss={hideAlert}
       />
     </div>
   );

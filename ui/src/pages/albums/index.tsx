@@ -1,3 +1,18 @@
+/**
+ * Albums Page Component
+ * 
+ * Main page for album management in the Photos NG application.
+ * Provides functionality for:
+ * - Viewing album hierarchies (parent/child albums)
+ * - Creating new albums
+ * - Editing album descriptions
+ * - Displaying media within albums
+ * - Managing album thumbnails
+ * 
+ * The component supports both root-level album listing and individual album views
+ * with media galleries, depending on the URL parameter.
+ */
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector, selectAlbumsCreateFormOpen, selectCurrentAlbum } from '@shared/store';
@@ -10,40 +25,50 @@ import CreateAlbumForm from './components/CreateAlbumForm';
 import MediaGallery from './components/MediaGallery';
 
 const AlbumsPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  // URL parameters and navigation
+  const { id } = useParams<{ id: string }>(); // Album ID from URL (undefined for root albums view)
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  
+  // Redux state selectors
   const isCreateFormOpen = useAppSelector(selectAlbumsCreateFormOpen);
   const currentAlbum = useAppSelector(selectCurrentAlbum);
+  
+  // API hooks for data fetching and operations
   const { albums, loading, error, fetchAlbums, fetchAlbumById: fetchAlbumByIdApi, updateAlbum } = useAlbumsApi();
   const { media, loading: mediaLoading, error: mediaError, total: mediaTotal, fetchMedia } = useMediaApi();
 
-  // State for editable description
+  // Local state for inline description editing
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedDescription, setEditedDescription] = useState('');
 
-  // State for media pagination
+  // Media pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 100;
+  const pageSize = 100; // Number of media items per page
 
+  /**
+   * Main effect for page initialization and data fetching
+   * Runs when component mounts or when album ID or pagination changes
+   */
   useEffect(() => {
     // Set page as active when component mounts
     dispatch(setPageActive(true));
 
     if (id) {
-      // Fetch specific album
+      // Viewing a specific album - fetch album details and its media
       fetchAlbumByIdApi(id);
       // Fetch media for this album with consistent sorting and pagination
       fetchMedia({ 
         albumId: id, 
         limit: pageSize,
         offset: (currentPage - 1) * pageSize,
-        sortBy: ListMediaSortByEnum.CapturedAt, 
-        sortOrder: ListMediaSortOrderEnum.Desc 
+        sortBy: ListMediaSortByEnum.CapturedAt, // Sort by capture date
+        sortOrder: ListMediaSortOrderEnum.Desc  // Most recent first
       });
     } else {
-      // Fetch root albums and clear current album
+      // Viewing root albums list - fetch all top-level albums
       fetchAlbums({ limit: 20, offset: 0 });
+      // Clear current album when navigating to root
       dispatch(setCurrentAlbum(null));
     }
 
@@ -53,23 +78,38 @@ const AlbumsPage: React.FC = () => {
     };
   }, [dispatch, id, fetchAlbums, fetchAlbumByIdApi, fetchMedia, currentPage, pageSize]);
 
-  // Initialize edited description when currentAlbum changes
+  /**
+   * Initialize edited description when currentAlbum changes
+   * Ensures the input field shows the current album description
+   */
   useEffect(() => {
     if (currentAlbum) {
       setEditedDescription(currentAlbum.description || '');
     }
   }, [currentAlbum]);
 
+  /**
+   * Handles closing the create album form modal
+   */
   const handleCreateFormClose = () => {
     dispatch(setCreateFormOpen(false));
   };
 
+  /**
+   * Handles successful album creation
+   * Navigates to the newly created album
+   * @param albumId - The ID of the newly created album
+   */
   const handleCreateAlbumSuccess = (albumId: string) => {
     console.log('Album created successfully:', albumId);
     // Navigate to the created album
     navigate(`/albums/${albumId}`);
   };
 
+  /**
+   * Handles navigation back to parent album or root
+   * Uses the parentHref from current album to determine navigation target
+   */
   const handleBackToParent = () => {
     if (currentAlbum?.parentHref) {
       // Extract parent ID from parentHref and navigate to it
@@ -114,6 +154,21 @@ const AlbumsPage: React.FC = () => {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  const handleMediaDeleted = () => {
+    if (id) {
+      // Refresh album data to check if thumbnail was affected
+      fetchAlbumByIdApi(id);
+      // Also refresh media list to reflect deletions
+      fetchMedia({ 
+        albumId: id, 
+        limit: pageSize,
+        offset: (currentPage - 1) * pageSize,
+        sortBy: ListMediaSortByEnum.CapturedAt,
+        sortOrder: ListMediaSortOrderEnum.Desc
+      });
+    }
   };
 
   // Reset page when album changes
@@ -238,6 +293,7 @@ const AlbumsPage: React.FC = () => {
             currentPage={currentPage}
             pageSize={pageSize}
             onPageChange={handlePageChange}
+            onMediaDeleted={handleMediaDeleted}
           />
         )}
       </div>
