@@ -33,9 +33,9 @@ build:
 # Run the application
 run:
 	@echo "Create temp data root folder..."
-	@mkdir -p $(TMP_DATA_FOLDER) \
-	echo "Using temp directory: $$TMP_DIR"; \
-	echo "Running $(BINARY_NAME)..."; \
+	@mkdir -p $(TMP_DATA_FOLDER)
+	@echo "Using temp directory: $$TMP_DIR"
+	@echo "Running $(BINARY_NAME)..."
 	$(BINARY_PATH) serve --data-root-folder=$(TMP_DATA_FOLDER)
 
 run.ui:
