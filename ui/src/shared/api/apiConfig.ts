@@ -1,5 +1,5 @@
 import { Configuration } from '@generated/configuration';
-import { AlbumsApi, MediaApi, TimelineApi } from '@generated/api';
+import { AlbumsApi, MediaApi, StatsApi } from '@generated/api';
 
 // API Configuration
 const apiConfig = new Configuration({
@@ -9,6 +9,6 @@ const apiConfig = new Configuration({
 // API Instances
 export const albumsApi = new AlbumsApi(apiConfig);
 export const mediaApi = new MediaApi(apiConfig);
-export const timelineApi = new TimelineApi(apiConfig);
+export const statsApi = new StatsApi(apiConfig);
 
 export { apiConfig };

@@ -27,16 +27,6 @@ import {
   MediaFilters,
 } from '@reducers/mediaSlice';
 import {
-  fetchTimeline,
-  clearError as clearTimelineError,
-  setFilters as setTimelineFilters,
-  clearFilters as clearTimelineFilters,
-  setSelectedYear,
-  setSelectedMonth,
-  navigateToDate,
-  TimelineFilters,
-} from '@reducers/timelineSlice';
-import {
   fetchStats,
   clearError as clearStatsError,
   resetStats,
@@ -127,41 +117,6 @@ export const useMediaApi = () => {
     clearSelection: useCallback(() => dispatch(clearSelection()), [dispatch]),
     setViewMode: useCallback(
       (mode: 'grid' | 'list') => dispatch(setViewMode(mode)),
-      [dispatch]
-    ),
-  };
-};
-
-// Custom hook for Timeline API
-export const useTimelineApi = () => {
-  const dispatch = useAppDispatch();
-  const timelineState = useAppSelector((state) => state.timeline);
-
-  return {
-    // State
-    ...timelineState,
-    
-    // Actions
-    fetchTimeline: useCallback(
-      (params?: Partial<TimelineFilters>) => dispatch(fetchTimeline(params || {})),
-      [dispatch]
-    ),
-    clearError: useCallback(() => dispatch(clearTimelineError()), [dispatch]),
-    setFilters: useCallback(
-      (filters: Partial<TimelineFilters>) => dispatch(setTimelineFilters(filters)),
-      [dispatch]
-    ),
-    clearFilters: useCallback(() => dispatch(clearTimelineFilters()), [dispatch]),
-    setSelectedYear: useCallback(
-      (year?: number) => dispatch(setSelectedYear(year)),
-      [dispatch]
-    ),
-    setSelectedMonth: useCallback(
-      (month?: number) => dispatch(setSelectedMonth(month)),
-      [dispatch]
-    ),
-    navigateToDate: useCallback(
-      (date: { year?: number; month?: number }) => dispatch(navigateToDate(date)),
       [dispatch]
     ),
   };

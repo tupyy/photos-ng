@@ -1,7 +1,6 @@
 import { combineReducers } from '@reduxjs/toolkit';
 import albumsReducer from './albumsSlice';
 import mediaReducer from './mediaSlice';
-import timelineReducer from './timelineSlice';
 import syncReducer from './syncSlice';
 import uploadReducer from './uploadSlice';
 import statsReducer from './statsSlice';
@@ -10,7 +9,6 @@ import statsReducer from './statsSlice';
 const rootReducer = combineReducers({
   albums: albumsReducer,
   media: mediaReducer,
-  timeline: timelineReducer,
   sync: syncReducer,
   upload: uploadReducer,
   stats: statsReducer,
