@@ -107,7 +107,7 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
       {currentIndex > 0 && (
         <button
           onClick={handlePrevious}
-          className="hidden md:fixed left-4 top-1/2 transform -translate-y-1/2 z-50 p-4 rounded-full bg-black bg-opacity-70 text-white hover:bg-opacity-90 transition-colors shadow-lg"
+          className="hidden md:block fixed left-4 top-1/2 transform -translate-y-1/2 z-50 p-4 rounded-full bg-black bg-opacity-70 text-white hover:bg-opacity-90 transition-colors shadow-lg"
         >
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -119,7 +119,7 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
       {currentIndex < media.length - 1 && (
         <button
           onClick={handleNext}
-          className="hidden md:fixed right-4 top-1/2 transform -translate-y-1/2 z-50 p-4 rounded-full bg-black bg-opacity-70 text-white hover:bg-opacity-90 transition-colors shadow-lg"
+          className="hidden md:block fixed right-4 top-1/2 transform -translate-y-1/2 z-50 p-4 rounded-full bg-black bg-opacity-70 text-white hover:bg-opacity-90 transition-colors shadow-lg"
         >
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />

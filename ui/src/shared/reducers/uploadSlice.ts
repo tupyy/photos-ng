@@ -119,6 +119,9 @@ const uploadSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    removeCompletedFiles: (state) => {
+      state.files = state.files.filter(file => file.status !== 'completed');
+    },
     reset: () => initialState,
   },
   extraReducers: (builder) => {
@@ -146,6 +149,7 @@ export const {
   updateFileStatus,
   clearFiles,
   clearError,
+  removeCompletedFiles,
   reset,
 } = uploadSlice.actions;
 

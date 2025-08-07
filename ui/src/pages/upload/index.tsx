@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector, selectUpload, selectCurrentAlbum } from '@shared/store';
-import { uploadMediaFiles, addFiles, removeFile, clearFiles, reset } from '@shared/reducers/uploadSlice';
+import { uploadMediaFiles, addFiles, removeFile, clearFiles, removeCompletedFiles, reset } from '@shared/reducers/uploadSlice';
 
 const UploadMediaPage: React.FC = () => {
   const { albumId } = useParams<{ albumId: string }>();
@@ -153,11 +153,40 @@ const UploadMediaPage: React.FC = () => {
     const completed = files.filter(f => f.status === 'completed').length;
     const failed = files.filter(f => f.status === 'error').length;
     const uploading = files.filter(f => f.status === 'uploading').length;
+    const pending = files.filter(f => f.status === 'pending').length;
     
-    return { completed, failed, uploading, total: files.length };
+    // Calculate overall progress percentage
+    const totalProgress = files.reduce((acc, file) => {
+      if (file.status === 'completed') return acc + 100;
+      if (file.status === 'uploading') return acc + file.progress;
+      return acc; // pending and error files contribute 0
+    }, 0);
+    
+    const overallProgress = files.length > 0 ? Math.round(totalProgress / files.length) : 0;
+    
+    return { 
+      completed, 
+      failed, 
+      uploading, 
+      pending,
+      total: files.length,
+      overallProgress,
+      currentlyUploading: uploading > 0 ? completed + 1 : completed // The file currently being uploaded
+    };
   };
 
   const stats = getProgressStats();
+
+  // Auto-remove completed files after a short delay
+  useEffect(() => {
+    if (stats.completed > 0 && !isUploading) {
+      const timer = setTimeout(() => {
+        dispatch(removeCompletedFiles());
+      }, 2000); // Wait 2 seconds after upload completes before removing
+
+      return () => clearTimeout(timer);
+    }
+  }, [stats.completed, isUploading, dispatch]);
 
   return (
     <div className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -237,7 +266,7 @@ const UploadMediaPage: React.FC = () => {
         {/* Upload Progress Stats */}
         {files.length > 0 && isUploading && (
           <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center">
                 <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -245,13 +274,26 @@ const UploadMediaPage: React.FC = () => {
                 </svg>
                 <div>
                   <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                    Uploading {stats.uploading} of {stats.total} files...
+                    Uploading {stats.currentlyUploading} of {stats.total} files...
                   </p>
                   <p className="text-xs text-blue-700 dark:text-blue-200">
                     {stats.completed} completed, {stats.failed} failed
                   </p>
                 </div>
               </div>
+              <div className="text-right">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  {stats.overallProgress}%
+                </p>
+              </div>
+            </div>
+            
+            {/* Overall Progress Bar */}
+            <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${stats.overallProgress}%` }}
+              />
             </div>
           </div>
         )}
@@ -353,6 +395,14 @@ const UploadMediaPage: React.FC = () => {
         {/* Action Buttons */}
         {files.length > 0 && (
           <div className="mt-6 flex justify-end space-x-3">
+            {stats.completed > 0 && !isUploading && (
+              <button
+                onClick={() => dispatch(removeCompletedFiles())}
+                className="px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:bg-green-900/20 dark:border-green-600 dark:text-green-300 dark:hover:bg-green-900/30"
+              >
+                Remove Completed ({stats.completed})
+              </button>
+            )}
             <button
               onClick={() => dispatch(clearFiles())}
               disabled={isUploading}
@@ -365,7 +415,7 @@ const UploadMediaPage: React.FC = () => {
               disabled={isUploading || files.length === 0}
               className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isUploading ? `Uploading... (${stats.completed}/${stats.total})` : `Upload ${files.length} File${files.length === 1 ? '' : 's'}`}
+              {isUploading ? `Uploading... (${stats.completed + stats.uploading}/${stats.total})` : `Upload ${files.length} File${files.length === 1 ? '' : 's'}`}
             </button>
           </div>
         )}

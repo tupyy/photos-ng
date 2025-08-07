@@ -72,31 +72,32 @@ func (m *MediaService) GetMediaByID(ctx context.Context, id string) (*entity.Med
 // WriteMedia creates or updates a media item and writes its content to disk
 func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*entity.Media, error) {
 	// Check if the media already exists
-	isMediaExists := true
-	_, err := m.GetMediaByID(ctx, media.ID)
-	if err != nil && IsErrResourceNotFound(err) {
-		isMediaExists = false
+	oldMedia, err := m.GetMediaByID(ctx, media.ID)
+	if err != nil && !IsErrResourceNotFound(err) {
+		return nil, err
+	}
+
+	content, err := media.Content()
+	if err != nil {
+		return nil, err
+	}
+
+	// Read all content into memory to compute hash and write to disk
+	contentBytes, err := io.ReadAll(content)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read media content: %w", err)
+	}
+
+	// Compute SHA256 hash
+	hash := sha256.Sum256(contentBytes)
+
+	if oldMedia != nil && fmt.Sprintf("%x", hash) == oldMedia.Hash {
+		zap.S().Debugw("update media skipped.same hash", "hash", oldMedia.Hash)
+		return oldMedia, nil
 	}
 
 	// Write the media to the datastore using a write transaction
 	err = m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
-		if isMediaExists {
-			return writer.WriteMedia(ctx, media)
-		}
-
-		content, err := media.Content()
-		if err != nil {
-			return err
-		}
-
-		// Read all content into memory to compute hash and write to disk
-		contentBytes, err := io.ReadAll(content)
-		if err != nil {
-			return fmt.Errorf("failed to read media content: %w", err)
-		}
-
-		// Compute SHA256 hash
-		hash := sha256.Sum256(contentBytes)
 		media.Hash = fmt.Sprintf("%x", hash)
 
 		// process the photo
