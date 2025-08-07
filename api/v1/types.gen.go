@@ -92,23 +92,6 @@ type ExifHeader struct {
 	Value string `json:"value"`
 }
 
-// GetTimelineResponse defines model for GetTimelineResponse.
-type GetTimelineResponse struct {
-	Buckets []Bucket `json:"buckets"`
-
-	// Limit Number of buckets returned
-	Limit int `json:"limit"`
-
-	// Offset Number of buckets skipped
-	Offset int `json:"offset"`
-
-	// Total Total number of buckets
-	Total int `json:"total"`
-
-	// Years List of all years that contain photos
-	Years []int `json:"years"`
-}
-
 // ListAlbumsResponse defines model for ListAlbumsResponse.
 type ListAlbumsResponse struct {
 	Albums []Album `json:"albums"`
@@ -153,6 +136,18 @@ type Media struct {
 	// Thumbnail href to thumbnail
 	Thumbnail string `json:"thumbnail"`
 	Type      string `json:"type"`
+}
+
+// StatsResponse defines model for StatsResponse.
+type StatsResponse struct {
+	// CountAlbum Total number of albums
+	CountAlbum int `json:"countAlbum"`
+
+	// CountMedia Total number of media items
+	CountMedia int `json:"countMedia"`
+
+	// Years List of years that contain media
+	Years []int `json:"years"`
 }
 
 // SyncAlbumResponse defines model for SyncAlbumResponse.
@@ -248,21 +243,6 @@ type UploadMediaMultipartBody struct {
 
 	// Filename Original name of the file
 	Filename string `json:"filename"`
-}
-
-// GetTimelineParams defines parameters for GetTimeline.
-type GetTimelineParams struct {
-	// StartDate Start date for the timeline
-	StartDate *openapi_types.Date `form:"startDate,omitempty" json:"startDate,omitempty"`
-
-	// EndDate Start date for the timeline
-	EndDate *openapi_types.Date `form:"endDate,omitempty" json:"endDate,omitempty"`
-
-	// Limit Maximum number of buckets to return
-	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
-
-	// Offset Number of buckets to skip
-	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
 }
 
 // CreateAlbumJSONRequestBody defines body for CreateAlbum for application/json ContentType.

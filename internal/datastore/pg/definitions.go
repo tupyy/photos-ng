@@ -122,6 +122,10 @@ var (
 	updateAlbumStmt = psql.Update(albumsTable)
 
 	updateMediaStmt = psql.Update(mediaTable)
+
+	statAlbumMediaStmt = `select (select count(*) from albums) as total_albums, (select count(*) from media) as total_media;`
+
+	statYearsStmt = `SELECT DISTINCT EXTRACT(YEAR FROM captured_at)::INTEGER AS year FROM media WHERE captured_at IS NOT NULL ORDER BY year DESC;`
 )
 
 func preffix(preffix, columnName string) string {

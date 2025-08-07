@@ -64,7 +64,7 @@ Class | Method | HTTP request | Description
 *MediaApi* | [**listMedia**](docs/MediaApi.md#listmedia) | **GET** /media | List all media
 *MediaApi* | [**updateMedia**](docs/MediaApi.md#updatemedia) | **PUT** /media/{id} | Update media by ID
 *MediaApi* | [**uploadMedia**](docs/MediaApi.md#uploadmedia) | **POST** /media | Upload new media
-*TimelineApi* | [**getTimeline**](docs/TimelineApi.md#gettimeline) | **GET** /timeline | Get timeline buckets
+*StatsApi* | [**getStats**](docs/StatsApi.md#getstats) | **GET** /stats | Get application statistics
 
 
 ### Documentation For Models
@@ -74,11 +74,11 @@ Class | Method | HTTP request | Description
  - [Bucket](docs/Bucket.md)
  - [CreateAlbumRequest](docs/CreateAlbumRequest.md)
  - [ExifHeader](docs/ExifHeader.md)
- - [GetTimelineResponse](docs/GetTimelineResponse.md)
  - [ListAlbumsResponse](docs/ListAlbumsResponse.md)
  - [ListMediaResponse](docs/ListMediaResponse.md)
  - [Media](docs/Media.md)
  - [ModelError](docs/ModelError.md)
+ - [StatsResponse](docs/StatsResponse.md)
  - [SyncAlbumResponse](docs/SyncAlbumResponse.md)
  - [UpdateAlbumRequest](docs/UpdateAlbumRequest.md)
  - [UpdateMediaRequest](docs/UpdateMediaRequest.md)

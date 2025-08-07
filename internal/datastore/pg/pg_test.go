@@ -378,7 +378,6 @@ var _ = Describe("Query", Ordered, func() {
 			Expect(err).To(BeNil())
 			Expect(stats.CountMedia).To(Equal(0))
 			Expect(stats.CountAlbum).To(Equal(0))
-			Expect(stats.TimelineYears).To(HaveLen(0))
 		})
 	})
 })

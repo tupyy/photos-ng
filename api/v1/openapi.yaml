@@ -441,54 +441,20 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /timeline:
+  /stats:
     get:
-      summary: Get timeline buckets
-      description: Retrieve a timeline of media organized in buckets
-      operationId: getTimeline
+      summary: Get application statistics
+      description: Retrieve statistics including album count, media count, and years with media
+      operationId: getStats
       tags:
-        - Timeline
-      parameters:
-        - name: startDate
-          in: query
-          description: Start date for the timeline
-          schema:
-            type: string
-            format: date
-            pattern: '^\d{2}/\d{2}/\d{4}$'
-            example: "01/01/2024"
-        - name: endDate
-          in: query
-          description: Start date for the timeline
-          schema:
-            type: string
-            format: date
-            pattern: '^\d{2}/\d{2}/\d{4}$'
-            example: "01/01/2024"
-        - name: limit
-          in: query
-          description: Maximum number of buckets to return
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 20
-        - name: offset
-          in: query
-          description: Number of buckets to skip
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
+        - Stats
       responses:
         '200':
           description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetTimelineResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: '#/components/schemas/StatsResponse'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -709,35 +675,6 @@ components:
           type: integer
           description: Number of media items skipped
 
-    GetTimelineResponse:
-      type: object
-      required:
-        - buckets
-        - years
-        - total
-        - limit
-        - offset
-      properties:
-        buckets:
-          type: array
-          items:
-            $ref: '#/components/schemas/Bucket'
-        years:
-          type: array
-          items:
-            type: integer
-          description: List of all years that contain photos
-          example: [2020, 2021, 2022, 2023, 2024]
-        total:
-          type: integer
-          description: Total number of buckets
-        limit:
-          type: integer
-          description: Number of buckets returned
-        offset:
-          type: integer
-          description: Number of buckets skipped
-
     SyncAlbumResponse:
       type: object
       required:
@@ -752,6 +689,28 @@ components:
           type: integer
           description: Number of items synced
           example: 42
+
+    StatsResponse:
+      type: object
+      required:
+        - years
+        - countMedia
+        - countAlbum
+      properties:
+        years:
+          type: array
+          items:
+            type: integer
+          description: List of years that contain media
+          example: [2024, 2023, 2022]
+        countMedia:
+          type: integer
+          description: Total number of media items
+          example: 1250
+        countAlbum:
+          type: integer
+          description: Total number of albums
+          example: 45
 
   responses:
     BadRequest:

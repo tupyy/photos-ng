@@ -52,9 +52,9 @@ type ServerInterface interface {
 	// Get media thumbnail
 	// (GET /media/{id}/thumbnail)
 	GetMediaThumbnail(c *gin.Context, id string)
-	// Get timeline buckets
-	// (GET /timeline)
-	GetTimeline(c *gin.Context, params GetTimelineParams)
+	// Get application statistics
+	// (GET /stats)
+	GetStats(c *gin.Context)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -432,45 +432,8 @@ func (siw *ServerInterfaceWrapper) GetMediaThumbnail(c *gin.Context) {
 	siw.Handler.GetMediaThumbnail(c, id)
 }
 
-// GetTimeline operation middleware
-func (siw *ServerInterfaceWrapper) GetTimeline(c *gin.Context) {
-
-	var err error
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetTimelineParams
-
-	// ------------- Optional query parameter "startDate" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "startDate", c.Request.URL.Query(), &params.StartDate)
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter startDate: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "endDate" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "endDate", c.Request.URL.Query(), &params.EndDate)
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter endDate: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "limit", c.Request.URL.Query(), &params.Limit)
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	// ------------- Optional query parameter "offset" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "offset", c.Request.URL.Query(), &params.Offset)
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
-		return
-	}
+// GetStats operation middleware
+func (siw *ServerInterfaceWrapper) GetStats(c *gin.Context) {
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -479,7 +442,7 @@ func (siw *ServerInterfaceWrapper) GetTimeline(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.GetTimeline(c, params)
+	siw.Handler.GetStats(c)
 }
 
 // GinServerOptions provides options for the Gin server.
@@ -522,5 +485,5 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.PUT(options.BaseURL+"/media/:id", wrapper.UpdateMedia)
 	router.GET(options.BaseURL+"/media/:id/content", wrapper.GetMediaContent)
 	router.GET(options.BaseURL+"/media/:id/thumbnail", wrapper.GetMediaThumbnail)
-	router.GET(options.BaseURL+"/timeline", wrapper.GetTimeline)
+	router.GET(options.BaseURL+"/stats", wrapper.GetStats)
 }

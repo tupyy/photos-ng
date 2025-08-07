@@ -153,12 +153,37 @@ func (d *Datastore) QueryMedia(ctx context.Context, opts ...QueryOption) ([]enti
 }
 
 func (d *Datastore) Stats(ctx context.Context) (entity.Stats, error) {
-	// TODO: Implement actual stats query
-	return entity.Stats{
-		CountMedia:    0,
-		CountAlbum:    0,
-		TimelineYears: []int{}, // This should be populated from actual media data
-	}, nil
+	var stats entity.Stats
+
+	// First query: Get album and media counts
+	row := d.pool.QueryRow(ctx, statAlbumMediaStmt)
+	err := row.Scan(&stats.CountAlbum, &stats.CountMedia)
+	if err != nil {
+		return entity.Stats{}, err
+	}
+
+	// Second query: Get years with at least one image
+	rows, err := d.pool.Query(ctx, statYearsStmt)
+	if err != nil {
+		return entity.Stats{}, err
+	}
+	defer rows.Close()
+
+	var years []int
+	for rows.Next() {
+		var year int
+		if err := rows.Scan(&year); err != nil {
+			return entity.Stats{}, err
+		}
+		years = append(years, year)
+	}
+
+	if err := rows.Err(); err != nil {
+		return entity.Stats{}, err
+	}
+
+	stats.Years = years
+	return stats, nil
 }
 
 // WriteTx executes a write transaction with the provided user function.

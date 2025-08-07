@@ -36,6 +36,11 @@ import {
   navigateToDate,
   TimelineFilters,
 } from '@reducers/timelineSlice';
+import {
+  fetchStats,
+  clearError as clearStatsError,
+  resetStats,
+} from '@reducers/statsSlice';
 import { CreateAlbumRequest, UpdateAlbumRequest, UpdateMediaRequest } from '@generated/models';
 
 // Custom hook for Albums API
@@ -159,5 +164,21 @@ export const useTimelineApi = () => {
       (date: { year?: number; month?: number }) => dispatch(navigateToDate(date)),
       [dispatch]
     ),
+  };
+};
+
+// Custom hook for Stats API
+export const useStatsApi = () => {
+  const dispatch = useAppDispatch();
+  const statsState = useAppSelector((state) => state.stats);
+
+  return {
+    // State
+    ...statsState,
+    
+    // Actions
+    fetchStats: useCallback(() => dispatch(fetchStats()), [dispatch]),
+    clearError: useCallback(() => dispatch(clearStatsError()), [dispatch]),
+    resetStats: useCallback(() => dispatch(resetStats()), [dispatch]),
   };
 };

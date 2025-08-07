@@ -16,5 +16,5 @@
 
 export * from './api/albums-api';
 export * from './api/media-api';
-export * from './api/timeline-api';
+export * from './api/stats-api';
 
