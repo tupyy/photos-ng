@@ -1,42 +1,158 @@
-import React from 'react';
+/**
+ * Timeline Page Component
+ *
+ * Displays all media in chronological order with year-based navigation.
+ * Features:
+ * - All media displayed in captured_at descending order
+ * - Year navigation sidebar for quick temporal navigation
+ * - MediaGallery without selection capabilities (read-only view)
+ * - Responsive layout with sidebar on the right
+ *
+ * Uses the /api/v1/media endpoint to fetch all media sorted by captured_at.
+ */
+
+import React, { useEffect, useState, useMemo } from 'react';
+import { useAppDispatch, useAppSelector } from '@shared/store';
+import { setPageActive } from '@shared/reducers/albumsSlice';
+import { useMediaApi } from '@shared/hooks/useApi';
+import { ListMediaSortByEnum, ListMediaSortOrderEnum } from '@generated/api/media-api';
+import TimelineMediaGallery from './components/TimelineMediaGallery';
+import YearNavigation from './components/YearNavigation';
 
 const TimelinePage: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const { media, loading, error, total, fetchMedia } = useMediaApi();
+
+  // State for pagination and year scrolling
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [visibleYear, setVisibleYear] = useState<number | null>(null); // Year currently in view
+  const pageSize = 1000; // Load more items to enable scrolling through years
+
+  /**
+   * Effect for page initialization and data fetching
+   * Fetches all media sorted by capture date (most recent first)
+   */
+  useEffect(() => {
+    // Set page as active when component mounts
+    dispatch(setPageActive(true));
+
+    // Fetch all media sorted by capture date descending
+    fetchMedia({
+      limit: pageSize,
+      offset: (currentPage - 1) * pageSize,
+      sortBy: ListMediaSortByEnum.CapturedAt,
+      sortOrder: ListMediaSortOrderEnum.Desc,
+    });
+
+    // Cleanup when component unmounts
+    return () => {
+      dispatch(setPageActive(false));
+    };
+  }, [dispatch, fetchMedia, currentPage]);
+
+  /**
+   * Extract unique years from media for navigation
+   * Sorts years in descending order (most recent first)
+   */
+  const availableYears = useMemo(() => {
+    if (!media || media.length === 0) return [];
+
+    const years = new Set<number>();
+    media.forEach((mediaItem) => {
+      const year = new Date(mediaItem.capturedAt).getFullYear();
+      years.add(year);
+    });
+
+    return Array.from(years).sort((a, b) => b - a);
+  }, [media]);
+
+  /**
+   * Handles pagination changes
+   * Resets to page 1 when year filter changes
+   */
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  /**
+   * Handles year selection from navigation
+   * Scrolls to the selected year instead of filtering
+   */
+  const handleYearSelect = (year: number | null) => {
+    setSelectedYear(year);
+    if (year) {
+      // Check if this is the most recent year (first in our sorted list)
+      const mostRecentYear = availableYears[0];
+      
+      if (year === mostRecentYear) {
+        // For the most recent year, scroll to the very top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        // For other years, find the year anchor and scroll to it
+        const yearElement = document.getElementById(`year-${year}`);
+        if (yearElement) {
+          yearElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+            inline: 'nearest',
+          });
+        }
+      }
+    } else {
+      // Scroll to top for "All Years"
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  /**
+   * Handles visible year changes from scroll events
+   * Updates the year navigation to reflect current scroll position
+   */
+  const handleVisibleYearChange = (year: number | null) => {
+    setVisibleYear(year);
+  };
+
+  /**
+   * Handles media refresh after operations (if needed in the future)
+   */
+  const handleMediaRefresh = () => {
+    fetchMedia({
+      limit: pageSize,
+      offset: (currentPage - 1) * pageSize,
+      sortBy: ListMediaSortByEnum.CapturedAt,
+      sortOrder: ListMediaSortOrderEnum.Desc,
+    });
+  };
+
   return (
-    <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div className="px-4 py-6 sm:px-0">
-        <div className="text-center py-12">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              strokeWidth="1.5" 
-              stroke="currentColor" 
-              className="w-6 h-6 text-green-600"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" 
-              />
-            </svg>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex gap-8">
+          {/* Media Gallery */}
+          <div className="flex-1 min-w-0">
+            <TimelineMediaGallery
+              media={media || []}
+              loading={loading}
+              error={error}
+              total={total}
+              currentPage={currentPage}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onMediaRefresh={handleMediaRefresh}
+              onVisibleYearChange={handleVisibleYearChange}
+            />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Timeline View</h2>
-          <p className="text-gray-600 mb-8">
-            Explore your photos organized chronologically. Navigate through your memories by date.
-          </p>
-          <div className="space-y-4">
-            <div className="bg-gray-50 rounded-lg p-6 text-left max-w-2xl mx-auto">
-              <h3 className="font-semibold text-gray-900 mb-2">Coming Soon:</h3>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Interactive timeline with year/month navigation</li>
-                <li>• Photo clusters by date taken</li>
-                <li>• Quick jump to specific dates</li>
-                <li>• Timeline statistics and insights</li>
-                <li>• Memories and highlights</li>
-                <li>• Date range filtering</li>
-              </ul>
-            </div>
+
+          {/* Year Navigation Sidebar */}
+          <div className="w-30 flex-shrink-0">
+            <YearNavigation
+              availableYears={availableYears}
+              selectedYear={visibleYear} // Use visibleYear instead of selectedYear
+              onYearSelect={handleYearSelect}
+              loading={loading}
+            />
           </div>
         </div>
       </div>
