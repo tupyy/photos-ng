@@ -36,7 +36,11 @@ const AlbumsPage: React.FC = () => {
   
   // API hooks for data fetching and operations
   const { albums, loading, error, fetchAlbums, fetchAlbumById: fetchAlbumByIdApi, updateAlbum } = useAlbumsApi();
-  const { media, loading: mediaLoading, error: mediaError, total: mediaTotal, fetchMedia } = useMediaApi();
+
+  // Local state for paginated media
+  const [paginatedMedia, setPaginatedMedia] = useState<any[]>([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
 
   // Local state for inline description editing
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -55,19 +59,11 @@ const AlbumsPage: React.FC = () => {
     dispatch(setPageActive(true));
 
     if (id) {
-      // Viewing a specific album - fetch album details and its media
+      // Viewing a specific album - fetch album details (which includes all media)
       fetchAlbumByIdApi(id);
-      // Fetch media for this album with consistent sorting and pagination
-      fetchMedia({ 
-        albumId: id, 
-        limit: pageSize,
-        offset: (currentPage - 1) * pageSize,
-        sortBy: ListMediaSortByEnum.CapturedAt, // Sort by capture date
-        sortOrder: ListMediaSortOrderEnum.Desc  // Most recent first
-      });
     } else {
-      // Viewing root albums list - fetch all top-level albums
-      fetchAlbums({ limit: 20, offset: 0 });
+      // Viewing root albums list - fetch all albums (no pagination)
+      fetchAlbums({ limit: 1000, offset: 0 });
       // Clear current album when navigating to root
       dispatch(setCurrentAlbum(null));
     }
@@ -76,7 +72,7 @@ const AlbumsPage: React.FC = () => {
     return () => {
       dispatch(setPageActive(false));
     };
-  }, [dispatch, id, fetchAlbums, fetchAlbumByIdApi, fetchMedia, currentPage, pageSize]);
+  }, [dispatch, id, fetchAlbums, fetchAlbumByIdApi]);
 
   /**
    * Initialize edited description when currentAlbum changes
@@ -158,16 +154,9 @@ const AlbumsPage: React.FC = () => {
 
   const handleMediaDeleted = () => {
     if (id) {
-      // Refresh album data to check if thumbnail was affected
+      // Refresh album data to get updated media list and check if thumbnail was affected
       fetchAlbumByIdApi(id);
-      // Also refresh media list to reflect deletions
-      fetchMedia({ 
-        albumId: id, 
-        limit: pageSize,
-        offset: (currentPage - 1) * pageSize,
-        sortBy: ListMediaSortByEnum.CapturedAt,
-        sortOrder: ListMediaSortOrderEnum.Desc
-      });
+      // The useEffect will automatically refresh the paginated media when currentAlbum changes
     }
   };
 
@@ -175,6 +164,53 @@ const AlbumsPage: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [id]);
+
+  // Fetch media objects for current page when album or page changes
+  useEffect(() => {
+    const fetchPaginatedMedia = async () => {
+      if (!currentAlbum?.media || currentAlbum.media.length === 0) {
+        setPaginatedMedia([]);
+        return;
+      }
+
+      // Calculate pagination for media hrefs
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = Math.min(startIndex + pageSize, currentAlbum.media.length);
+      const currentPageHrefs = currentAlbum.media.slice(startIndex, endIndex);
+
+      if (currentPageHrefs.length === 0) {
+        setPaginatedMedia([]);
+        return;
+      }
+
+      setMediaLoading(true);
+      setMediaError(null);
+
+      try {
+        // Fetch media objects for current page hrefs
+        const mediaPromises = currentPageHrefs.map(async (href) => {
+          // Extract media ID from href (e.g., "/api/v1/media/123" -> "123")
+          const mediaId = href.split('/').pop();
+          const response = await fetch(href);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch media ${mediaId}: ${response.status}`);
+          }
+          return response.json();
+        });
+
+        const mediaObjects = await Promise.all(mediaPromises);
+        setPaginatedMedia(mediaObjects);
+      } catch (error) {
+        console.error('Error fetching paginated media:', error);
+        setMediaError(error instanceof Error ? error.message : 'Failed to fetch media');
+        setPaginatedMedia([]);
+      } finally {
+        setMediaLoading(false);
+      }
+    };
+
+    fetchPaginatedMedia();
+  }, [currentAlbum, currentPage, pageSize]);
 
   // Determine which albums to show
   const albumsToShow: Album[] =
@@ -284,12 +320,12 @@ const AlbumsPage: React.FC = () => {
         {/* Media Gallery - Show only when viewing a specific album */}
         {id && currentAlbum && (
           <MediaGallery 
-            media={media} 
+            media={paginatedMedia} 
             loading={mediaLoading} 
             error={mediaError}
             albumName={currentAlbum.name}
             albumId={id}
-            total={mediaTotal}
+            total={currentAlbum.media?.length || 0}
             currentPage={currentPage}
             pageSize={pageSize}
             onPageChange={handlePageChange}

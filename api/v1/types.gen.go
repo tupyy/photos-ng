@@ -38,8 +38,8 @@ type Album struct {
 	// Id Unique identifier for the album
 	Id string `json:"id"`
 
-	// Media list of media href
-	Media *[]string `json:"media,omitempty"`
+	// Media list of media objects in this album
+	Media *[]Media `json:"media,omitempty"`
 
 	// Name name of the album
 	Name string `json:"name"`

@@ -23,18 +23,21 @@ var (
 )
 
 type ProcessingMediaService struct {
-	et *exiftool.Exiftool
 }
 
 func NewProcessingMediaService() (*ProcessingMediaService, error) {
-	et, err := exiftool.NewExiftool()
-	if err != nil {
-		return nil, fmt.Errorf("failed to open exiftool: %s", err)
-	}
-	return &ProcessingMediaService{et: et}, nil
+	return &ProcessingMediaService{}, nil
 }
 
 func (p *ProcessingMediaService) Process(ctx context.Context, content io.Reader) (io.Reader, map[string]string, error) {
+	et, err := exiftool.NewExiftool()
+	if err != nil {
+		return nil, map[string]string{}, fmt.Errorf("failed to open exiftool: %s", err)
+	}
+	defer func() {
+		et.Close()
+	}()
+
 	data, err := io.ReadAll(content)
 	if err != nil {
 		return nil, map[string]string{}, err
@@ -61,7 +64,7 @@ func (p *ProcessingMediaService) Process(ctx context.Context, content io.Reader)
 	tmp.Close()
 
 	// extract exif
-	fileInfos := p.et.ExtractMetadata(tmp.Name())
+	fileInfos := et.ExtractMetadata(tmp.Name())
 
 	exif := make(map[string]string)
 	for k, v := range fileInfos[0].Fields {
@@ -95,8 +98,4 @@ func (p *ProcessingMediaService) generateThumbnail(r io.Reader, w io.Writer) err
 	}
 
 	return nil
-}
-
-func (p *ProcessingMediaService) Close() {
-	_ = p.et.Close()
 }
