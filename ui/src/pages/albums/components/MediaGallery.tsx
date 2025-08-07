@@ -32,12 +32,39 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
-  // Sort media locally: maintain API global sorting by capturedAt (desc), but add secondary sort by filename for items with same timestamp within this page
-  const sortedMedia = React.useMemo(() => {
-    if (!media || media.length === 0) return media;
+  // Helper function to get the start of the week (Monday) for a given date
+  const getWeekStart = (date: Date) => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Monday start
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
 
-    return [...media].sort((a, b) => {
-      // First, sort by capturedAt (descending, as API does)
+  // Format week range string
+  const formatWeekRange = (weekStart: Date) => {
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    const startDay = weekStart.getDate();
+    const endDay = weekEnd.getDate();
+    const startMonth = weekStart.toLocaleDateString('en-US', { month: 'long' });
+    const endMonth = weekEnd.toLocaleDateString('en-US', { month: 'long' });
+    
+    if (startMonth === endMonth) {
+      return `${startDay} - ${endDay} ${startMonth}`;
+    } else {
+      return `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
+    }
+  };
+
+  // Group media by week intervals
+  const groupedMedia = React.useMemo(() => {
+    if (!media || media.length === 0) return [];
+
+    // First sort all media by capturedAt (descending)
+    const sortedMedia = [...media].sort((a, b) => {
       const capturedAtA = new Date(a.capturedAt).getTime();
       const capturedAtB = new Date(b.capturedAt).getTime();
 
@@ -48,7 +75,35 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
       // If capturedAt is the same, sort by filename (ascending)
       return a.filename.localeCompare(b.filename);
     });
+
+    // Group by week
+    const groups = new Map<string, Media[]>();
+    
+    sortedMedia.forEach((mediaItem) => {
+      const capturedAt = new Date(mediaItem.capturedAt);
+      const weekStart = getWeekStart(capturedAt);
+      const weekKey = weekStart.toISOString();
+      
+      if (!groups.has(weekKey)) {
+        groups.set(weekKey, []);
+      }
+      groups.get(weekKey)!.push(mediaItem);
+    });
+
+    // Convert to array and sort weeks by date (most recent first)
+    return Array.from(groups.entries())
+      .map(([weekKey, mediaItems]) => ({
+        weekStart: new Date(weekKey),
+        weekRange: formatWeekRange(new Date(weekKey)),
+        media: mediaItems
+      }))
+      .sort((a, b) => b.weekStart.getTime() - a.weekStart.getTime());
   }, [media]);
+
+  // Flatten grouped media for modal navigation
+  const allMedia = React.useMemo(() => {
+    return groupedMedia.flatMap(group => group.media);
+  }, [groupedMedia]);
 
   const handleInfoClick = (mediaItem: Media) => {
     setSelectedMedia(mediaItem);
@@ -62,7 +117,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
 
   // Media viewer modal handlers
   const handleMediaClick = (mediaItem: Media) => {
-    const index = sortedMedia.findIndex(m => m.id === mediaItem.id);
+    const index = allMedia.findIndex(m => m.id === mediaItem.id);
     setCurrentMediaIndex(index);
     setIsViewerOpen(true);
   };
@@ -96,7 +151,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
     );
   }
 
-  if (!sortedMedia || sortedMedia.length === 0) {
+  if (!allMedia || allMedia.length === 0) {
     return (
       <div className="mt-8">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Photos</h2>
@@ -120,15 +175,29 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
 
   return (
     <div className="mt-8">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Photos ({sortedMedia.length})</h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-        {sortedMedia.map((mediaItem) => (
-          <MediaThumbnail 
-            key={mediaItem.id} 
-            media={mediaItem} 
-            onInfoClick={handleInfoClick}
-            onClick={handleMediaClick}
-          />
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Photos ({allMedia.length})</h2>
+      
+      {/* Grouped by weeks */}
+      <div className="space-y-8">
+        {groupedMedia.map((group) => (
+          <div key={group.weekStart.toISOString()}>
+            {/* Week header */}
+            <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+              {group.weekRange} ({group.media.length} photos)
+            </h3>
+            
+            {/* Media grid for this week */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              {group.media.map((mediaItem) => (
+                <MediaThumbnail 
+                  key={mediaItem.id} 
+                  media={mediaItem} 
+                  onInfoClick={handleInfoClick}
+                  onClick={handleMediaClick}
+                />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
@@ -143,7 +212,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
       {/* Media Viewer Modal */}
       <MediaViewerModal
         isOpen={isViewerOpen}
-        media={sortedMedia}
+        media={allMedia}
         currentIndex={currentMediaIndex}
         onClose={handleViewerClose}
         onIndexChange={handleIndexChange}

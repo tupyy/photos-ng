@@ -10,6 +10,7 @@ import (
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
+	"go.uber.org/zap"
 )
 
 // MediaService provides business logic for media operations
@@ -115,6 +116,12 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 		}
 		media.Thumbnail = thumbnail
 		media.Exif = exif
+
+		if captureAt, err := media.GetCapturedTime(); err != nil {
+			zap.S().Warnw("failed to get captured at timestamp", "error", err, "filename", media.Filepath())
+		} else {
+			media.CapturedAt = captureAt
+		}
 
 		// Write the file to disk using the media's filepath
 		if err := m.fs.Write(ctx, media.Filepath(), bytes.NewReader(contentBytes)); err != nil {
