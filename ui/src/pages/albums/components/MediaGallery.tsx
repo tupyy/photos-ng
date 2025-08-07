@@ -3,12 +3,14 @@ import { Media } from '@generated/models';
 import MediaThumbnail from '@app/shared/components/MediaThumbnail';
 import ExifDrawer from '@app/shared/components/ExifDrawer';
 import { MediaViewerModal } from '@app/shared/components';
+import { useMediaApi, useAlbumsApi } from '@shared/hooks/useApi';
 
 interface MediaGalleryProps {
   media: Media[];
   loading?: boolean;
   error?: string | null;
   albumName?: string;
+  albumId?: string;
   total?: number;
   currentPage?: number;
   pageSize?: number;
@@ -20,6 +22,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   loading = false,
   error = null,
   albumName,
+  albumId,
   total = 0,
   currentPage = 1,
   pageSize = 100,
@@ -27,10 +30,20 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
 }) => {
   const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  
+
   // Media viewer modal state
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+
+  // Multi-select state
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedMediaIds, setSelectedMediaIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSettingThumbnail, setIsSettingThumbnail] = useState(false);
+
+  // API hooks
+  const { deleteMedia } = useMediaApi();
+  const { updateAlbum } = useAlbumsApi();
 
   // Helper function to get the start of the week (Monday) for a given date
   const getWeekStart = (date: Date) => {
@@ -46,12 +59,12 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   const formatWeekRange = (weekStart: Date) => {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
-    
+
     const startDay = weekStart.getDate();
     const endDay = weekEnd.getDate();
     const startMonth = weekStart.toLocaleDateString('en-US', { month: 'long' });
     const endMonth = weekEnd.toLocaleDateString('en-US', { month: 'long' });
-    
+
     if (startMonth === endMonth) {
       return `${startDay} - ${endDay} ${startMonth}`;
     } else {
@@ -78,12 +91,12 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
 
     // Group by week
     const groups = new Map<string, Media[]>();
-    
+
     sortedMedia.forEach((mediaItem) => {
       const capturedAt = new Date(mediaItem.capturedAt);
       const weekStart = getWeekStart(capturedAt);
       const weekKey = weekStart.toISOString();
-      
+
       if (!groups.has(weekKey)) {
         groups.set(weekKey, []);
       }
@@ -128,6 +141,84 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
 
   const handleIndexChange = (index: number) => {
     setCurrentMediaIndex(index);
+  };
+
+  // Multi-select handlers
+  const toggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    setSelectedMediaIds(new Set());
+  };
+
+  const toggleMediaSelection = (mediaId: string) => {
+    const newSelected = new Set(selectedMediaIds);
+    if (newSelected.has(mediaId)) {
+      newSelected.delete(mediaId);
+    } else {
+      newSelected.add(mediaId);
+    }
+    setSelectedMediaIds(newSelected);
+  };
+
+  const selectAllMedia = () => {
+    const allIds = new Set(allMedia.map(m => m.id));
+    setSelectedMediaIds(allIds);
+  };
+
+  const clearSelection = () => {
+    setSelectedMediaIds(new Set());
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedMediaIds.size === 0) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${selectedMediaIds.size} photo${selectedMediaIds.size === 1 ? '' : 's'}? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+
+    try {
+      // Delete media one by one
+      const deletePromises = Array.from(selectedMediaIds).map(id => deleteMedia(id));
+      await Promise.all(deletePromises);
+
+      // Clear selection and exit selection mode
+      setSelectedMediaIds(new Set());
+      setIsSelectionMode(false);
+
+      // Optionally refresh the media list here if needed
+      // This depends on how your parent component manages the media state
+
+    } catch (error) {
+      console.error('Failed to delete media:', error);
+      alert('Failed to delete some photos. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleSetThumbnail = async () => {
+    if (selectedMediaIds.size !== 1 || !albumId) return;
+
+    const selectedMediaId = Array.from(selectedMediaIds)[0];
+
+    setIsSettingThumbnail(true);
+
+    try {
+      await updateAlbum(albumId, { thumbnail: selectedMediaId });
+
+      // Clear selection and exit selection mode
+      setSelectedMediaIds(new Set());
+      setIsSelectionMode(false);
+
+    } catch (error) {
+      console.error('Failed to set album thumbnail:', error);
+      alert('Failed to set album thumbnail. Please try again.');
+    } finally {
+      setIsSettingThumbnail(false);
+    }
   };
   if (loading) {
     return (
@@ -175,8 +266,71 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
 
   return (
     <div className="mt-8">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Photos ({allMedia.length})</h2>
-      
+      {/* Header with selection controls */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Photos ({allMedia.length})
+          {isSelectionMode && selectedMediaIds.size > 0 && (
+            <span className="ml-2 text-sm text-blue-600 dark:text-blue-400">
+              ({selectedMediaIds.size} selected)
+            </span>
+          )}
+        </h2>
+
+        <div className="flex items-center space-x-2">
+          {isSelectionMode ? (
+            <>
+              <button
+                onClick={selectAllMedia}
+                disabled={isDeleting || isSettingThumbnail}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                Select All
+              </button>
+              <button
+                onClick={clearSelection}
+                disabled={isDeleting || isSettingThumbnail}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                Clear
+              </button>
+              {selectedMediaIds.size === 1 && albumId && (
+                <button
+                  onClick={handleSetThumbnail}
+                  disabled={isDeleting || isSettingThumbnail}
+                  className="px-3 py-1 text-sm border border-green-300 rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 dark:bg-green-900/20 dark:border-green-600 dark:text-green-300 dark:hover:bg-green-900/30"
+                >
+                  {isSettingThumbnail ? 'Setting...' : 'Set Album Thumbnail'}
+                </button>
+              )}
+              {selectedMediaIds.size > 0 && (
+                <button
+                  onClick={handleDeleteSelected}
+                  disabled={isDeleting || isSettingThumbnail}
+                  className="px-3 py-1 text-sm border border-red-300 rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 dark:bg-red-900/20 dark:border-red-600 dark:text-red-300 dark:hover:bg-red-900/30"
+                >
+                  {isDeleting ? 'Deleting...' : `Delete (${selectedMediaIds.size})`}
+                </button>
+              )}
+              <button
+                onClick={toggleSelectionMode}
+                disabled={isDeleting || isSettingThumbnail}
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={toggleSelectionMode}
+              className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              Select Photos
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Grouped by weeks */}
       <div className="space-y-8">
         {groupedMedia.map((group) => (
@@ -185,15 +339,17 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
             <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
               {group.weekRange} ({group.media.length} photos)
             </h3>
-            
+
             {/* Media grid for this week */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
               {group.media.map((mediaItem) => (
-                <MediaThumbnail 
-                  key={mediaItem.id} 
-                  media={mediaItem} 
+                <MediaThumbnail
+                  key={mediaItem.id}
+                  media={mediaItem}
                   onInfoClick={handleInfoClick}
-                  onClick={handleMediaClick}
+                  onClick={isSelectionMode ? () => toggleMediaSelection(mediaItem.id) : handleMediaClick}
+                  isSelectionMode={isSelectionMode}
+                  isSelected={selectedMediaIds.has(mediaItem.id)}
                 />
               ))}
             </div>

@@ -83,3 +83,19 @@ func (fs *Datastore) DeleteFolder(ctx context.Context, folderPath string) error 
 	// Remove the directory and all its contents
 	return os.RemoveAll(fullPath)
 }
+
+func (fs *Datastore) DeleteMedia(ctx context.Context, mediapath string) error {
+	fullPath := filepath.Join(fs.rootFolder, mediapath)
+
+	// Check if the path exists
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		// Directory doesn't exist, nothing to delete (idempotent)
+		return nil
+	} else if err != nil {
+		// Other error occurred
+		return err
+	}
+
+	// Remove the directory and all its contents
+	return os.Remove(fullPath)
+}

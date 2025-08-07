@@ -233,6 +233,7 @@ const AlbumsPage: React.FC = () => {
             loading={mediaLoading} 
             error={mediaError}
             albumName={currentAlbum.name}
+            albumId={id}
             total={mediaTotal}
             currentPage={currentPage}
             pageSize={pageSize}

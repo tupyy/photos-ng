@@ -157,13 +157,17 @@ func (m *MediaService) UpdateMedia(ctx context.Context, media entity.Media) (*en
 // DeleteMedia deletes a media item by ID
 func (m *MediaService) DeleteMedia(ctx context.Context, id string) error {
 	// Check if media exists
-	_, err := m.GetMediaByID(ctx, id)
+	media, err := m.GetMediaByID(ctx, id)
 	if err != nil {
 		return err
 	}
 
 	// Delete the media from the datastore using a write transaction
 	err = m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
+		// Remove the file from album folders
+		if err := m.fs.DeleteMedia(ctx, media.Filepath()); err != nil {
+			return err
+		}
 		// Delete the media from the database
 		return writer.DeleteMedia(ctx, id)
 	})
