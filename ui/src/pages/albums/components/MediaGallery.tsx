@@ -340,7 +340,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   return (
     <div className="mt-8">
       {/* Sticky Header with selection controls */}
-      <div className="sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 pb-4 mb-6 backdrop-blur-sm bg-opacity-95 dark:bg-opacity-95">
+      <div className="sticky top-0 z-30 bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-gray-700 pb-4 mb-6 backdrop-blur-sm bg-opacity-95 dark:bg-opacity-95">
         <div className="flex items-center justify-between pt-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Photos ({allMedia.length})

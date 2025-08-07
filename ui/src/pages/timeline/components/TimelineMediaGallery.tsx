@@ -317,7 +317,7 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
   return (
     <div className="mt-8">
       {/* Simple Header without selection controls */}
-      <div className="sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 pb-4 mb-6 backdrop-blur-sm bg-opacity-95 dark:bg-opacity-95">
+      <div className="sticky top-0 z-20 backdrop-blur flex-none transition-colors duration-500 supports-backdrop-blur:bg-white/60 dark:bg-slate-900 pb-4 mb-6">
         <div className="pt-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Photos ({allMedia.length})
