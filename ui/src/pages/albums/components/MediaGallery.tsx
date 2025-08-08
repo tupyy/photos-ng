@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Media } from '@generated/models';
 import MediaThumbnail from '@app/shared/components/MediaThumbnail';
 import ExifDrawer from '@app/shared/components/ExifDrawer';
@@ -43,6 +43,9 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSettingThumbnail, setIsSettingThumbnail] = useState(false);
 
+  // Scroll to top state
+  const [isHeaderSticky, setIsHeaderSticky] = useState(false);
+
   // Modal and alert state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [alert, setAlert] = useState<{
@@ -60,6 +63,18 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   const { deleteMedia } = useMediaApi();
   const { updateAlbum } = useAlbumsApi();
 
+  // Scroll detection effect
+  useEffect(() => {
+    const handleScroll = () => {
+      // Check if user has scrolled past the initial header position
+      // We'll consider the header sticky when scrolled more than 100px
+      setIsHeaderSticky(window.scrollY > 100);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Alert helper functions
   const showAlert = (type: 'success' | 'error' | 'warning' | 'info', message: string, title?: string) => {
     setAlert({
@@ -71,7 +86,15 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   };
 
   const hideAlert = () => {
-    setAlert(prev => ({ ...prev, visible: false }));
+    setAlert((prev) => ({ ...prev, visible: false }));
+  };
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
   };
 
   // Helper function to get the start of the week (Monday) for a given date
@@ -137,14 +160,14 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
       .map(([weekKey, mediaItems]) => ({
         weekStart: new Date(weekKey),
         weekRange: formatWeekRange(new Date(weekKey)),
-        media: mediaItems
+        media: mediaItems,
       }))
       .sort((a, b) => b.weekStart.getTime() - a.weekStart.getTime());
   }, [media]);
 
   // Flatten grouped media for modal navigation
   const allMedia = React.useMemo(() => {
-    return groupedMedia.flatMap(group => group.media);
+    return groupedMedia.flatMap((group) => group.media);
   }, [groupedMedia]);
 
   const handleInfoClick = (mediaItem: Media) => {
@@ -159,14 +182,14 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
 
   // Media viewer modal handlers
   const handleMediaClick = (mediaItem: Media) => {
-    const index = allMedia.findIndex(m => m.id === mediaItem.id);
+    const index = allMedia.findIndex((m) => m.id === mediaItem.id);
     setCurrentMediaIndex(index);
     setIsViewerOpen(true);
   };
 
   const handleViewerClose = (currentMedia?: Media) => {
     setIsViewerOpen(false);
-    
+
     // Scroll to the media that was being viewed when modal was closed
     if (currentMedia) {
       // Use setTimeout to ensure modal is fully closed before scrolling
@@ -176,7 +199,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
           mediaElement.scrollIntoView({
             behavior: 'smooth',
             block: 'center',
-            inline: 'nearest'
+            inline: 'nearest',
           });
         }
       }, 100);
@@ -204,7 +227,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   };
 
   const selectAllMedia = () => {
-    const allIds = new Set(allMedia.map(m => m.id));
+    const allIds = new Set(allMedia.map((m) => m.id));
     setSelectedMediaIds(allIds);
   };
 
@@ -223,7 +246,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
 
     try {
       // Delete media one by one
-      const deletePromises = Array.from(selectedMediaIds).map(id => deleteMedia(id));
+      const deletePromises = Array.from(selectedMediaIds).map((id) => deleteMedia(id));
       await Promise.all(deletePromises);
 
       const deletedCount = selectedMediaIds.size;
@@ -244,14 +267,9 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
         `Successfully deleted ${deletedCount} ${deletedCount === 1 ? 'photo' : 'photos'}.`,
         'Deletion Complete!'
       );
-
     } catch (error) {
       console.error('Failed to delete media:', error);
-      showAlert(
-        'error',
-        'Failed to delete some photos. Please try again.',
-        'Deletion Failed!'
-      );
+      showAlert('error', 'Failed to delete some photos. Please try again.', 'Deletion Failed!');
     } finally {
       setIsDeleting(false);
     }
@@ -276,19 +294,10 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
       setIsSelectionMode(false);
 
       // Show success alert
-      showAlert(
-        'success',
-        'The album thumbnail has been updated successfully.',
-        'Thumbnail Updated!'
-      );
-
+      showAlert('success', 'The album thumbnail has been updated successfully.', 'Thumbnail Updated!');
     } catch (error) {
       console.error('Failed to set album thumbnail:', error);
-      showAlert(
-        'error',
-        'Failed to set album thumbnail. Please try again.',
-        'Update Failed!'
-      );
+      showAlert('error', 'Failed to set album thumbnail. Please try again.', 'Update Failed!');
     } finally {
       setIsSettingThumbnail(false);
     }
@@ -340,18 +349,40 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   return (
     <div className="mt-8">
       {/* Sticky Header with selection controls */}
-      <div className="sticky top-0 z-30 bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-gray-700 pb-4 mb-6 backdrop-blur-sm bg-opacity-95 dark:bg-opacity-95">
+      <div className="sticky top-0 z-30 bg-gray-50 dark:bg-slate-900 pb-4 mb-6 bg-opacity-95 dark:bg-opacity-95">
         <div className="flex items-center justify-between pt-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Photos ({total})
             {isSelectionMode && selectedMediaIds.size > 0 && (
-              <span className="ml-2 text-sm text-blue-600 dark:text-blue-400">
-                ({selectedMediaIds.size} selected)
-              </span>
+              <span className="ml-2 text-sm text-blue-600 dark:text-blue-400">({selectedMediaIds.size} selected)</span>
             )}
           </h2>
 
           <div className="flex items-center space-x-2">
+            {/* Scroll to top button - only visible when header is sticky */}
+            {isHeaderSticky && (
+              <button
+                onClick={scrollToTop}
+                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                title="Scroll to top"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 15l7-7 7 7"
+                  />
+                </svg>
+              </button>
+            )}
+            
             {isSelectionMode ? (
               <>
                 <button
