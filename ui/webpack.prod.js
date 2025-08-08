@@ -14,6 +14,7 @@ module.exports = merge(common('production'), {
     filename: 'static/js/[name].[contenthash].js',
     chunkFilename: 'static/js/[name].[contenthash].chunk.js',
     assetModuleFilename: 'static/media/[name].[hash][ext]',
+    publicPath: '/static/',
   },
   optimization: {
     minimizer: [
