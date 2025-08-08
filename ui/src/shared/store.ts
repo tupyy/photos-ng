@@ -24,8 +24,18 @@ export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 // Export store selectors
 export const selectAlbums = (state: RootState) => state.albums;
 export const selectMedia = (state: RootState) => state.media;
-export const selectTimeline = (state: RootState) => state.timeline;
 export const selectSync = (state: RootState) => state.sync;
+export const selectStats = (state: RootState) => state.stats;
+
+// Sync job selectors
+export const selectSyncJobs = (state: RootState) => state.sync.jobs;
+export const selectActiveSyncJobs = (state: RootState) => 
+  state.sync.jobs.filter(job => job.status === 'running');
+export const selectHasActiveSyncJobs = (state: RootState) => 
+  state.sync.jobs.some(job => job.status === 'running');
+export const selectSyncLoading = (state: RootState) => state.sync.loading;
+export const selectSyncStarting = (state: RootState) => state.sync.startingSync;
+export const selectSyncError = (state: RootState) => state.sync.error;
 
 // Specific selectors
 export const selectAlbumsPageActive = (state: RootState) => state.albums.isPageActive;
@@ -43,12 +53,6 @@ export const selectMediaByAlbum = (state: RootState, albumId: string) =>
 
 export const selectSelectedMedia = (state: RootState) =>
   state.media.media.filter(media => state.media.selectedMediaIds.includes(media.id));
-
-export const selectTimelineBucketsByYear = (state: RootState, year: number) =>
-  state.timeline.buckets.filter(bucket => bucket.year === year);
-
-export const selectTimelineBucketsByYearAndMonth = (state: RootState, year: number, month: number) =>
-  state.timeline.buckets.filter(bucket => bucket.year === year && bucket.month === month);
 
 // Upload selectors
 export const selectUpload = (state: RootState) => state.upload;

@@ -4,7 +4,15 @@
 package v1
 
 import (
+	"encoding/json"
+
+	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
+)
+
+// Defines values for ProcessedFileResult0.
+const (
+	Ok ProcessedFileResult0 = "ok"
 )
 
 // Defines values for ListMediaParamsType.
@@ -119,6 +127,11 @@ type ListMediaResponse struct {
 	Total int `json:"total"`
 }
 
+// ListSyncJobsResponse defines model for ListSyncJobsResponse.
+type ListSyncJobsResponse struct {
+	Jobs []SyncJob `json:"jobs"`
+}
+
 // Media defines model for Media.
 type Media struct {
 	AlbumHref  string             `json:"albumHref"`
@@ -136,6 +149,36 @@ type Media struct {
 	// Thumbnail href to thumbnail
 	Thumbnail string `json:"thumbnail"`
 	Type      string `json:"type"`
+}
+
+// ProcessedFile defines model for ProcessedFile.
+type ProcessedFile struct {
+	// Filename Name of the processed file
+	Filename string               `json:"filename"`
+	Result   ProcessedFile_Result `json:"result"`
+}
+
+// ProcessedFileResult0 File processed successfully
+type ProcessedFileResult0 string
+
+// ProcessedFileResult1 Error message if processing failed
+type ProcessedFileResult1 = string
+
+// ProcessedFile_Result defines model for ProcessedFile.Result.
+type ProcessedFile_Result struct {
+	union json.RawMessage
+}
+
+// StartSyncRequest defines model for StartSyncRequest.
+type StartSyncRequest struct {
+	// Path The file system path to sync
+	Path string `json:"path"`
+}
+
+// StartSyncResponse defines model for StartSyncResponse.
+type StartSyncResponse struct {
+	// Id Unique identifier for the sync job
+	Id string `json:"id"`
 }
 
 // StatsResponse defines model for StatsResponse.
@@ -157,6 +200,21 @@ type SyncAlbumResponse struct {
 
 	// SyncedItems Number of items synced
 	SyncedItems int `json:"synced_items"`
+}
+
+// SyncJob defines model for SyncJob.
+type SyncJob struct {
+	// FilesProcessed List of processed files with their results
+	FilesProcessed []ProcessedFile `json:"filesProcessed"`
+
+	// FilesRemaining Number of files still to be processed
+	FilesRemaining int `json:"filesRemaining"`
+
+	// Id Unique identifier for the sync job
+	Id string `json:"id"`
+
+	// TotalFiles Total number of files to process
+	TotalFiles int `json:"totalFiles"`
 }
 
 // UpdateAlbumRequest Request body for updating an album
@@ -256,3 +314,68 @@ type UploadMediaMultipartRequestBody UploadMediaMultipartBody
 
 // UpdateMediaJSONRequestBody defines body for UpdateMedia for application/json ContentType.
 type UpdateMediaJSONRequestBody = UpdateMediaRequest
+
+// StartSyncJobJSONRequestBody defines body for StartSyncJob for application/json ContentType.
+type StartSyncJobJSONRequestBody = StartSyncRequest
+
+// AsProcessedFileResult0 returns the union data inside the ProcessedFile_Result as a ProcessedFileResult0
+func (t ProcessedFile_Result) AsProcessedFileResult0() (ProcessedFileResult0, error) {
+	var body ProcessedFileResult0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromProcessedFileResult0 overwrites any union data inside the ProcessedFile_Result as the provided ProcessedFileResult0
+func (t *ProcessedFile_Result) FromProcessedFileResult0(v ProcessedFileResult0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeProcessedFileResult0 performs a merge with any union data inside the ProcessedFile_Result, using the provided ProcessedFileResult0
+func (t *ProcessedFile_Result) MergeProcessedFileResult0(v ProcessedFileResult0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsProcessedFileResult1 returns the union data inside the ProcessedFile_Result as a ProcessedFileResult1
+func (t ProcessedFile_Result) AsProcessedFileResult1() (ProcessedFileResult1, error) {
+	var body ProcessedFileResult1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromProcessedFileResult1 overwrites any union data inside the ProcessedFile_Result as the provided ProcessedFileResult1
+func (t *ProcessedFile_Result) FromProcessedFileResult1(v ProcessedFileResult1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeProcessedFileResult1 performs a merge with any union data inside the ProcessedFile_Result, using the provided ProcessedFileResult1
+func (t *ProcessedFile_Result) MergeProcessedFileResult1(v ProcessedFileResult1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ProcessedFile_Result) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ProcessedFile_Result) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}

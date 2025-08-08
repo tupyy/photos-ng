@@ -65,6 +65,11 @@ Class | Method | HTTP request | Description
 *MediaApi* | [**updateMedia**](docs/MediaApi.md#updatemedia) | **PUT** /media/{id} | Update media by ID
 *MediaApi* | [**uploadMedia**](docs/MediaApi.md#uploadmedia) | **POST** /media | Upload new media
 *StatsApi* | [**getStats**](docs/StatsApi.md#getstats) | **GET** /stats | Get application statistics
+*SyncApi* | [**getSyncJob**](docs/SyncApi.md#getsyncjob) | **GET** /sync/{id} | Get sync job by ID
+*SyncApi* | [**listSyncJobs**](docs/SyncApi.md#listsyncjobs) | **GET** /sync | List all sync jobs
+*SyncApi* | [**startSyncJob**](docs/SyncApi.md#startsyncjob) | **POST** /sync | Start sync job
+*SyncApi* | [**stopAllSyncJobs**](docs/SyncApi.md#stopallsyncjobs) | **DELETE** /sync | Stop all sync jobs
+*SyncApi* | [**stopSyncJob**](docs/SyncApi.md#stopsyncjob) | **DELETE** /sync/{id} | Stop sync job by ID
 
 
 ### Documentation For Models
@@ -76,10 +81,18 @@ Class | Method | HTTP request | Description
  - [ExifHeader](docs/ExifHeader.md)
  - [ListAlbumsResponse](docs/ListAlbumsResponse.md)
  - [ListMediaResponse](docs/ListMediaResponse.md)
+ - [ListSyncJobsResponse](docs/ListSyncJobsResponse.md)
  - [Media](docs/Media.md)
  - [ModelError](docs/ModelError.md)
+ - [ProcessedFile](docs/ProcessedFile.md)
+ - [ProcessedFileResult](docs/ProcessedFileResult.md)
+ - [StartSyncRequest](docs/StartSyncRequest.md)
+ - [StartSyncResponse](docs/StartSyncResponse.md)
  - [StatsResponse](docs/StatsResponse.md)
+ - [StopAllSyncJobs200Response](docs/StopAllSyncJobs200Response.md)
+ - [StopSyncJob200Response](docs/StopSyncJob200Response.md)
  - [SyncAlbumResponse](docs/SyncAlbumResponse.md)
+ - [SyncJob](docs/SyncJob.md)
  - [UpdateAlbumRequest](docs/UpdateAlbumRequest.md)
  - [UpdateMediaRequest](docs/UpdateMediaRequest.md)
 

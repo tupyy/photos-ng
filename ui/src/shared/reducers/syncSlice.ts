@@ -1,36 +1,111 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { SyncApi } from '@generated/api/sync-api';
+import { SyncJob, StartSyncRequest, StopSyncJob200Response, StopAllSyncJobs200Response } from '@generated/models';
+import { apiConfig } from '@shared/api/apiConfig';
 
 export interface SyncState {
-  isInProgress: boolean;
-  progress: number;
+  jobs: SyncJob[];
+  loading: boolean;
   error: string | null;
+  startingSync: boolean;
 }
 
 const initialState: SyncState = {
-  isInProgress: false,
-  progress: 0,
+  jobs: [],
+  loading: false,
   error: null,
+  startingSync: false,
 };
 
-// Async thunk for sync operation
-export const startSync = createAsyncThunk(
-  'sync/start',
-  async (_, { dispatch, signal, rejectWithValue }) => {
+const syncApi = new SyncApi(apiConfig);
+
+// Async thunk to start a new sync job
+export const startSyncJob = createAsyncThunk(
+  'sync/startJob',
+  async (path: string, { rejectWithValue }) => {
     try {
-      // TODO: Replace with actual sync API call
-      // Simulating sync progress
-      for (let i = 0; i <= 100; i += 10) {
-        if (signal.aborted) {
-          return rejectWithValue('Sync cancelled');
-        }
-        
-        dispatch(updateProgress(i));
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate work
-      }
-      
-      return { success: true };
-    } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Sync failed');
+      const request: StartSyncRequest = { path };
+      const response = await syncApi.startSyncJob(request);
+      return {
+        jobId: response.data.id,
+        path,
+      };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to start sync job'
+      );
+    }
+  }
+);
+
+// Async thunk to fetch all sync jobs
+export const fetchSyncJobs = createAsyncThunk(
+  'sync/fetchJobs',
+  async (options: { silent?: boolean } = {}, { rejectWithValue }) => {
+    try {
+      const response = await syncApi.listSyncJobs();
+      return { 
+        jobs: response.data.jobs || [], 
+        silent: options.silent || false 
+      };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to fetch sync jobs'
+      );
+    }
+  }
+);
+
+// Async thunk to fetch a specific sync job
+export const fetchSyncJob = createAsyncThunk(
+  'sync/fetchJob',
+  async (params: { jobId: string; silent?: boolean }, { rejectWithValue }) => {
+    try {
+      const response = await syncApi.getSyncJob(params.jobId);
+      return { 
+        job: response.data, 
+        silent: params.silent || false 
+      };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to fetch sync job'
+      );
+    }
+  }
+);
+
+// Async thunk to stop a specific sync job
+export const stopSyncJob = createAsyncThunk(
+  'sync/stopJob',
+  async (jobId: string, { rejectWithValue }) => {
+    try {
+      const response = await syncApi.stopSyncJob(jobId);
+      return {
+        jobId,
+        message: response.data.message || 'Sync job stopped successfully',
+      };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to stop sync job'
+      );
+    }
+  }
+);
+
+// Async thunk to stop all sync jobs
+export const stopAllSyncJobs = createAsyncThunk(
+  'sync/stopAllJobs',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await syncApi.stopAllSyncJobs();
+      return {
+        message: response.data.message || 'All sync jobs stopped successfully',
+        stoppedCount: response.data.stoppedCount || 0,
+      };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to stop sync jobs'
+      );
     }
   }
 );
@@ -39,37 +114,83 @@ const syncSlice = createSlice({
   name: 'sync',
   initialState,
   reducers: {
-    updateProgress: (state, action: PayloadAction<number>) => {
-      state.progress = action.payload;
-    },
-    cancelSync: (state) => {
-      state.isInProgress = false;
-      state.progress = 0;
-      state.error = null;
-    },
     clearError: (state) => {
       state.error = null;
+    },
+    updateJob: (state, action: PayloadAction<SyncJob>) => {
+      const index = state.jobs.findIndex(job => job.id === action.payload.id);
+      if (index !== -1) {
+        state.jobs[index] = action.payload;
+      } else {
+        state.jobs.push(action.payload);
+      }
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(startSync.pending, (state) => {
-        state.isInProgress = true;
-        state.progress = 0;
+      // Start sync job
+      .addCase(startSyncJob.pending, (state) => {
+        state.startingSync = true;
         state.error = null;
       })
-      .addCase(startSync.fulfilled, (state) => {
-        state.isInProgress = false;
-        state.progress = 100;
+      .addCase(startSyncJob.fulfilled, (state) => {
+        state.startingSync = false;
         state.error = null;
       })
-      .addCase(startSync.rejected, (state, action) => {
-        state.isInProgress = false;
-        state.progress = 0;
-        state.error = action.error.message || 'Sync failed';
+      .addCase(startSyncJob.rejected, (state, action) => {
+        state.startingSync = false;
+        state.error = action.payload as string;
+      })
+      
+      // Fetch sync jobs
+      .addCase(fetchSyncJobs.pending, (state, action) => {
+        // Only show loading state if not a silent polling request
+        if (!action.meta.arg?.silent) {
+          state.loading = true;
+        }
+        state.error = null;
+      })
+      .addCase(fetchSyncJobs.fulfilled, (state, action) => {
+        state.loading = false;
+        state.jobs = action.payload.jobs;
+        state.error = null;
+      })
+      .addCase(fetchSyncJobs.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      
+      // Fetch single sync job
+      .addCase(fetchSyncJob.fulfilled, (state, action) => {
+        const index = state.jobs.findIndex(job => job.id === action.payload.job.id);
+        if (index !== -1) {
+          state.jobs[index] = action.payload.job;
+        } else {
+          state.jobs.push(action.payload.job);
+        }
+      })
+      
+      // Stop sync job
+      .addCase(stopSyncJob.fulfilled, (state, action) => {
+        // Update the job status in the list (backend will return updated job data via polling)
+        // Don't remove the job, just clear any errors
+        state.error = null;
+      })
+      .addCase(stopSyncJob.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
+      
+      // Stop all sync jobs
+      .addCase(stopAllSyncJobs.fulfilled, (state, action) => {
+        // Jobs will be updated via polling with new status
+        // Don't remove jobs, just clear errors
+        state.error = null;
+      })
+      .addCase(stopAllSyncJobs.rejected, (state, action) => {
+        state.error = action.payload as string;
       });
   },
 });
 
-export const { updateProgress, cancelSync, clearError } = syncSlice.actions;
+export const { clearError, updateJob } = syncSlice.actions;
 export default syncSlice.reducer;

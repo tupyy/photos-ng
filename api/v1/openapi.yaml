@@ -458,6 +458,125 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /sync:
+    post:
+      summary: Start sync job
+      description: Start an asynchronous sync job for a specified path
+      operationId: startSyncJob
+      tags:
+        - Sync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartSyncRequest'
+      responses:
+        '202':
+          description: Sync job started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartSyncResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      summary: List all sync jobs
+      description: Retrieve a list of all running and completed sync jobs
+      operationId: listSyncJobs
+      tags:
+        - Sync
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListSyncJobsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Stop all sync jobs
+      description: Stop all running sync jobs
+      operationId: stopAllSyncJobs
+      tags:
+        - Sync
+      responses:
+        '200':
+          description: All sync jobs stopped successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "All sync jobs stopped"
+                  stoppedCount:
+                    type: integer
+                    description: Number of jobs that were stopped
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /sync/{id}:
+    get:
+      summary: Get sync job by ID
+      description: Retrieve detailed information about a specific sync job
+      operationId: getSyncJob
+      tags:
+        - Sync
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the sync job to retrieve
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncJob'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: Stop sync job by ID
+      description: Stop a specific sync job by its ID
+      operationId: stopSyncJob
+      tags:
+        - Sync
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the sync job to stop
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sync job stopped successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Sync job stopped successfully"
+                  jobId:
+                    type: string
+                    description: ID of the stopped job
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 components:
   schemas:
     Album:
@@ -711,6 +830,87 @@ components:
           type: integer
           description: Total number of albums
           example: 45
+
+    StartSyncRequest:
+      type: object
+      required:
+        - path
+      properties:
+        path:
+          type: string
+          description: The file system path to sync
+          example: "/home/user/photos"
+
+    StartSyncResponse:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the sync job
+          example: "sync-123e4567-e89b-12d3-a456-426614174000"
+
+    SyncJob:
+      type: object
+      required:
+        - id
+        - status
+        - filesRemaining
+        - totalFiles
+        - filesProcessed
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the sync job
+          example: "sync-123e4567-e89b-12d3-a456-426614174000"
+        status:
+          type: string
+          description: Current status of the sync job
+          enum: ["running", "completed", "failed", "stopped"]
+          example: "running"
+        filesRemaining:
+          type: integer
+          description: Number of files still to be processed
+          example: 42
+        totalFiles:
+          type: integer
+          description: Total number of files to process
+          example: 100
+        filesProcessed:
+          type: array
+          description: List of processed files with their results
+          items:
+            $ref: '#/components/schemas/ProcessedFile'
+
+    ProcessedFile:
+      type: object
+      required:
+        - filename
+        - result
+      properties:
+        filename:
+          type: string
+          description: Name of the processed file
+          example: "IMG_001.jpg"
+        result:
+          oneOf:
+            - type: string
+              enum: ["ok"]
+              description: File processed successfully
+            - type: string
+              description: Error message if processing failed
+              example: "Failed to process: file format not supported"
+
+    ListSyncJobsResponse:
+      type: object
+      required:
+        - jobs
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncJob'
 
   responses:
     BadRequest:

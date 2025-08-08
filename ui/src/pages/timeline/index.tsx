@@ -14,7 +14,6 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAppDispatch, useAppSelector } from '@shared/store';
-import { setPageActive } from '@shared/reducers/albumsSlice';
 import { useMediaApi, useStatsApi } from '@shared/hooks/useApi';
 import { ListMediaSortByEnum, ListMediaSortOrderEnum } from '@generated/api/media-api';
 import TimelineMediaGallery from './components/TimelineMediaGallery';
@@ -36,9 +35,6 @@ const TimelinePage: React.FC = () => {
    * Fetches all media sorted by capture date (most recent first) and stats
    */
   useEffect(() => {
-    // Set page as active when component mounts
-    dispatch(setPageActive(true));
-
     // Fetch stats to get total media count and available years
     fetchStats();
 
@@ -49,12 +45,7 @@ const TimelinePage: React.FC = () => {
       sortBy: ListMediaSortByEnum.CapturedAt,
       sortOrder: ListMediaSortOrderEnum.Desc,
     });
-
-    // Cleanup when component unmounts
-    return () => {
-      dispatch(setPageActive(false));
-    };
-  }, [dispatch, fetchMedia, fetchStats, currentPage]);
+  }, [fetchMedia, fetchStats, currentPage]);
 
   /**
    * Get available years from stats API

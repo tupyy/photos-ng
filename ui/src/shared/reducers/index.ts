@@ -18,4 +18,4 @@ export type RootState = ReturnType<typeof rootReducer>;
 export default rootReducer;
 
 // Export sync actions for convenience
-export { startSync, cancelSync, updateProgress, clearError } from './syncSlice';
+export { startSyncJob, fetchSyncJobs, fetchSyncJob, clearError, updateJob } from './syncSlice';
