@@ -2,6 +2,9 @@
 # Stage 1: Build React frontend
 FROM docker.io/node:22-alpine AS frontend-builder
 
+ARG GIT_SHA
+ENV GIT_SHA=${GIT_SHA}
+
 WORKDIR /app/ui
 
 # Copy source and build
