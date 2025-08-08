@@ -141,14 +141,15 @@ func (a *AlbumService) UpdateAlbum(ctx context.Context, album entity.Album) (*en
 // DeleteAlbum deletes an album by ID
 func (a *AlbumService) DeleteAlbum(ctx context.Context, id string) error {
 	// Check if album exists
-	if _, err := a.GetAlbum(ctx, id); err != nil {
+	album, err := a.GetAlbum(ctx, id)
+	if err != nil {
 		return err
 	}
 
 	// Delete the album from the datastore using a write transaction
-	err := a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
+	err = a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
 		// Delete the album folder from the file system
-		if err := a.fs.DeleteFolder(ctx, id); err != nil {
+		if err := a.fs.DeleteFolder(ctx, album.Path); err != nil {
 			return err
 		}
 
