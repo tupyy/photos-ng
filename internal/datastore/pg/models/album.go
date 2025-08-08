@@ -23,11 +23,13 @@ func (aa Albums) Add(a Album) {
 // Entity converts the database model albums to entity albums.
 func (aa Albums) Entity() []entity.Album {
 	albums := []entity.Album{}
+
 	for _, rows := range aa {
 		album := entity.Album{
 			Children: []entity.Album{},
 			Media:    []entity.Media{},
 		}
+		seenID := make(map[string]bool)
 		for _, row := range rows {
 			album.ID = row.ID
 			album.CreatedAt = row.CreatedAt
@@ -39,18 +41,22 @@ func (aa Albums) Entity() []entity.Album {
 			}
 			// Child albums are added through join scenarios
 			if row.ChildID != nil {
-				childAlbum := entity.Album{
-					ID:          *row.ChildID,
-					Path:        fromPtr(row.ChildPath),
-					Description: row.ChildDescription,
-					Thumbnail:   row.ChildThumbnailID,
-					Children:    []entity.Album{},
-					Media:       []entity.Media{},
+				_, ok := seenID[*row.ChildID]
+				if !ok {
+					childAlbum := entity.Album{
+						ID:          *row.ChildID,
+						Path:        fromPtr(row.ChildPath),
+						Description: row.ChildDescription,
+						Thumbnail:   row.ChildThumbnailID,
+						Children:    []entity.Album{},
+						Media:       []entity.Media{},
+					}
+					if row.ChildCreatedAt != nil {
+						childAlbum.CreatedAt = *row.ChildCreatedAt
+					}
+					album.Children = append(album.Children, childAlbum)
+					seenID[*row.ChildID] = true
 				}
-				if row.ChildCreatedAt != nil {
-					childAlbum.CreatedAt = *row.ChildCreatedAt
-				}
-				album.Children = append(album.Children, childAlbum)
 			}
 
 			// Media are added through join scenarios

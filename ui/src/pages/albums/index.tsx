@@ -1,6 +1,6 @@
 /**
  * Albums Page Component
- * 
+ *
  * Main page for album management in the Photos NG application.
  * Provides functionality for:
  * - Viewing album hierarchies (parent/child albums)
@@ -8,7 +8,7 @@
  * - Editing album descriptions
  * - Displaying media within albums
  * - Managing album thumbnails
- * 
+ *
  * The component supports both root-level album listing and individual album views
  * with media galleries, depending on the URL parameter.
  */
@@ -29,11 +29,11 @@ const AlbumsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>(); // Album ID from URL (undefined for root albums view)
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  
+
   // Redux state selectors
   const isCreateFormOpen = useAppSelector(selectAlbumsCreateFormOpen);
   const currentAlbum = useAppSelector(selectCurrentAlbum);
-  
+
   // API hooks for data fetching and operations
   const { albums, loading, error, fetchAlbums, fetchAlbumById: fetchAlbumByIdApi, updateAlbum } = useAlbumsApi();
 
@@ -291,17 +291,6 @@ const AlbumsPage: React.FC = () => {
                 )}
               </div>
             </div>
-
-            {/* Album Thumbnail */}
-            {currentAlbum.thumbnail && (
-              <div className="mt-4">
-                <img
-                  src={currentAlbum.thumbnail}
-                  alt={currentAlbum.name}
-                  className="w-32 h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
-                />
-              </div>
-            )}
           </div>
         )}
 
@@ -319,9 +308,9 @@ const AlbumsPage: React.FC = () => {
 
         {/* Media Gallery - Show only when viewing a specific album */}
         {id && currentAlbum && (
-          <MediaGallery 
-            media={paginatedMedia} 
-            loading={mediaLoading} 
+          <MediaGallery
+            media={paginatedMedia}
+            loading={mediaLoading}
             error={mediaError}
             albumName={currentAlbum.name}
             albumId={id}
