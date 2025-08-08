@@ -4,18 +4,43 @@ import { Album as AlbumType } from '@shared/types/Album';
 
 export interface AlbumProps {
   album: AlbumType;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onSelectionToggle?: (albumId: string) => void;
 }
 
-const Album: React.FC<AlbumProps> = ({ album }) => {
+const Album: React.FC<AlbumProps> = ({ 
+  album, 
+  isSelectionMode = false, 
+  isSelected = false, 
+  onSelectionToggle 
+}) => {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate(`/albums/${album.id}`);
+    if (isSelectionMode && onSelectionToggle) {
+      onSelectionToggle(album.id);
+    } else {
+      navigate(`/albums/${album.id}`);
+    }
+  };
+
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onSelectionToggle) {
+      onSelectionToggle(album.id);
+    }
   };
 
   return (
     <div
-      className="relative aspect-square bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-300 dark:bg-gray-800 dark:border-gray-700 cursor-pointer flex flex-col dark:hover:border-b-sky-500 dark:hover:border-b-2"
+      className={`relative aspect-square bg-white border rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 dark:bg-gray-800 cursor-pointer flex flex-col ${
+        isSelectionMode 
+          ? isSelected
+            ? 'border-blue-500 border-2 ring-2 ring-blue-500 ring-opacity-50' 
+            : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600'
+          : 'border-gray-200 dark:border-gray-700 dark:hover:border-b-sky-500 dark:hover:border-b-2'
+      }`}
       onClick={handleClick}
     >
       <div className="relative flex-shrink-0" style={{ height: '70%' }}>
@@ -43,6 +68,30 @@ const Album: React.FC<AlbumProps> = ({ album }) => {
                   d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                 />
               </svg>
+            </div>
+          )}
+          
+          {/* Selection checkbox overlay */}
+          {isSelectionMode && (
+            <div className="absolute top-2 right-2">
+              <div
+                className="flex items-center justify-center w-6 h-6 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-500 rounded-md cursor-pointer hover:border-blue-500 dark:hover:border-blue-400 transition-colors"
+                onClick={handleCheckboxClick}
+              >
+                {isSelected && (
+                  <svg
+                    className="w-4 h-4 text-blue-600 dark:text-blue-400"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+              </div>
             </div>
           )}
         </div>

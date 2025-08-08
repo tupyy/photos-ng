@@ -10,6 +10,9 @@ import {
   clearCurrentAlbum,
   clearError as clearAlbumsError,
   setFilters as setAlbumsFilters,
+  toggleAlbumSelection,
+  selectAllAlbums,
+  clearAlbumSelection,
 } from '@reducers/albumsSlice';
 import {
   fetchMedia,
@@ -73,6 +76,12 @@ export const useAlbumsApi = () => {
       (filters: { limit?: number; offset?: number }) => dispatch(setAlbumsFilters(filters)),
       [dispatch]
     ),
+    toggleAlbumSelection: useCallback(
+      (albumId: string) => dispatch(toggleAlbumSelection(albumId)),
+      [dispatch]
+    ),
+    selectAllAlbums: useCallback(() => dispatch(selectAllAlbums()), [dispatch]),
+    clearAlbumSelection: useCallback(() => dispatch(clearAlbumSelection()), [dispatch]),
   };
 };
 

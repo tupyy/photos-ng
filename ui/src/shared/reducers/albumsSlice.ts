@@ -142,6 +142,7 @@ interface AlbumsState {
   offset: number;
   loading: boolean;
   error: string | null;
+  selectedAlbumIds: string[];
   syncStatus: {
     [albumId: string]: {
       syncing: boolean;
@@ -162,6 +163,7 @@ const initialState: AlbumsState = {
   offset: 0,
   loading: false,
   error: null,
+  selectedAlbumIds: [],
   syncStatus: {},
 };
 
@@ -192,6 +194,21 @@ const albumsSlice = createSlice({
       if (action.payload.offset !== undefined) {
         state.offset = action.payload.offset;
       }
+    },
+    toggleAlbumSelection: (state, action: PayloadAction<string>) => {
+      const albumId = action.payload;
+      const index = state.selectedAlbumIds.indexOf(albumId);
+      if (index === -1) {
+        state.selectedAlbumIds.push(albumId);
+      } else {
+        state.selectedAlbumIds.splice(index, 1);
+      }
+    },
+    selectAllAlbums: (state) => {
+      state.selectedAlbumIds = state.albums.map(album => album.id);
+    },
+    clearAlbumSelection: (state) => {
+      state.selectedAlbumIds = [];
     },
   },
   extraReducers: (builder) => {
@@ -311,5 +328,15 @@ const albumsSlice = createSlice({
   },
 });
 
-export const { setPageActive, setCreateFormOpen, setCurrentAlbum, clearCurrentAlbum, clearError, setFilters } = albumsSlice.actions;
+export const { 
+  setPageActive, 
+  setCreateFormOpen, 
+  setCurrentAlbum, 
+  clearCurrentAlbum, 
+  clearError, 
+  setFilters,
+  toggleAlbumSelection,
+  selectAllAlbums,
+  clearAlbumSelection
+} = albumsSlice.actions;
 export default albumsSlice.reducer;

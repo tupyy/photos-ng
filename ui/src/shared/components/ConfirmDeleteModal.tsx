@@ -4,6 +4,7 @@ interface ConfirmDeleteModalProps {
   isOpen: boolean;
   itemCount: number;
   isDeleting: boolean;
+  itemType?: string; // e.g., "Photo", "Album", "Item"
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -12,6 +13,7 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
   isOpen,
   itemCount,
   isDeleting,
+  itemType = "Photo", // Default to "Photo" for backward compatibility
   onConfirm,
   onCancel,
 }) => {
@@ -54,7 +56,7 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
               </div>
               <div className="ml-4">
                 <h4 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Delete {itemCount} {itemCount === 1 ? 'Photo' : 'Photos'}?
+                  Delete {itemCount} {itemCount === 1 ? itemType : `${itemType}s`}?
                 </h4>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   This action cannot be undone.
@@ -66,12 +68,12 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
               <p className="mb-3">
                 You are about to permanently delete{' '}
                 <span className="font-semibold text-gray-900 dark:text-white">
-                  {itemCount} {itemCount === 1 ? 'photo' : 'photos'}
+                  {itemCount} {itemCount === 1 ? itemType.toLowerCase() : `${itemType.toLowerCase()}s`}
                 </span>
-                {' '}from this album.
+                {itemType === "Album" ? '.' : ' from this album.'}
               </p>
               <p className="text-red-600 dark:text-red-400 font-medium">
-                This action cannot be undone and the {itemCount === 1 ? 'photo' : 'photos'} will be permanently removed from your collection.
+                This action cannot be undone and the {itemCount === 1 ? itemType.toLowerCase() : `${itemType.toLowerCase()}s`} will be permanently removed from your collection.
               </p>
             </div>
           </div>
@@ -93,7 +95,7 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
                   Deleting...
                 </div>
               ) : (
-                `Delete ${itemCount === 1 ? 'Photo' : 'Photos'}`
+                `Delete ${itemCount === 1 ? itemType : `${itemType}s`}`
               )}
             </button>
             <button
