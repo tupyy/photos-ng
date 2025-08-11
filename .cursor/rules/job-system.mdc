@@ -1,0 +1,71 @@
+---
+description: "Job system architecture and usage patterns for sync operations"
+globs: "pkg/job/*.go,internal/handlers/v1/sync.go"
+---
+
+# Job System Architecture
+
+## Overview
+The job system is implemented in [pkg/job/job.go](mdc:pkg/job/job.go) and provides concurrent file processing capabilities for sync operations.
+
+## Key Components
+
+### Job Struct
+- **Purpose**: Manages sync jobs that process files in a directory structure
+- **Concurrency**: Uses goroutines with semaphore-based limiting (max 10 concurrent files)
+- **Thread Safety**: All progress updates use `sync.RWMutex` for safe concurrent access
+- **Status Tracking**: Supports `running`, `completed`, `failed`, `stopped` states
+
+### Task System
+```go
+type Task[T, R any] func(ctx context.Context, t T) entity.Result[R]
+```
+- Generic task definition that returns `entity.Result[R]` with `Data` and `Err` fields
+- Context-aware for cancellation support
+- Used for processing individual files
+
+### Integration Patterns
+
+#### Handler Integration
+In [internal/handlers/v1/sync.go](mdc:internal/handlers/v1/sync.go):
+```go
+// Create job
+syncJob, err := job.NewJob(jobID, s.rootFolder, request.Path, s.mediaSrv)
+
+// Start processing
+if err := syncJob.Start(); err != nil {
+    // Handle error
+}
+
+// Get progress (thread-safe)
+totalFiles, filesRemaining, processedFiles := syncJob.GetProgress()
+```
+
+## File Processing Flow
+
+1. **Discovery**: `discoverFiles()` recursively walks directory structure
+2. **Filtering**: Only processes supported extensions (.jpg, .jpeg, .png)
+3. **Processing**: Each file processed via `MediaService.WriteMedia()`
+4. **Tracking**: Progress updated atomically with mutex protection
+
+## Best Practices
+
+### Error Handling
+- Always check `entity.Result.Err` field (not method calls)
+- Use `entity.Result{Data: value, Err: nil}` for success
+- Use `entity.Result{Data: nil, Err: error}` for failure
+
+### Concurrency
+- Jobs run in background goroutines started by `Start()`
+- Use `Stop()` method to cancel running jobs
+- Progress queries via `GetProgress()` are always thread-safe
+
+### Memory Management
+- Jobs store file processing results in memory
+- Consider cleanup for long-running applications
+- Progress data grows with number of processed files
+
+## Dependencies
+- **MediaService**: For actual file processing and database storage
+- **ProcessingMediaService**: For thumbnail generation and EXIF extraction
+- **Filesystem**: Direct file system access for discovery and reading

@@ -1,0 +1,90 @@
+---
+description: "API design patterns and OpenAPI integration for Photos NG"
+globs: "api/v1/*.go,api/v1/*.yaml,internal/handlers/v1/*.go"
+---
+
+# API Design Patterns
+
+## OpenAPI Integration
+
+### Schema Definition
+All API types are defined in [api/v1/openapi.yaml](mdc:api/v1/openapi.yaml) and generated into Go types in [api/v1/types.gen.go](mdc:api/v1/types.gen.go).
+
+### Union Types
+For polymorphic response fields like `ProcessedFile.Result`:
+```go
+// Generated union type
+type ProcessedFile_Result struct {
+    union json.RawMessage
+}
+
+// Usage in handlers
+if success {
+    _ = apiFile.Result.FromProcessedFileResult0("ok")
+} else {
+    _ = apiFile.Result.FromProcessedFileResult1(errorMessage)
+}
+```
+
+## Handler Patterns
+
+### Standard Response Structure
+```go
+// Success responses
+c.JSON(http.StatusOK, responseStruct)
+
+// Error responses
+c.JSON(http.StatusBadRequest, v1.Error{
+    Message: "Descriptive error message",
+})
+```
+
+### Async Operations (HTTP 202)
+For long-running operations like sync jobs:
+```go
+// Start async operation
+response := v1.StartSyncResponse{
+    Id: jobID,
+}
+c.JSON(http.StatusAccepted, response)
+```
+
+### Thread-Safe Storage Patterns
+```go
+// Read operations
+mu.RLock()
+data, exists := storage[key]
+mu.RUnlock()
+
+// Write operations
+mu.Lock()
+storage[key] = value
+mu.Unlock()
+```
+
+## Status Management
+
+### Job Status Enums
+Define status as strongly typed enums in OpenAPI:
+```yaml
+status:
+  type: string
+  enum: ["running", "completed", "failed", "stopped"]
+```
+
+### Status Transitions
+- `running` → `completed` (natural completion)
+- `running` → `stopped` (manual cancellation)  
+- `running` → `failed` (error during processing)
+- Never transition backwards (e.g., `completed` → `running`)
+
+## Time Handling
+- Use `time.Time` for internal operations
+- OpenAPI generates `openapi_types.Date` for API boundaries
+- Always include timezone information for consistency
+
+## Resource Naming
+- Collections: `/api/v1/albums`, `/api/v1/media`
+- Individual resources: `/api/v1/albums/{id}`, `/api/v1/media/{id}`
+- Actions on collections: `POST /api/v1/sync` (start), `DELETE /api/v1/sync` (stop all)
+- Actions on resources: `DELETE /api/v1/sync/{id}` (stop specific)

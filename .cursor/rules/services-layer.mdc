@@ -1,0 +1,205 @@
+---
+description: "Service layer patterns and business logic organization in Photos NG"
+globs: "internal/services/*.go"
+---
+
+# Service Layer Architecture
+
+## Responsibilities
+The service layer in [internal/services/](mdc:internal/services/) contains **business logic** and should:
+
+1. **Business Logic**: Implement core domain rules and workflows
+2. **Transaction Management**: Coordinate database operations
+3. **Data Orchestration**: Combine multiple datastore operations
+4. **Validation**: Domain-specific validation rules
+5. **Error Handling**: Convert datastore errors to domain errors
+6. **Processing Coordination**: Manage complex operations like media processing
+
+## What Services MUST NOT Do
+
+❌ **HTTP Concerns**: No knowledge of HTTP requests/responses  
+❌ **API Types**: Never use generated API types (v1.*)  
+❌ **Direct Database Queries**: Use datastore abstraction layer  
+❌ **File System Access**: Use filesystem datastore abstraction  
+❌ **Logging Business Data**: Sensitive data should not be logged  
+
+## Service Structure Pattern
+
+```go
+type MediaService struct {
+    dt *pg.Datastore      // Database operations
+    fs *fs.Datastore      // File system operations
+}
+
+func NewMediaService(dt *pg.Datastore, fsDatastore *fs.Datastore) *MediaService {
+    return &MediaService{dt: dt, fs: fsDatastore}
+}
+```
+
+## Business Logic Patterns
+
+### 1. Entity-Centric Operations
+```go
+func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*entity.Media, error) {
+    // Business rule: Check for duplicates by hash
+    content, err := media.Content()
+    if err != nil {
+        return nil, err
+    }
+    
+    contentBytes, err := io.ReadAll(content)
+    if err != nil {
+        return nil, fmt.Errorf("failed to read media content: %w", err)
+    }
+    
+    hash := sha256.Sum256(contentBytes)
+    // ... continue with business logic
+}
+```
+
+### 2. Transaction Coordination
+```go
+func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*entity.Media, error) {
+    // Use datastore transaction for atomicity
+    err := m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
+        // 1. Process media (thumbnails, EXIF)
+        processingSrv, err := NewProcessingMediaService()
+        if err != nil {
+            return err
+        }
+        
+        // 2. Write to filesystem
+        if err := m.fs.Write(ctx, media.Filepath(), bytes.NewReader(contentBytes)); err != nil {
+            return err
+        }
+        
+        // 3. Write to database
+        return writer.WriteMedia(ctx, media)
+    })
+    
+    return &media, err
+}
+```
+
+### 3. Complex Validation
+```go
+func (a *AlbumService) CreateAlbum(ctx context.Context, album entity.Album) (*entity.Album, error) {
+    // Business rule: Album paths must be unique
+    existing, err := a.dt.QueryAlbums(ctx, pg.FilterByPath(album.Path))
+    if err != nil {
+        return nil, err
+    }
+    
+    if len(existing) > 0 {
+        return nil, NewErrAlbumPathExists(album.Path)
+    }
+    
+    // Continue with creation...
+}
+```
+
+## Error Handling Patterns
+
+### Domain Error Types
+```go
+// Define domain-specific errors
+func NewErrMediaNotFound(id string) error {
+    return &ErrResourceNotFound{
+        Resource: "media",
+        ID:       id,
+    }
+}
+
+func NewErrAlbumPathExists(path string) error {
+    return &ErrResourceConflict{
+        Resource: "album",
+        Field:    "path",
+        Value:    path,
+    }
+}
+```
+
+### Error Classification
+```go
+func IsErrResourceNotFound(err error) bool {
+    _, ok := err.(*ErrResourceNotFound)
+    return ok
+}
+
+func IsErrResourceConflict(err error) bool {
+    _, ok := err.(*ErrResourceConflict)
+    return ok
+}
+```
+
+## Processing Integration
+
+### Media Processing Workflow
+```go
+func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*entity.Media, error) {
+    // 1. Content validation
+    // 2. Hash computation for deduplication
+    // 3. Processing service integration
+    processingSrv, err := NewProcessingMediaService()
+    if err != nil {
+        return nil, err
+    }
+    
+    r, exif, err := processingSrv.Process(ctx, bytes.NewReader(contentBytes))
+    if err != nil {
+        return nil, err
+    }
+    
+    // 4. Extract metadata
+    thumbnail, err := io.ReadAll(r)
+    if err != nil {
+        return nil, fmt.Errorf("failed to read thumbnail: %w", err)
+    }
+    
+    // 5. Populate entity
+    media.Thumbnail = thumbnail
+    media.Exif = exif
+    
+    // 6. Determine capture time
+    if captureAt, err := media.GetCapturedTime(); err != nil {
+        zap.S().Warnw("failed to get captured at timestamp", "error", err)
+    } else {
+        media.CapturedAt = captureAt
+    }
+}
+```
+
+## Options Pattern
+
+### Flexible Query Building
+Services use options pattern for complex queries:
+```go
+type MediaOptions struct {
+    MediaLimit  int
+    MediaOffset int
+    AlbumID     *string
+    MediaType   *string
+    StartDate   *time.Time
+    EndDate     *time.Time
+}
+
+func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]entity.Media, error) {
+    media, err := m.dt.QueryMedia(ctx, filter.QueriesFn()...)
+    // ... apply additional filtering
+}
+```
+
+## Dependencies
+Services should only depend on:
+- **Entity Types**: Domain objects (`entity.Album`, `entity.Media`)
+- **Datastore Interfaces**: Abstracted data access (`*pg.Datastore`, `*fs.Datastore`)
+- **Other Services**: For complex orchestration
+- **Processing Utilities**: Domain-specific processing logic
+- **Standard Library**: For core functionality
+
+## Testing Guidelines
+- Do not mock datastore dependencies
+- Use real database datatore in testing
+- Test business logic in isolation
+- Focus on domain rules and edge cases
+- Use entity factories for test data

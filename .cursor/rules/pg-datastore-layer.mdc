@@ -1,0 +1,250 @@
+---
+description: "PostgreSQL datastore layer patterns and data access responsibilities"
+globs: "internal/datastore/pg/*.go"
+---
+
+# PostgreSQL Datastore Layer
+
+## Responsibilities
+The PostgreSQL datastore in [internal/datastore/pg/](mdc:internal/datastore/pg/) provides **data persistence** and should ONLY:
+
+1. **Database Operations**: Execute SQL queries and transactions
+2. **Data Mapping**: Convert between Go structs and database rows
+3. **Query Building**: Construct dynamic queries with options
+4. **Connection Management**: Handle database connections and pooling
+5. **Migration Management**: Database schema versioning
+6. **Transaction Coordination**: Provide transaction boundaries
+
+## What PG Layer MUST NOT Do
+
+❌ **Business Logic**: No domain rules or validation  
+❌ **HTTP Concerns**: No knowledge of web requests  
+❌ **File Operations**: Database only, no filesystem access  
+❌ **Processing Logic**: No thumbnail generation or EXIF processing  
+❌ **External API Calls**: Database operations only  
+
+## Core Components
+
+### Datastore Structure
+```go
+type Datastore struct {
+    db *sql.DB
+}
+
+func NewPostgresDatastore(ctx context.Context, uri string) (*Datastore, error) {
+    // Connection establishment and configuration
+}
+```
+
+### Transaction Management
+```go
+func (d *Datastore) WriteTx(ctx context.Context, fn func(ctx context.Context, writer *Writer) error) error {
+    tx, err := d.db.BeginTx(ctx, nil)
+    if err != nil {
+        return err
+    }
+    defer tx.Rollback()
+    
+    writer := &Writer{tx: tx}
+    if err := fn(ctx, writer); err != nil {
+        return err
+    }
+    
+    return tx.Commit()
+}
+```
+
+## Query Pattern Architecture
+
+### Options-Based Query Building
+Located in [internal/datastore/pg/query_options.go](mdc:internal/datastore/pg/query_options.go):
+
+```go
+type QueryOption func(*QueryBuilder)
+
+// Basic options
+func Limit(limit int) QueryOption
+func Offset(offset int) QueryOption  
+func SortByColumn(column string, desc bool) QueryOption
+
+// Filter options
+func FilterByMediaId(id string) QueryOption
+func FilterByColumnName(column, value string) QueryOption
+```
+
+### Dynamic Query Construction
+```go
+func (d *Datastore) QueryMedia(ctx context.Context, options ...QueryOption) ([]entity.Media, error) {
+    qb := &QueryBuilder{
+        baseQuery: "SELECT * FROM media",
+        conditions: []string{},
+        args: []interface{}{},
+    }
+    
+    // Apply all options
+    for _, opt := range options {
+        opt(qb)
+    }
+    
+    // Execute built query
+    query := qb.Build()
+    rows, err := d.db.QueryContext(ctx, query, qb.args...)
+    // ... process results
+}
+```
+
+## Data Model Mapping
+
+### Entity ↔ Database Mapping
+Models in [internal/datastore/pg/models/](mdc:internal/datastore/pg/models/) handle conversion:
+
+```go
+// Database model (internal to pg layer)
+type MediaModel struct {
+    ID         string    `db:"id"`
+    AlbumID    string    `db:"album_id"`  
+    Filename   string    `db:"filename"`
+    Hash       string    `db:"hash"`
+    CapturedAt time.Time `db:"captured_at"`
+    Thumbnail  []byte    `db:"thumbnail"`
+    // ... other fields
+}
+
+// Conversion methods
+func (m *MediaModel) ToEntity(album entity.Album) entity.Media {
+    return entity.Media{
+        ID:         m.ID,
+        Album:      album,
+        Filename:   m.Filename,
+        Hash:       m.Hash,
+        CapturedAt: m.CapturedAt,
+        Thumbnail:  m.Thumbnail,
+        // Content function set by service layer
+    }
+}
+
+func FromEntity(media entity.Media) *MediaModel {
+    return &MediaModel{
+        ID:         media.ID,
+        AlbumID:    media.Album.ID,
+        Filename:   media.Filename,
+        Hash:       media.Hash,
+        CapturedAt: media.CapturedAt,
+        Thumbnail:  media.Thumbnail,
+    }
+}
+```
+
+## Writer Pattern for Mutations
+
+### Transactional Writes
+```go
+type Writer struct {
+    tx *sql.Tx
+}
+
+func (w *Writer) WriteMedia(ctx context.Context, media entity.Media) error {
+    model := FromEntity(media)
+    
+    query := `
+        INSERT INTO media (id, album_id, filename, hash, captured_at, thumbnail, exif)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (id) DO UPDATE SET
+            filename = EXCLUDED.filename,
+            hash = EXCLUDED.hash,
+            captured_at = EXCLUDED.captured_at,
+            thumbnail = EXCLUDED.thumbnail,
+            exif = EXCLUDED.exif
+    `
+    
+    _, err := w.tx.ExecContext(ctx, query, 
+        model.ID, model.AlbumID, model.Filename, 
+        model.Hash, model.CapturedAt, model.Thumbnail, model.ExifJSON)
+    
+    return err
+}
+```
+
+## Migration Management
+
+### SQL Migration Files
+Located in [internal/datastore/pg/migrations/sql/](mdc:internal/datastore/pg/migrations/sql/):
+
+```sql
+-- 20250730120748_initial.sql
+CREATE TABLE albums (
+    id VARCHAR(255) PRIMARY KEY,
+    path VARCHAR(500) UNIQUE NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE media (
+    id VARCHAR(255) PRIMARY KEY,
+    album_id VARCHAR(255) REFERENCES albums(id) ON DELETE CASCADE,
+    filename VARCHAR(500) NOT NULL,
+    hash VARCHAR(64) UNIQUE NOT NULL,
+    captured_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    thumbnail BYTEA,
+    exif JSONB
+);
+```
+
+### Migration Integration
+```go
+func (d *Datastore) RunMigrations(ctx context.Context) error {
+    // Migration execution logic
+    // Version tracking in database
+    // Rollback capabilities
+}
+```
+
+## Error Handling Patterns
+
+### Database Error Classification
+```go
+func (d *Datastore) QueryMedia(ctx context.Context, options ...QueryOption) ([]entity.Media, error) {
+    // ... query execution
+    
+    if err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            return []entity.Media{}, nil // Empty result, not error
+        }
+        
+        if isConstraintViolation(err) {
+            return nil, fmt.Errorf("constraint violation: %w", err)
+        }
+        
+        return nil, fmt.Errorf("database query failed: %w", err)
+    }
+}
+```
+
+## Connection and Performance
+
+### Connection Configuration
+- Connection pooling with appropriate limits
+- Context-based query cancellation  
+- Prepared statement caching
+- Read/write connection separation (if needed)
+
+### Query Optimization
+- Efficient indexing strategies
+- Query plan analysis for complex operations
+- Batch operations for bulk inserts
+- Pagination support for large result sets
+
+## Dependencies
+PG layer should only depend on:
+- **Entity Types**: For data conversion (`entity.Album`, `entity.Media`)
+- **Standard SQL**: `database/sql` and PostgreSQL driver
+- **Migration Tools**: For schema management
+- **Configuration**: Database connection parameters
+- **Context**: For cancellation and timeouts
+
+## Testing Guidelines
+- Use test database containers
+- Test query option combinations
+- Verify transaction rollback scenarios
+- Test concurrent access patterns
+- Validate constraint enforcement
