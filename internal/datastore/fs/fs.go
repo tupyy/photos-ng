@@ -3,12 +3,54 @@ package fs
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
+)
+
+// WalkResult represents an item found during filesystem traversal
+type WalkResult struct {
+	Path        string // Relative path from the root data folder
+	IsDirectory bool   // True if this is a directory, false if it's a file
+}
+
+// Common filter functions for Walk method
+var (
+	// FilterDirectories returns only directories
+	FilterDirectories = func(result WalkResult) bool {
+		return result.IsDirectory
+	}
+
+	// FilterFiles returns only files (not directories)
+	FilterFiles = func(result WalkResult) bool {
+		return !result.IsDirectory
+	}
+
+	// FilterMediaFiles returns only supported media files (jpg, jpeg, png)
+	FilterMediaFiles = func(result WalkResult) bool {
+		if result.IsDirectory {
+			return false
+		}
+
+		supportedExtensions := map[string]bool{
+			".jpg":  true,
+			".jpeg": true,
+			".png":  true,
+		}
+
+		ext := strings.ToLower(filepath.Ext(result.Path))
+		return supportedExtensions[ext]
+	}
+
+	// FilterAll returns all items (directories and files)
+	FilterAll = func(result WalkResult) bool {
+		return true
+	}
 )
 
 type Datastore struct {
@@ -98,4 +140,149 @@ func (fs *Datastore) DeleteMedia(ctx context.Context, mediapath string) error {
 
 	// Remove the directory and all its contents
 	return os.Remove(fullPath)
+}
+
+// Walk recursively traverses the filesystem starting from the given relative path
+// and returns a list of items (directories and files) as WalkResult structs that pass the filter
+// The filter function receives each WalkResult and returns true if the item should be included
+
+func (fs *Datastore) Walk(ctx context.Context, relativePath string, filter func(WalkResult) bool) ([]WalkResult, error) {
+	fullPath := filepath.Join(fs.rootFolder, relativePath)
+
+	// Check if the path exists and is a directory
+	if info, err := os.Stat(fullPath); err != nil {
+		if os.IsNotExist(err) {
+			return []WalkResult{}, nil // Path doesn't exist, return empty list
+		}
+		return nil, err
+	} else if !info.IsDir() {
+		return []WalkResult{}, nil // Path is not a directory, return empty list
+	}
+
+	var results []WalkResult
+
+	// Recursively walk the directory tree
+	err := filepath.WalkDir(fullPath, func(path string, d os.DirEntry, err error) error {
+		// Handle walk errors
+		if err != nil {
+			return err
+		}
+
+		// Skip the root directory itself
+		if path == fullPath {
+			return nil
+		}
+
+		// Create relative path from the root data folder
+		itemRelativePath, err := filepath.Rel(fs.rootFolder, path)
+		if err != nil {
+			return fmt.Errorf("failed to get relative path for %s: %w", path, err)
+		}
+
+		result := WalkResult{
+			Path:        itemRelativePath,
+			IsDirectory: d.IsDir(),
+		}
+
+		// Apply filter - only add if filter returns true
+		if filter == nil || filter(result) {
+			results = append(results, result)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+// WalkTree recursively walks the directory tree and returns a FolderNode tree structure
+// The tree includes all directories and media files organized in a hierarchical structure
+func (fs *Datastore) WalkTree(ctx context.Context, relativePath string) (*entity.FolderNode, error) {
+	fullPath := filepath.Join(fs.rootFolder, relativePath)
+
+	// Check if the path exists and is a directory
+	if info, err := os.Stat(fullPath); err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("path does not exist: %s", relativePath)
+		}
+		return nil, err
+	} else if !info.IsDir() {
+		return nil, fmt.Errorf("path is not a directory: %s", relativePath)
+	}
+
+	// Create the root node
+	root := entity.NewFolderNode(relativePath)
+
+	// Build a map to track all folder nodes by their path
+	folderNodes := make(map[string]*entity.FolderNode)
+	folderNodes[relativePath] = root
+
+	// Walk the directory tree
+	err := filepath.WalkDir(fullPath, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip the root directory itself
+		if path == fullPath {
+			return nil
+		}
+
+		// Get relative path from fs root
+		itemRelativePath, err := filepath.Rel(fs.rootFolder, path)
+		if err != nil {
+			return fmt.Errorf("failed to get relative path for %s: %w", path, err)
+		}
+
+		if d.IsDir() {
+			// Create a new folder node
+			folderNode := entity.NewFolderNode(itemRelativePath)
+			folderNodes[itemRelativePath] = folderNode
+
+			// Find the parent folder and add this as a child
+			parentPath := filepath.Dir(itemRelativePath)
+			// Handle the case where parent is the root - filepath.Dir returns "." for top-level items
+			if parentPath == "." {
+				parentPath = relativePath // Use the original relative path (could be "")
+			}
+			if parentNode, exists := folderNodes[parentPath]; exists {
+				parentNode.AddChild(folderNode)
+			}
+		} else {
+			// This is a file - check if it's a media file and add to parent folder
+			if fs.isMediaFile(itemRelativePath) {
+				parentPath := filepath.Dir(itemRelativePath)
+				// Handle the case where parent is the root - filepath.Dir returns "." for top-level items
+				if parentPath == "." {
+					parentPath = relativePath // Use the original relative path (could be "")
+				}
+				if parentNode, exists := folderNodes[parentPath]; exists {
+					parentNode.AddMediaFile(itemRelativePath)
+				}
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return root, nil
+}
+
+// isMediaFile checks if a file is a supported media file based on extension
+func (fs *Datastore) isMediaFile(filePath string) bool {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	switch ext {
+	case ".jpg", ".jpeg", ".png":
+		return true
+	default:
+		return false
+	}
 }

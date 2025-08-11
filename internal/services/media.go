@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"path"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
@@ -176,4 +177,10 @@ func (m *MediaService) DeleteMedia(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+func (m *MediaService) GetContentFn(ctx context.Context, media entity.Media) entity.MediaContentFn {
+	// Construct the full file path from media filename and album path
+	filepath := path.Join(media.Album.Path, media.Filename)
+	return m.fs.Read(ctx, filepath)
 }

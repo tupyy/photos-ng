@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strings"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
@@ -77,7 +78,12 @@ func (a *AlbumService) CreateAlbum(ctx context.Context, album entity.Album) (*en
 			}
 			return nil, err
 		}
-		album.Path = path.Join(parent.Path, album.Path)
+		// Only join paths if the album path doesn't already contain the parent path
+		// This maintains backward compatibility with UI calls (which need joining)
+		// while supporting internal calls (which already have full paths)
+		if !strings.HasPrefix(album.Path, parent.Path+"/") && album.Path != parent.Path {
+			album.Path = path.Join(parent.Path, album.Path)
+		}
 		album.ID = entity.GenerateId(album.Path)
 	}
 
@@ -162,26 +168,4 @@ func (a *AlbumService) DeleteAlbum(ctx context.Context, id string) error {
 	}
 
 	return nil
-}
-
-// SyncAlbum synchronizes an album with the file system
-func (a *AlbumService) SyncAlbum(ctx context.Context, id string) (int, error) {
-	// Check if album exists
-	album, err := a.GetAlbum(ctx, id)
-	if err != nil {
-		return 0, err
-	}
-
-	// TODO: Implement actual sync logic
-	// This would typically:
-	// 1. Scan the album's file system path
-	// 2. Compare with database records
-	// 3. Add new media files
-	// 4. Remove deleted files
-	// 5. Update metadata
-
-	_ = album        // Use the album for sync logic
-	syncedItems := 0 // Placeholder
-
-	return syncedItems, nil
 }
