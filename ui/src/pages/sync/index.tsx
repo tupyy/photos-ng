@@ -13,6 +13,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '@shared/store';
 import { useSyncPolling } from '@shared/hooks/useSyncPolling';
+import { fetchSyncJobs } from '@shared/reducers/syncSlice';
 import { SyncJobsList } from './components/SyncJobsList';
 import { SyncJobDetail } from './components/SyncJobDetail';
 import { StartSyncModal } from './components/StartSyncModal';
@@ -31,6 +32,14 @@ const SyncPage: React.FC = () => {
     enabled: !jobId, // Only poll when viewing jobs list, not individual job detail
   });
 
+  // Fetch jobs when returning to list view (jobId becomes null)
+  useEffect(() => {
+    if (!jobId) {
+      // When returning to list view, fetch jobs to ensure we have the latest state
+      dispatch(fetchSyncJobs());
+    }
+  }, [jobId, dispatch]);
+
   // Auto-start sync if path is provided in URL params
   const autoStartPath = searchParams.get('autoStart');
   
@@ -42,6 +51,7 @@ const SyncPage: React.FC = () => {
   }, [autoStartPath, jobId]);
 
   // Calculate job statistics
+  const pendingJobs = jobs.filter(job => job.status === 'pending');
   const activeJobs = jobs.filter(job => job.status === 'running');
   const completedJobs = jobs.filter(job => job.status === 'completed');
   const stoppedJobs = jobs.filter(job => job.status === 'stopped');
@@ -120,6 +130,14 @@ const SyncPage: React.FC = () => {
             {/* Jobs Summary - only show on main sync page */}
             {!jobId && jobs.length > 0 && (
               <div className="mt-3 flex items-center space-x-4 text-sm flex-wrap">
+                {pendingJobs.length > 0 && (
+                  <div className="flex items-center">
+                    <div className="h-2 w-2 bg-yellow-500 rounded-full mr-2"></div>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      {pendingJobs.length} pending
+                    </span>
+                  </div>
+                )}
                 {activeJobs.length > 0 && (
                   <div className="flex items-center">
                     <div className="h-2 w-2 bg-blue-500 rounded-full mr-2"></div>
@@ -152,13 +170,17 @@ const SyncPage: React.FC = () => {
                     </span>
                   </div>
                 )}
-                {activeJobs.length > 0 && (
-                  <div className="flex items-center text-blue-600 dark:text-blue-400">
-                    <svg className="animate-spin h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="m100 50.5908c0 27.6142-22.3858 50-50 50s-50-22.3858-50-50 22.3858-50 50-50 50 22.3858 50 50zm-9.08144 0c0-22.5981-18.4013-40.9186-40.9186-40.9186s-40.9186 18.3205-40.9186 40.9186 18.3205 40.9186 40.9186 40.9186 40.9186-18.3205 40.9186-40.9186zm-90.77316-5.909c-2.425 0-4.392-1.967-4.392-4.392s1.967-4.392 4.392-4.392 4.392 1.967 4.392 4.392-1.967 4.392-4.392 4.392z"></path>
-                    </svg>
-                    <span>Processing...</span>
+                {(pendingJobs.length > 0 || activeJobs.length > 0) && (
+                  <div className={`flex items-center ${pendingJobs.length > 0 && activeJobs.length === 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                    {pendingJobs.length > 0 && activeJobs.length === 0 ? (
+                      <div className="animate-pulse h-3 w-3 bg-yellow-500 rounded-full mr-1"></div>
+                    ) : (
+                      <svg className="animate-spin h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="m100 50.5908c0 27.6142-22.3858 50-50 50s-50-22.3858-50-50 22.3858-50 50-50 50 22.3858 50 50zm-9.08144 0c0-22.5981-18.4013-40.9186-40.9186-40.9186s-40.9186 18.3205-40.9186 40.9186 18.3205 40.9186 40.9186 40.9186 40.9186-18.3205 40.9186-40.9186zm-90.77316-5.909c-2.425 0-4.392-1.967-4.392-4.392s1.967-4.392 4.392-4.392 4.392 1.967 4.392 4.392-1.967 4.392-4.392 4.392z"></path>
+                      </svg>
+                    )}
+                    <span>{pendingJobs.length > 0 && activeJobs.length === 0 ? 'Waiting to start...' : 'Processing...'}</span>
                   </div>
                 )}
               </div>

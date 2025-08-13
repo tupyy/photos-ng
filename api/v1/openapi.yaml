@@ -856,43 +856,65 @@ components:
       required:
         - id
         - status
-        - filesRemaining
-        - totalFiles
-        - filesProcessed
+        - remainingTasks
+        - totalTasks
+        - completedTasks
+        - createdAt
       properties:
         id:
           type: string
           description: Unique identifier for the sync job
           example: "sync-123e4567-e89b-12d3-a456-426614174000"
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        remainingTime:
+          type: string
+          format: integer
+          description: aproximative ramaining running tile in seconds
         status:
           type: string
           description: Current status of the sync job
-          enum: ["running", "completed", "failed", "stopped"]
+          enum: ["pending", "running", "completed", "failed", "stopped"]
           example: "running"
-        filesRemaining:
+        remainingTasks:
           type: integer
           description: Number of files still to be processed
           example: 42
-        totalFiles:
+        totalTasks:
           type: integer
           description: Total number of files to process
           example: 100
-        filesProcessed:
+        completedTasks:
           type: array
           description: List of processed files with their results
           items:
-            $ref: '#/components/schemas/ProcessedFile'
+            $ref: '#/components/schemas/TaskResult'
 
-    ProcessedFile:
+    TaskResult:
       type: object
       required:
-        - filename
+        - item
+        - itemType
         - result
+        - duration
       properties:
-        filename:
+        item:
           type: string
-          description: Name of the processed file
+          description: Name of the processed file/folder
           example: "IMG_001.jpg"
+        itemType:
+          type: string
+          enum: ["file", "folder"]
+        duration:
+          type: integer
+          description: time of running in seconds
         result:
           oneOf:
             - type: string

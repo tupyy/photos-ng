@@ -1,11 +1,11 @@
-package job
+package services
 
 import (
 	"container/list"
+	"context"
 	"sync"
 	"time"
 
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	"github.com/google/uuid"
 )
 
@@ -21,9 +21,9 @@ var (
 
 type Job interface {
 	GetId() uuid.UUID
-	Start() error
+	Start(ctx context.Context) error
 	Stop() error
-	Status() entity.JobProgress
+	Status() JobProgress
 }
 
 type Scheduler struct {
@@ -70,7 +70,7 @@ func (s *Scheduler) Get(id string) Job {
 	return nil
 }
 
-func (s *Scheduler) GetByStatus(status entity.JobStatus) []Job {
+func (s *Scheduler) GetByStatus(status JobStatus) []Job {
 	return s.find(func(j Job) bool { return j.Status().Status == status })
 }
 
@@ -79,7 +79,7 @@ func (s *Scheduler) GetAll() []Job {
 }
 
 func (s *Scheduler) Stop() {
-	runningJobs := s.GetByStatus(entity.StatusRunning)
+	runningJobs := s.GetByStatus(StatusRunning)
 	for _, j := range runningJobs {
 		j.Stop()
 	}
@@ -89,7 +89,7 @@ func (s *Scheduler) Stop() {
 	<-d
 }
 
-func (s *Scheduler) countByStatus(status entity.JobStatus) int {
+func (s *Scheduler) countByStatus(status JobStatus) int {
 	return len(s.GetByStatus(status))
 }
 
@@ -122,13 +122,16 @@ start:
 		}
 		j := e.Value.(Job)
 		switch j.Status().Status {
-		case entity.StatusPending:
-			if s.countByStatus(entity.StatusPending) < MAX_NUMBER_RUNNING_PIPELINES {
-				j.Start()
+		case StatusPending:
+			if s.countByStatus(StatusPending) < MAX_NUMBER_RUNNING_PIPELINES {
+				go func(job Job) {
+					ctx := context.Background()
+					job.Start(ctx)
+				}(j)
 			}
-		case entity.StatusCompleted:
-		case entity.StatusStopped:
-		case entity.StatusFailed:
+		case StatusCompleted:
+		case StatusStopped:
+		case StatusFailed:
 			if j.Status().CompletedAt.Add(DEFAULT_KEEP_PERIOD * time.Second).Before(time.Now()) {
 				s.m.Lock()
 				_ = s.queue.Remove(e)

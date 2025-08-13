@@ -217,29 +217,5 @@ func (s *ServerImpl) DeleteAlbum(c *gin.Context, id string) {
 // Returns HTTP 404 if album not found, HTTP 500 for server errors,
 // or HTTP 200 with sync results on success.
 func (s *ServerImpl) SyncAlbum(c *gin.Context, id string) {
-	syncedItems, err := s.albumSrv.SyncAlbum(c.Request.Context(), id)
-	if err != nil {
-		switch err.(type) {
-		case *services.ErrResourceNotFound:
-			c.JSON(http.StatusNotFound, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		default:
-			zap.S().Errorw("failed to sync album", "error", err, "album_id", id)
-			c.JSON(http.StatusInternalServerError, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		}
-	}
-
-	zap.S().Infow("album synced", "album_id", id, "synced_items", syncedItems)
-
-	response := v1.SyncAlbumResponse{
-		Message:     "Album sync completed",
-		SyncedItems: syncedItems,
-	}
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{})
 }

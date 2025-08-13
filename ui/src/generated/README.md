@@ -84,8 +84,6 @@ Class | Method | HTTP request | Description
  - [ListSyncJobsResponse](docs/ListSyncJobsResponse.md)
  - [Media](docs/Media.md)
  - [ModelError](docs/ModelError.md)
- - [ProcessedFile](docs/ProcessedFile.md)
- - [ProcessedFileResult](docs/ProcessedFileResult.md)
  - [StartSyncRequest](docs/StartSyncRequest.md)
  - [StartSyncResponse](docs/StartSyncResponse.md)
  - [StatsResponse](docs/StatsResponse.md)
@@ -93,6 +91,8 @@ Class | Method | HTTP request | Description
  - [StopSyncJob200Response](docs/StopSyncJob200Response.md)
  - [SyncAlbumResponse](docs/SyncAlbumResponse.md)
  - [SyncJob](docs/SyncJob.md)
+ - [TaskResult](docs/TaskResult.md)
+ - [TaskResultResult](docs/TaskResultResult.md)
  - [UpdateAlbumRequest](docs/UpdateAlbumRequest.md)
  - [UpdateMediaRequest](docs/UpdateMediaRequest.md)
 

@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@shared/store';
 import { stopSyncJob } from '@shared/reducers/syncSlice';
 import { useSyncJobDetail } from '@shared/hooks/useSyncJobDetail';
-import { ProcessedFile } from '@generated/models';
+import { TaskResult } from '@generated/models';
+
+type TaskFilter = 'all' | 'success' | 'error';
 
 interface SyncJobDetailProps {
   jobId: string;
@@ -12,6 +14,7 @@ interface SyncJobDetailProps {
 export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
   
   // Use centralized job detail hook for fetching and polling
   const { job, isActive } = useSyncJobDetail(jobId);
@@ -28,16 +31,25 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
   };
 
   const getProgressPercentage = () => {
-    if (!job || job.totalFiles === 0) return 0;
-    return Math.round(((job.totalFiles - job.filesRemaining) / job.totalFiles) * 100);
+    if (!job || job.totalTasks === 0) return 0;
+    return Math.round(((job.totalTasks - job.remainingTasks) / job.totalTasks) * 100);
   };
 
-  const getFileResultColor = (result: string) => {
-    return result === 'ok' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+  const isTaskSuccessful = (taskResult: TaskResult) => {
+    // TaskResult.result is a string - "ok" means success, anything else is an error message
+    return taskResult.result === 'ok';
   };
 
-  const getFileResultIcon = (result: string) => {
-    if (result === 'ok') {
+  const getTaskResultText = (taskResult: TaskResult) => {
+    return taskResult.result;
+  };
+
+  const getFileResultColor = (taskResult: TaskResult) => {
+    return isTaskSuccessful(taskResult) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+  };
+
+  const getFileResultIcon = (taskResult: TaskResult) => {
+    if (isTaskSuccessful(taskResult)) {
       return (
         <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
@@ -52,6 +64,19 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
     }
   };
 
+  const getFilteredTasks = () => {
+    if (!job?.completedTasks) return [];
+    
+    switch (taskFilter) {
+      case 'success':
+        return job.completedTasks.filter(task => isTaskSuccessful(task));
+      case 'error':
+        return job.completedTasks.filter(task => !isTaskSuccessful(task));
+      default:
+        return job.completedTasks;
+    }
+  };
+
   if (!job) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -61,8 +86,8 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
   }
 
   const progressPercentage = getProgressPercentage();
-  const successfulFiles = job.filesProcessed?.filter(f => f.result === 'ok').length || 0;
-  const failedFiles = job.filesProcessed?.filter(f => f.result !== 'ok').length || 0;
+  const successfulFiles = job.completedTasks?.filter(task => isTaskSuccessful(task)).length || 0;
+  const failedFiles = job.completedTasks?.filter(task => !isTaskSuccessful(task)).length || 0;
 
   return (
     <div className="space-y-6">
@@ -85,8 +110,8 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{job.totalFiles}</div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Total Files</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{job.totalTasks}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Total Tasks</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-green-600 dark:text-green-400">{successfulFiles}</div>
@@ -118,61 +143,135 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              isActive ? 'text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-900' : 'text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-900'
+              job.status === 'pending' 
+                ? 'text-yellow-700 bg-yellow-100 dark:text-yellow-300 dark:bg-yellow-900'
+                : job.status === 'running'
+                ? 'text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-900'
+                : job.status === 'completed'
+                ? 'text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-900'
+                : job.status === 'failed'
+                ? 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900'
+                : 'text-gray-700 bg-gray-100 dark:text-gray-300 dark:bg-gray-900'
             }`}>
-              {isActive ? 'In Progress' : 'Completed'}
+              {job.status === 'pending' ? 'Pending' : 
+               job.status === 'running' ? 'In Progress' : 
+               job.status === 'completed' ? 'Completed' :
+               job.status === 'failed' ? 'Failed' :
+               job.status === 'stopped' ? 'Stopped' : 'Unknown'}
             </span>
-            {isActive && (
+            {(job.status === 'pending' || job.status === 'running') && (
               <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                {job.filesRemaining} files remaining
+                {job.status === 'pending' ? 'Waiting to start...' : `${job.remainingTasks} tasks remaining`}
               </span>
             )}
           </div>
-          {isActive && (
+          {job.status === 'running' && (
             <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
               Processing...
             </div>
           )}
+          {job.status === 'pending' && (
+            <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+              <div className="animate-pulse rounded-full h-4 w-4 bg-yellow-500 mr-2"></div>
+              Waiting to start...
+            </div>
+          )}
         </div>
       </div>
 
-      {/* File Results */}
-      {job.filesProcessed && job.filesProcessed.length > 0 && (
+      {/* Task Results */}
+      {job.completedTasks && job.completedTasks.length > 0 && (
         <div className="bg-white dark:bg-slate-800 shadow rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">File Processing Results</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white">Task Processing Results</h2>
+              
+              {/* Filter Buttons */}
+              <div className="flex space-x-1">
+                <button
+                  onClick={() => setTaskFilter('all')}
+                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                    taskFilter === 'all'
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  All ({job.completedTasks.length})
+                </button>
+                <button
+                  onClick={() => setTaskFilter('success')}
+                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                    taskFilter === 'success'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Success ({successfulFiles})
+                </button>
+                <button
+                  onClick={() => setTaskFilter('error')}
+                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                    taskFilter === 'error'
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Error ({failedFiles})
+                </button>
+              </div>
+            </div>
           </div>
           
           <div className="max-h-96 overflow-y-auto">
-            <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-              {job.filesProcessed.map((file, index) => (
+            {getFilteredTasks().length > 0 ? (
+              <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                {getFilteredTasks().map((task, index) => (
                 <li key={index} className="px-6 py-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center min-w-0 flex-1">
                       <div className="flex-shrink-0 mr-3">
-                        {getFileResultIcon(file.result)}
+                        {getFileResultIcon(task)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          {file.filename}
-                        </p>
-                        {file.result !== 'ok' && (
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {task.item}
+                          </p>
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                            task.itemType === 'file' 
+                              ? 'text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-900' 
+                              : 'text-purple-700 bg-purple-100 dark:text-purple-300 dark:bg-purple-900'
+                          }`}>
+                            {task.itemType}
+                          </span>
+                        </div>
+                        {!isTaskSuccessful(task) && (
                           <p className="text-sm text-red-600 dark:text-red-400 mt-1">
-                            {file.result}
+                            {getTaskResultText(task)}
                           </p>
                         )}
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Duration: {task.duration}s
+                        </p>
                       </div>
                     </div>
                     <div className="flex-shrink-0">
-                      <span className={`text-sm font-medium ${getFileResultColor(file.result)}`}>
-                        {file.result === 'ok' ? 'Success' : 'Error'}
+                      <span className={`text-sm font-medium ${getFileResultColor(task)}`}>
+                        {isTaskSuccessful(task) ? 'Success' : 'Error'}
                       </span>
                     </div>
                   </div>
                 </li>
               ))}
-            </ul>
+              </ul>
+            ) : (
+              <div className="px-6 py-8 text-center">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No tasks match the selected filter.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

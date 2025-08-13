@@ -15,7 +15,7 @@
 
 // May contain unused imports in some cases
 // @ts-ignore
-import type { ProcessedFile } from './processed-file';
+import type { TaskResult } from './task-result';
 
 /**
  * 
@@ -30,6 +30,30 @@ export interface SyncJob {
      */
     'id': string;
     /**
+     * 
+     * @type {string}
+     * @memberof SyncJob
+     */
+    'createdAt': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncJob
+     */
+    'startedAt'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncJob
+     */
+    'finishedAt'?: string;
+    /**
+     * aproximative ramaining running tile in seconds
+     * @type {number}
+     * @memberof SyncJob
+     */
+    'remainingTime'?: number;
+    /**
      * Current status of the sync job
      * @type {string}
      * @memberof SyncJob
@@ -40,19 +64,19 @@ export interface SyncJob {
      * @type {number}
      * @memberof SyncJob
      */
-    'filesRemaining': number;
+    'remainingTasks': number;
     /**
      * Total number of files to process
      * @type {number}
      * @memberof SyncJob
      */
-    'totalFiles': number;
+    'totalTasks': number;
     /**
      * List of processed files with their results
-     * @type {Array<ProcessedFile>}
+     * @type {Array<TaskResult>}
      * @memberof SyncJob
      */
-    'filesProcessed': Array<ProcessedFile>;
+    'completedTasks': Array<TaskResult>;
 }
 
 /**
@@ -60,6 +84,7 @@ export interface SyncJob {
     * @enum {string}
     */
 export enum SyncJobStatusEnum {
+    Pending = 'pending',
     Running = 'running',
     Completed = 'completed',
     Failed = 'failed',

@@ -21,8 +21,6 @@ docs/ListMediaResponse.md
 docs/ListSyncJobsResponse.md
 docs/Media.md
 docs/MediaApi.md
-docs/ProcessedFile.md
-docs/ProcessedFileResult.md
 docs/StartSyncRequest.md
 docs/StartSyncResponse.md
 docs/StatsApi.md
@@ -32,6 +30,8 @@ docs/StopSyncJob200Response.md
 docs/SyncAlbumResponse.md
 docs/SyncApi.md
 docs/SyncJob.md
+docs/TaskResult.md
+docs/TaskResultResult.md
 docs/UpdateAlbumRequest.md
 docs/UpdateMediaRequest.md
 git_push.sh
@@ -47,8 +47,6 @@ models/list-media-response.ts
 models/list-sync-jobs-response.ts
 models/media.ts
 models/model-error.ts
-models/processed-file-result.ts
-models/processed-file.ts
 models/start-sync-request.ts
 models/start-sync-response.ts
 models/stats-response.ts
@@ -56,6 +54,8 @@ models/stop-all-sync-jobs200-response.ts
 models/stop-sync-job200-response.ts
 models/sync-album-response.ts
 models/sync-job.ts
+models/task-result-result.ts
+models/task-result.ts
 models/update-album-request.ts
 models/update-media-request.ts
 package.json

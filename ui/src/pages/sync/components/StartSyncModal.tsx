@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { SyncApi } from '@generated/api/sync-api';
-import { StartSyncRequest } from '@generated/models';
-import { apiConfig } from '@shared/api/apiConfig';
+import { useAppDispatch, useAppSelector, selectSyncStarting, selectSyncError } from '@shared/store';
+import { startSyncJob, clearError } from '@shared/reducers/syncSlice';
 
 interface StartSyncModalProps {
   isOpen: boolean;
@@ -16,11 +15,10 @@ export const StartSyncModal: React.FC<StartSyncModalProps> = ({
   onJobCreated, 
   initialPath = '' 
 }) => {
+  const dispatch = useAppDispatch();
   const [path, setPath] = useState(initialPath);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const syncApi = new SyncApi(apiConfig);
+  const isSubmitting = useAppSelector(selectSyncStarting);
+  const error = useAppSelector(selectSyncError);
 
   // Update path when initialPath changes
   useEffect(() => {
@@ -32,24 +30,16 @@ export const StartSyncModal: React.FC<StartSyncModalProps> = ({
     if (isOpen && initialPath && !isSubmitting) {
       handleStartSync();
     }
-  }, [isOpen, initialPath]);
+  }, [isOpen, initialPath, isSubmitting]);
 
   const handleStartSync = async () => {
-    setIsSubmitting(true);
-    setError(null);
-
     try {
-      const request: StartSyncRequest = {
-        path: path.trim() || '' // Use empty string for root path
-      };
-
-      const response = await syncApi.startSyncJob(request);
-      onJobCreated(response.data.id);
+      const resultAction = await dispatch(startSyncJob(path.trim() || ''));
+      if (startSyncJob.fulfilled.match(resultAction)) {
+        onJobCreated(resultAction.payload.jobId);
+      }
     } catch (err: any) {
       console.error('Failed to start sync job:', err);
-      setError(err.response?.data?.message || 'Failed to start sync job');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -61,7 +51,7 @@ export const StartSyncModal: React.FC<StartSyncModalProps> = ({
   const handleClose = () => {
     if (!isSubmitting) {
       setPath('');
-      setError(null);
+      dispatch(clearError());
       onClose();
     }
   };

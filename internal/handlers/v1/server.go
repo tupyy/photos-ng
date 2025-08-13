@@ -10,15 +10,24 @@ import (
 // It contains the business logic for handling HTTP requests and responses
 // for all V1 endpoints including albums and media.
 type ServerImpl struct {
-	albumSrv *services.AlbumService
-	mediaSrv *services.MediaService
-	statsSrv *services.StatsService
+	albumSrv   *services.AlbumService
+	mediaSrv   *services.MediaService
+	statsSrv   *services.StatsService
+	syncSrv    *services.SyncService
+	rootFolder string
 }
 
 func NewServerV1(dt *pg.Datastore, rootFolder string) *ServerImpl {
+	fsDatastore := fs.NewFsDatastore(rootFolder)
+	albumSrv := services.NewAlbumService(dt, fsDatastore)
+	mediaSrv := services.NewMediaService(dt, fsDatastore)
+	syncSrv := services.NewSyncService(albumSrv, mediaSrv, fsDatastore)
+
 	return &ServerImpl{
-		albumSrv: services.NewAlbumService(dt, fs.NewFsDatastore(rootFolder)),
-		mediaSrv: services.NewMediaService(dt, fs.NewFsDatastore(rootFolder)),
-		statsSrv: services.NewStatsService(dt),
+		albumSrv:   albumSrv,
+		mediaSrv:   mediaSrv,
+		statsSrv:   services.NewStatsService(dt),
+		syncSrv:    syncSrv,
+		rootFolder: rootFolder,
 	}
 }

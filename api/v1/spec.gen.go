@@ -55,12 +55,18 @@ type ServerInterface interface {
 	// Get application statistics
 	// (GET /stats)
 	GetStats(c *gin.Context)
+	// Stop all sync jobs
+	// (DELETE /sync)
+	StopAllSyncJobs(c *gin.Context)
 	// List all sync jobs
 	// (GET /sync)
 	ListSyncJobs(c *gin.Context)
 	// Start sync job
 	// (POST /sync)
 	StartSyncJob(c *gin.Context)
+	// Stop sync job by ID
+	// (DELETE /sync/{id})
+	StopSyncJob(c *gin.Context, id string)
 	// Get sync job by ID
 	// (GET /sync/{id})
 	GetSyncJob(c *gin.Context, id string)
@@ -454,6 +460,19 @@ func (siw *ServerInterfaceWrapper) GetStats(c *gin.Context) {
 	siw.Handler.GetStats(c)
 }
 
+// StopAllSyncJobs operation middleware
+func (siw *ServerInterfaceWrapper) StopAllSyncJobs(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.StopAllSyncJobs(c)
+}
+
 // ListSyncJobs operation middleware
 func (siw *ServerInterfaceWrapper) ListSyncJobs(c *gin.Context) {
 
@@ -478,6 +497,30 @@ func (siw *ServerInterfaceWrapper) StartSyncJob(c *gin.Context) {
 	}
 
 	siw.Handler.StartSyncJob(c)
+}
+
+// StopSyncJob operation middleware
+func (siw *ServerInterfaceWrapper) StopSyncJob(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.StopSyncJob(c, id)
 }
 
 // GetSyncJob operation middleware
@@ -545,7 +588,9 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/media/:id/content", wrapper.GetMediaContent)
 	router.GET(options.BaseURL+"/media/:id/thumbnail", wrapper.GetMediaThumbnail)
 	router.GET(options.BaseURL+"/stats", wrapper.GetStats)
+	router.DELETE(options.BaseURL+"/sync", wrapper.StopAllSyncJobs)
 	router.GET(options.BaseURL+"/sync", wrapper.ListSyncJobs)
 	router.POST(options.BaseURL+"/sync", wrapper.StartSyncJob)
+	router.DELETE(options.BaseURL+"/sync/:id", wrapper.StopSyncJob)
 	router.GET(options.BaseURL+"/sync/:id", wrapper.GetSyncJob)
 }

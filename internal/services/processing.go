@@ -68,14 +68,20 @@ func (p *ProcessingMediaService) Process(ctx context.Context, content io.Reader)
 
 	exif := make(map[string]string)
 	for k, v := range fileInfos[0].Fields {
-		if value, ok := v.(string); ok {
-			if _, toBeIgnored := ignoreExifKeys[strings.ToLower(k)]; toBeIgnored {
-				continue
-			}
-			exif[k] = value
+		if _, toBeIgnored := ignoreExifKeys[strings.ToLower(k)]; toBeIgnored {
 			continue
 		}
-		zap.S().Warnw("failed to read exif metadata value", "error", "value is not a string")
+		switch val := v.(type) {
+		case string:
+			exif[k] = val
+			continue
+		case int:
+			exif[k] = fmt.Sprintf("%d", val)
+		case float32, float64:
+			exif[k] = fmt.Sprintf("%f", val)
+		default:
+			zap.S().Warnw("failed to read exif metadata value", "error", "value is not a string", "value", v)
+		}
 	}
 
 	return buff, exif, nil

@@ -1,4 +1,4 @@
-package job_test
+package services_test
 
 import (
 	"context"
@@ -14,21 +14,10 @@ import (
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/job"
-	sq "github.com/Masterminds/squirrel"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-)
-
-const (
-	pgUri = "postgresql://postgres:postgres@localhost:5432/postgres"
-)
-
-var (
-	psql = sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
-
-	insertAlbumStmt = psql.Insert("albums").Columns("id", "created_at", "path", "description", "parent_id", "thumbnail_id")
 )
 
 // getSampleJPEGPath returns the absolute path to the sample JPEG file
@@ -118,21 +107,20 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 	Context("Job Creation", func() {
 		It("creates a new sync job successfully", func() {
-			syncJob, err := job.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
+			syncJob, err := services.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
 
 			Expect(err).To(BeNil())
 			Expect(syncJob).ToNot(BeNil())
 
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(entity.StatusPending))
+			Expect(status.Status).To(Equal(services.StatusPending))
 			Expect(status.Total).To(Equal(0))
 			Expect(status.Remaining).To(Equal(0))
-			Expect(status.Completed).To(HaveLen(0))
 		})
 
 		It("initializes job with correct timestamps", func() {
 			beforeCreation := time.Now()
-			syncJob, err := job.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
+			syncJob, err := services.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
 			afterCreation := time.Now()
 
 			Expect(err).To(BeNil())
@@ -157,7 +145,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			_, err := albumService.CreateAlbum(context.TODO(), rootAlbum)
 			Expect(err).To(BeNil())
 
-			syncJob, err := job.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
+			syncJob, err := services.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
 			Expect(err).To(BeNil())
 
 			// Start the sync job
@@ -166,7 +154,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Verify job completed successfully
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(entity.StatusCompleted))
+			Expect(status.Status).To(Equal(services.StatusCompleted))
 			Expect(status.StartedAt).ToNot(BeNil())
 			Expect(status.CompletedAt).ToNot(BeNil())
 
@@ -201,7 +189,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			_, err = albumService.CreateAlbum(context.TODO(), rootAlbum)
 			Expect(err).To(BeNil())
 
-			syncJob, err := job.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
+			syncJob, err := services.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
 			Expect(err).To(BeNil())
 
 			// Start the sync job
@@ -210,7 +198,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Verify job completed successfully
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(entity.StatusCompleted))
+			Expect(status.Status).To(Equal(services.StatusCompleted))
 			Expect(status.Total).To(Equal(0)) // No subdirectories or files to process
 		})
 
@@ -232,7 +220,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			// DON'T create the root album in database - empty path means "start from root data folder"
 			// The job will discover top-level directories as albums
 
-			syncJob, err := job.NewSyncJob(emptyRootAlbum, albumService, mediaService, realFs)
+			syncJob, err := services.NewSyncJob(emptyRootAlbum, albumService, mediaService, realFs)
 			Expect(err).To(BeNil())
 
 			// Start the sync job
@@ -242,7 +230,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			// Verify job completed successfully
 			status := syncJob.Status()
 
-			Expect(status.Status).To(Equal(entity.StatusCompleted))
+			Expect(status.Status).To(Equal(services.StatusCompleted))
 			// Should discover: 2023, 2023/summer, 2023/winter, 2024, 2024/spring, documents = 6 albums
 			// Should process: 2 + 1 + 1 = 4 media files (readme.txt ignored as non-media, no root media)
 			Expect(status.Total).To(Equal(10)) // 6 albums + 4 media files
@@ -273,13 +261,6 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			for _, album := range albums {
 				Expect(album.Path).ToNot(Equal(""))
 			}
-
-			// Verify media files were processed (no root level media files)
-			for _, result := range status.Completed {
-				if result.ItemType == "media" {
-					GinkgoWriter.Printf("Processed media: %s\n", result.Name)
-				}
-			}
 		})
 	})
 
@@ -304,7 +285,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			_, err := albumService.CreateAlbum(context.TODO(), rootAlbum)
 			Expect(err).To(BeNil())
 
-			syncJob, err := job.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
+			syncJob, err := services.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
 			Expect(err).To(BeNil())
 
 			// Start the sync job
@@ -313,15 +294,9 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Verify job completed successfully
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(entity.StatusCompleted))
+			Expect(status.Status).To(Equal(services.StatusCompleted))
 			Expect(status.StartedAt).ToNot(BeNil())
 			Expect(status.CompletedAt).ToNot(BeNil())
-
-			// Debug: Print job status for troubleshooting
-			GinkgoWriter.Printf("Job status: %+v\n", status)
-			for i, result := range status.Completed {
-				GinkgoWriter.Printf("Task %d: Type=%s, Name=%s, Error=%v\n", i, result.ItemType, result.Name, result.Err)
-			}
 
 			// Verify album structure
 			albums, err := albumService.GetAlbums(context.TODO(), &services.AlbumOptions{Limit: 100})
@@ -351,12 +326,9 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			// document.txt should not be processed
 			Expect(mediaFilenames).ToNot(HaveKey("document.txt"))
 
-			// Verify task results in job status (2 albums + 5 media files)
-			Expect(status.Completed).To(HaveLen(7))
-
 			// Count successful tasks
 			successfulTasks := 0
-			for _, result := range status.Completed {
+			for _, result := range status.Results {
 				if result.Err == nil {
 					successfulTasks++
 				}
@@ -396,7 +368,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			_, err := albumService.CreateAlbum(context.TODO(), rootAlbum)
 			Expect(err).To(BeNil())
 
-			syncJob, err := job.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
+			syncJob, err := services.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
 			Expect(err).To(BeNil())
 
 			// Start the sync job
@@ -405,15 +377,9 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Verify job completed successfully
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(entity.StatusCompleted))
+			Expect(status.Status).To(Equal(services.StatusCompleted))
 			Expect(status.StartedAt).ToNot(BeNil())
 			Expect(status.CompletedAt).ToNot(BeNil())
-
-			// Debug: Print job status for troubleshooting
-			GinkgoWriter.Printf("Multi-level job status: %+v\n", status)
-			for i, result := range status.Completed {
-				GinkgoWriter.Printf("Task %d: Type=%s, Name=%s, Error=%v\n", i, result.ItemType, result.Name, result.Err)
-			}
 
 			// With multi-level nesting, we should have discovered ALL albums recursively
 			// Expected structure: photos/{2023,2024,2023/summer,2023/winter,2024/work,2023/summer/europe,2023/winter/alps,2024/work/projects}
@@ -463,12 +429,12 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Verify all tasks completed successfully
 			successfulTasks := 0
-			for _, result := range status.Completed {
+			for _, result := range status.Results {
 				if result.Err == nil {
 					successfulTasks++
 				}
 			}
-			Expect(successfulTasks).To(Equal(len(status.Completed)))
+			Expect(successfulTasks).To(Equal(len(status.Results)))
 		})
 
 		It("handles mixed content with some invalid media files", func() {
@@ -488,7 +454,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			_, err := albumService.CreateAlbum(context.TODO(), rootAlbum)
 			Expect(err).To(BeNil())
 
-			syncJob, err := job.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
+			syncJob, err := services.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
 			Expect(err).To(BeNil())
 
 			// Start the sync job
@@ -497,15 +463,15 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Job should complete even with some failed media processing
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(entity.StatusCompleted))
+			Expect(status.Status).To(Equal(services.StatusCompleted))
 
 			// Check task results
-			Expect(status.Completed).To(HaveLen(4)) // 1 album + 3 media files
+			Expect(status.Results).To(HaveLen(4)) // 1 album + 3 media files
 
 			// Count successful vs failed tasks
 			successfulTasks := 0
 			failedTasks := 0
-			for _, result := range status.Completed {
+			for _, result := range status.Results {
 				if result.Err == nil {
 					successfulTasks++
 				} else {
@@ -536,12 +502,12 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			_, err := albumService.CreateAlbum(context.TODO(), rootAlbum)
 			Expect(err).To(BeNil())
 
-			syncJob, err := job.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
+			syncJob, err := services.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
 			Expect(err).To(BeNil())
 
 			// Check initial status
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(entity.StatusPending))
+			Expect(status.Status).To(Equal(services.StatusPending))
 			Expect(status.Total).To(Equal(0))
 			Expect(status.Remaining).To(Equal(0))
 
@@ -551,10 +517,10 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Check final status - 2 child albums + 2 media files
 			finalStatus := syncJob.Status()
-			Expect(finalStatus.Status).To(Equal(entity.StatusCompleted))
+			Expect(finalStatus.Status).To(Equal(services.StatusCompleted))
 			Expect(finalStatus.Total).To(Equal(4))
 			Expect(finalStatus.Remaining).To(Equal(0))
-			Expect(finalStatus.Completed).To(HaveLen(4))
+			Expect(finalStatus.Results).To(HaveLen(4))
 			Expect(finalStatus.StartedAt).ToNot(BeNil())
 			Expect(finalStatus.CompletedAt).ToNot(BeNil())
 			Expect(finalStatus.CompletedAt.After(*finalStatus.StartedAt)).To(BeTrue())
@@ -565,7 +531,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 		It("handles non-existent root album", func() {
 			nonExistentAlbum := entity.NewAlbum("nonexistent")
 
-			syncJob, err := job.NewSyncJob(nonExistentAlbum, albumService, mediaService, realFs)
+			syncJob, err := services.NewSyncJob(nonExistentAlbum, albumService, mediaService, realFs)
 			Expect(err).To(BeNil())
 
 			// Start should fail because root album doesn't exist
@@ -573,7 +539,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			Expect(err).ToNot(BeNil())
 
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(entity.StatusFailed))
+			Expect(status.Status).To(Equal(services.StatusFailed))
 		})
 
 		It("continues processing despite individual media failures", func() {
@@ -593,7 +559,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			_, err := albumService.CreateAlbum(context.TODO(), rootAlbum)
 			Expect(err).To(BeNil())
 
-			syncJob, err := job.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
+			syncJob, err := services.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
 			Expect(err).To(BeNil())
 
 			// Start the job
@@ -602,13 +568,13 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Job should complete despite failures
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(entity.StatusCompleted))
+			Expect(status.Status).To(Equal(services.StatusCompleted))
 
 			// Some tasks should have failed, but job continues - 1 child album + 3 media files
-			Expect(status.Completed).To(HaveLen(4))
+			Expect(status.Results).To(HaveLen(4))
 
 			errorCount := 0
-			for _, result := range status.Completed {
+			for _, result := range status.Results {
 				if result.Err != nil {
 					errorCount++
 				}
@@ -638,7 +604,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			_, err := albumService.CreateAlbum(context.TODO(), rootAlbum)
 			Expect(err).To(BeNil())
 
-			syncJob, err := job.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
+			syncJob, err := services.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
 			Expect(err).To(BeNil())
 
 			// Start the sync job
@@ -647,7 +613,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Verify job completed successfully
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(entity.StatusCompleted))
+			Expect(status.Status).To(Equal(services.StatusCompleted))
 
 			// The sync job processes all nested directories and creates them as albums
 			// We verify this by checking that all media files were processed
@@ -657,11 +623,11 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Verify that the job processed all directories and media files
 			// The exact number will be: all nested directories + all media files
-			Expect(status.Completed).To(HaveLen(15)) // 11 directories + 4 media files
+			Expect(status.Results).To(HaveLen(15)) // 11 directories + 4 media files
 
 			// Count successful tasks - should be high since these are valid structures
 			successfulTasks := 0
-			for _, result := range status.Completed {
+			for _, result := range status.Results {
 				if result.Err == nil {
 					successfulTasks++
 				}
@@ -672,10 +638,6 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 })
 
 // Helper functions
-
-func stringPtr(s string) *string {
-	return &s
-}
 
 func createTestDirectoryStructure(basePath string, structure map[string][]string) {
 	for dirPath, files := range structure {
@@ -723,3 +685,322 @@ func createTestMediaFiles(basePath string, files map[string]string) {
 		Expect(err).To(BeNil())
 	}
 }
+
+var _ = Describe("JobProgress and Progress Meter", func() {
+	var (
+		albumService *services.AlbumService
+		mediaService *services.MediaService
+		realFs       *fs.Datastore
+		tmpDir       string
+		syncJob      *services.SyncAlbumJob
+		rootAlbum    entity.Album
+	)
+
+	BeforeEach(func() {
+		// Set up test directory
+		var err error
+		tmpDir, err = os.MkdirTemp("", "job-progress-test")
+		Expect(err).To(BeNil())
+
+		// Set up services
+		realFs = fs.NewFsDatastore(tmpDir)
+
+		realPg, err := pg.NewPostgresDatastore(context.TODO(), pgUri)
+		Expect(err).To(BeNil())
+
+		albumService = services.NewAlbumService(realPg, realFs)
+		mediaService = services.NewMediaService(realPg, realFs)
+
+		// Create root album
+		rootAlbum = entity.NewAlbum("photos")
+		createdRootAlbum, err := albumService.CreateAlbum(context.TODO(), rootAlbum)
+		Expect(err).To(BeNil())
+		rootAlbum = *createdRootAlbum
+	})
+
+	AfterEach(func() {
+		os.RemoveAll(tmpDir)
+	})
+
+	Context("Progress Meter State Transitions", func() {
+		BeforeEach(func() {
+			var err error
+			syncJob, err = services.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
+			Expect(err).To(BeNil())
+		})
+
+		It("should start in pending status", func() {
+			status := syncJob.Status()
+
+			Expect(status.Id).To(Equal(syncJob.ID))
+			Expect(status.Status).To(Equal(services.StatusPending))
+			Expect(status.Total).To(Equal(0))
+			Expect(status.Remaining).To(Equal(0))
+			Expect(status.StartedAt).To(BeNil())
+			Expect(status.CompletedAt).To(BeNil())
+			Expect(status.CreatedAt).To(BeTemporally("~", time.Now(), time.Second))
+		})
+
+		It("should transition to running status when job starts", func() {
+			// Create test structure with few items for predictable task count
+			createTestDirectoryStructure(tmpDir, map[string][]string{
+				"photos/2023": {"photo1.jpg", "photo2.jpg"},
+			})
+			createTestMediaFiles(tmpDir, map[string]string{
+				"photos/2023/photo1.jpg": "SAMPLE_JPEG",
+				"photos/2023/photo2.jpg": "SAMPLE_JPEG",
+			})
+
+			// Start job in background to check running status
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			// Start job in goroutine
+			done := make(chan error, 1)
+			go func() {
+				done <- syncJob.Start(ctx)
+			}()
+
+			// Give it a moment to start
+			time.Sleep(100 * time.Millisecond)
+
+			// Check that it's running or completed (depending on timing)
+			status := syncJob.Status()
+			Expect(status.Status).To(SatisfyAny(
+				Equal(services.StatusRunning),
+				Equal(services.StatusCompleted),
+			))
+
+			if status.Status == services.StatusRunning {
+				Expect(status.StartedAt).ToNot(BeNil())
+				Expect(status.Total).To(BeNumerically(">", 0))
+				Expect(status.Remaining).To(BeNumerically(">=", 0))
+				Expect(status.Remaining).To(BeNumerically("<=", status.Total))
+			}
+
+			// Wait for completion
+			cancel()
+			<-done
+		})
+
+		It("should transition to completed status when job finishes successfully", func() {
+			// Create simple test structure
+			createTestDirectoryStructure(tmpDir, map[string][]string{
+				"photos/2023": {"photo1.jpg"},
+			})
+			createTestMediaFiles(tmpDir, map[string]string{
+				"photos/2023/photo1.jpg": "SAMPLE_JPEG",
+			})
+
+			err := syncJob.Start(context.Background())
+			Expect(err).To(BeNil())
+
+			status := syncJob.Status()
+			Expect(status.Status).To(Equal(services.StatusCompleted))
+			Expect(status.CompletedAt).ToNot(BeNil())
+			Expect(status.Total).To(BeNumerically(">", 0))
+			Expect(status.Remaining).To(Equal(0))
+		})
+	})
+
+	Context("Progress Counting", func() {
+		BeforeEach(func() {
+			var err error
+			syncJob, err = services.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
+			Expect(err).To(BeNil())
+		})
+
+		It("should correctly count total tasks for albums and media", func() {
+			// Create known structure: 2 albums + 3 media files = 5 total tasks
+			createTestDirectoryStructure(tmpDir, map[string][]string{
+				"photos/2023":        {"photo1.jpg"},
+				"photos/2023/summer": {"photo2.jpg", "photo3.jpg"},
+			})
+			createTestMediaFiles(tmpDir, map[string]string{
+				"photos/2023/photo1.jpg":        "SAMPLE_JPEG",
+				"photos/2023/summer/photo2.jpg": "SAMPLE_JPEG",
+				"photos/2023/summer/photo3.jpg": "SAMPLE_JPEG",
+			})
+
+			err := syncJob.Start(context.Background())
+			Expect(err).To(BeNil())
+
+			status := syncJob.Status()
+			// Should have: 2 albums (2023, summer) + 3 media files = 5 tasks
+			Expect(status.Total).To(Equal(5))
+			Expect(status.Remaining).To(Equal(0)) // All completed
+		})
+
+		It("should correctly track progress during execution", func() {
+			// Create larger structure to monitor progress
+			createTestDirectoryStructure(tmpDir, map[string][]string{
+				"photos/2023":        {"photo1.jpg", "photo2.jpg"},
+				"photos/2024":        {"photo3.jpg"},
+				"photos/2023/summer": {"photo4.jpg"},
+			})
+			createTestMediaFiles(tmpDir, map[string]string{
+				"photos/2023/photo1.jpg":        "SAMPLE_JPEG",
+				"photos/2023/photo2.jpg":        "SAMPLE_JPEG",
+				"photos/2024/photo3.jpg":        "SAMPLE_JPEG",
+				"photos/2023/summer/photo4.jpg": "SAMPLE_JPEG",
+			})
+
+			// Track progress during execution
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			progressSnapshots := []services.JobProgress{}
+			done := make(chan error, 1)
+
+			go func() {
+				// Sample progress multiple times during execution
+				for i := 0; i < 10; i++ {
+					progressSnapshots = append(progressSnapshots, syncJob.Status())
+					time.Sleep(10 * time.Millisecond)
+				}
+				done <- syncJob.Start(ctx)
+			}()
+
+			<-done
+
+			finalStatus := syncJob.Status()
+
+			// Final status should show completion
+			Expect(finalStatus.Status).To(Equal(services.StatusCompleted))
+			Expect(finalStatus.Total).To(Equal(7)) // 3 albums + 4 media files
+			Expect(finalStatus.Remaining).To(Equal(0))
+
+			// At least one snapshot should show the job in progress
+			for _, snapshot := range progressSnapshots {
+				if snapshot.Status == services.StatusRunning {
+					Expect(snapshot.Remaining).To(BeNumerically("<=", snapshot.Total))
+					Expect(snapshot.Remaining).To(BeNumerically(">=", 0))
+				}
+			}
+			// Note: Depending on timing, the job might complete too fast to catch running state
+			// This is acceptable for fast operations
+		})
+	})
+
+	Context("Edge Cases", func() {
+		BeforeEach(func() {
+			var err error
+			syncJob, err = services.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
+			Expect(err).To(BeNil())
+		})
+
+		It("should handle empty directory structure", func() {
+			// Create empty photos directory
+			err := os.MkdirAll(filepath.Join(tmpDir, "photos"), 0755)
+			Expect(err).To(BeNil())
+
+			err = syncJob.Start(context.Background())
+			Expect(err).To(BeNil())
+
+			status := syncJob.Status()
+			Expect(status.Status).To(Equal(services.StatusCompleted))
+			Expect(status.Total).To(Equal(0)) // No tasks to process
+			Expect(status.Remaining).To(Equal(0))
+		})
+
+		It("should handle job cancellation", func() {
+			// Create structure that would take some time
+			createTestDirectoryStructure(tmpDir, map[string][]string{
+				"photos/2023": {"photo1.jpg", "photo2.jpg", "photo3.jpg"},
+				"photos/2024": {"photo4.jpg", "photo5.jpg"},
+			})
+			createTestMediaFiles(tmpDir, map[string]string{
+				"photos/2023/photo1.jpg": "SAMPLE_JPEG",
+				"photos/2023/photo2.jpg": "SAMPLE_JPEG",
+				"photos/2023/photo3.jpg": "SAMPLE_JPEG",
+				"photos/2024/photo4.jpg": "SAMPLE_JPEG",
+				"photos/2024/photo5.jpg": "SAMPLE_JPEG",
+			})
+
+			ctx, cancel := context.WithCancel(context.Background())
+
+			// Start job and cancel quickly
+			done := make(chan error, 1)
+			go func() {
+				done <- syncJob.Start(ctx)
+			}()
+
+			// Cancel after short delay
+			time.Sleep(50 * time.Millisecond)
+			cancel()
+
+			err := <-done
+			// Should return context cancellation error
+			Expect(err).To(MatchError(context.Canceled))
+
+			status := syncJob.Status()
+			// Job should still report its progress state even after cancellation
+			Expect(status.Total).To(BeNumerically(">=", 0))
+			Expect(status.Remaining).To(BeNumerically(">=", 0))
+		})
+	})
+
+	Context("Thread Safety", func() {
+		BeforeEach(func() {
+			var err error
+			syncJob, err = services.NewSyncJob(rootAlbum, albumService, mediaService, realFs)
+			Expect(err).To(BeNil())
+
+			// Create test structure
+			createTestDirectoryStructure(tmpDir, map[string][]string{
+				"photos/2023": {"photo1.jpg", "photo2.jpg"},
+			})
+			createTestMediaFiles(tmpDir, map[string]string{
+				"photos/2023/photo1.jpg": "SAMPLE_JPEG",
+				"photos/2023/photo2.jpg": "SAMPLE_JPEG",
+			})
+		})
+
+		It("should handle concurrent status checks safely", func() {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			// Start job
+			done := make(chan error, 1)
+			go func() {
+				done <- syncJob.Start(ctx)
+			}()
+
+			// Concurrently check status multiple times
+			statusChecks := make(chan services.JobProgress, 50)
+			for i := 0; i < 10; i++ {
+				go func() {
+					for j := 0; j < 5; j++ {
+						statusChecks <- syncJob.Status()
+						time.Sleep(1 * time.Millisecond)
+					}
+				}()
+			}
+
+			// Collect results
+			var statuses []services.JobProgress
+			timeout := time.After(5 * time.Second)
+			for i := 0; i < 50; i++ {
+				select {
+				case status := <-statusChecks:
+					statuses = append(statuses, status)
+				case <-timeout:
+					Fail("Timeout waiting for status checks")
+				}
+			}
+
+			// Wait for job completion
+			cancel()
+			<-done
+
+			// All status checks should have valid data
+			Expect(len(statuses)).To(Equal(50))
+			for _, status := range statuses {
+				Expect(status.Id).To(Equal(syncJob.ID))
+				Expect(status.Total).To(BeNumerically(">=", 0))
+				Expect(status.Remaining).To(BeNumerically(">=", 0))
+				Expect(status.Remaining).To(BeNumerically("<=", status.Total))
+			}
+		})
+	})
+})

@@ -3,8 +3,13 @@ import { SyncApi } from '@generated/api/sync-api';
 import { SyncJob, StartSyncRequest, StopSyncJob200Response, StopAllSyncJobs200Response } from '@generated/models';
 import { apiConfig } from '@shared/api/apiConfig';
 
+// Extended SyncJob interface to include path information
+interface SyncJobWithPath extends SyncJob {
+  path?: string;
+}
+
 export interface SyncState {
-  jobs: SyncJob[];
+  jobs: SyncJobWithPath[];
   loading: boolean;
   error: string | null;
   startingSync: boolean;
@@ -26,9 +31,15 @@ export const startSyncJob = createAsyncThunk(
     try {
       const request: StartSyncRequest = { path };
       const response = await syncApi.startSyncJob(request);
+      const jobId = response.data.id;
+      
+      // Fetch the newly created job details
+      const jobResponse = await syncApi.getSyncJob(jobId);
+      
       return {
-        jobId: response.data.id,
+        jobId,
         path,
+        job: jobResponse.data,
       };
     } catch (error: any) {
       return rejectWithValue(
@@ -133,9 +144,15 @@ const syncSlice = createSlice({
         state.startingSync = true;
         state.error = null;
       })
-      .addCase(startSyncJob.fulfilled, (state) => {
+      .addCase(startSyncJob.fulfilled, (state, action) => {
         state.startingSync = false;
         state.error = null;
+        // Add the newly created job to the jobs list with path information
+        const jobWithPath: SyncJobWithPath = {
+          ...action.payload.job,
+          path: action.payload.path,
+        };
+        state.jobs.push(jobWithPath);
       })
       .addCase(startSyncJob.rejected, (state, action) => {
         state.startingSync = false;
@@ -154,6 +171,10 @@ const syncSlice = createSlice({
         state.loading = false;
         state.jobs = action.payload.jobs;
         state.error = null;
+        // Debug logging
+        if (!action.payload.silent) {
+          console.log('Sync jobs updated:', action.payload.jobs);
+        }
       })
       .addCase(fetchSyncJobs.rejected, (state, action) => {
         state.loading = false;
@@ -167,6 +188,12 @@ const syncSlice = createSlice({
           state.jobs[index] = action.payload.job;
         } else {
           state.jobs.push(action.payload.job);
+        }
+        // Debug logging for individual job updates
+        if (!action.payload.silent) {
+          console.log('Individual sync job updated:', action.payload.job);
+        } else {
+          console.log('Silent job update:', action.payload.job.id, action.payload.job.status, `${action.payload.job.totalTasks - action.payload.job.remainingTasks}/${action.payload.job.totalTasks} tasks`);
         }
       })
       

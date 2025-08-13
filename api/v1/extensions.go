@@ -6,7 +6,10 @@ import (
 	"path"
 	"time"
 
+	"strings"
+
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
 	"github.com/oapi-codegen/runtime/types"
 )
 
@@ -145,4 +148,92 @@ func ToMediaEntity(filename, albumId string, fileContent io.Reader, album entity
 	media.CapturedAt = time.Now()
 
 	return media
+}
+
+// ConvertJobStatusToAPI converts internal job status to API status
+func ConvertJobStatusToAPI(status services.JobStatus) SyncJobStatus {
+	switch status {
+	case services.StatusPending:
+		return Pending
+	case services.StatusRunning:
+		return Running
+	case services.StatusCompleted:
+		return Completed
+	case services.StatusFailed:
+		return Failed
+	case services.StatusStopped:
+		return Stopped
+	default:
+		return Pending
+	}
+}
+
+// ConvertJobResultsToTaskResults converts internal job results to API task results
+func ConvertJobResultsToTaskResults(jobResults []services.JobResult) []TaskResult {
+	taskResults := make([]TaskResult, 0, len(jobResults))
+
+	for _, jobResult := range jobResults {
+		taskResult := ConvertJobResultToTaskResult(jobResult)
+		taskResults = append(taskResults, taskResult)
+	}
+
+	return taskResults
+}
+
+// ConvertJobResultToTaskResult converts a single JobResult to TaskResult
+func ConvertJobResultToTaskResult(jobResult services.JobResult) TaskResult {
+	// Calculate duration in seconds
+	duration := int(jobResult.CompletedAt.Sub(jobResult.StartedAt).Seconds())
+
+	// Extract item name and determine type from the result string
+	// JobResult.Result format: "Album photos/2023 processed" or "Media photos/2023/IMG_001.jpg processed"
+	item, itemType := extractItemAndType(jobResult.Result)
+
+	// Create the task result
+	taskResult := TaskResult{
+		Item:     item,
+		ItemType: itemType,
+		Duration: duration,
+	}
+
+	// Set result based on error status
+	if jobResult.Err != nil {
+		// Error case - set error message
+		var result TaskResult_Result
+		result.FromTaskResultResult1(jobResult.Err.Error())
+		taskResult.Result = result
+	} else {
+		// Success case
+		var result TaskResult_Result
+		result.FromTaskResultResult0(Ok)
+		taskResult.Result = result
+	}
+
+	return taskResult
+}
+
+// extractItemAndType extracts the item name and determines if it's a file or folder
+// from JobResult.Result strings like "Album photos/2023 processed" or "Media photos/2023/IMG_001.jpg processed"
+func extractItemAndType(resultStr string) (string, TaskResultItemType) {
+	// Parse the result string to extract item name
+	if strings.HasPrefix(resultStr, "Album ") && strings.HasSuffix(resultStr, " processed") {
+		// Extract album path: "Album photos/2023 processed" -> "photos/2023"
+		item := strings.TrimPrefix(resultStr, "Album ")
+		item = strings.TrimSuffix(item, " processed")
+		return item, Folder
+	} else if strings.HasPrefix(resultStr, "Media ") && strings.HasSuffix(resultStr, " processed") {
+		// Extract media path: "Media photos/2023/IMG_001.jpg processed" -> "photos/2023/IMG_001.jpg"
+		item := strings.TrimPrefix(resultStr, "Media ")
+		item = strings.TrimSuffix(item, " processed")
+		return item, File
+	}
+
+	// Fallback - try to determine from the string content
+	if strings.Contains(resultStr, ".") {
+		// Likely a file if it contains a dot (extension)
+		return resultStr, File
+	}
+
+	// Default to folder
+	return resultStr, Folder
 }
