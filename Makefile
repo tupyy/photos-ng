@@ -38,6 +38,10 @@ run:
 	@echo "Running $(BINARY_NAME)..."
 	$(BINARY_PATH) serve --data-root-folder=$(TMP_DATA_FOLDER)
 
+run.mnt:
+	@echo "Running $(BINARY_NAME)..."
+	$(BINARY_PATH) serve --data-root-folder=/mnt
+
 run.ui:
 	cd ./ui && npm run start:dev
 
