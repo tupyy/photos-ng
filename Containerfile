@@ -33,10 +33,6 @@ FROM docker.io/fedora:41
 
 RUN dnf install -y exiftool
 
-# Create non-root user for security
-RUN groupadd -g 1000 photos-ng && \
-    useradd photos-ng -u 1000 -g photos-ng
-
 WORKDIR /app
 
 # Copy built application from backend builder
@@ -47,9 +43,6 @@ COPY --from=backend-builder /app/internal/datastore/pg/migrations/sql ./migratio
 
 # Copy built frontend from frontend builder
 COPY --from=frontend-builder /app/ui/dist ./ui/dist
-
-# Switch to non-root user
-USER photos-ng
 
 # Expose port
 EXPOSE 8080
