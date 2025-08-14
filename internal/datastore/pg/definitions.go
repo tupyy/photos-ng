@@ -55,7 +55,7 @@ const (
 var (
 	psql = sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
-	listAlbumsStmt = psql.Select(
+	listAlbumStmt = psql.Select(
 		preffix(albumsTable, albumID),
 		preffix(albumsTable, albumCreatedAt),
 		preffix(albumsTable, albumPath),
@@ -78,6 +78,22 @@ var (
 		From(albumsTable).
 		LeftJoin("albums as child on child.parent_id = albums.id").
 		LeftJoin("media as media on media.album_id = albums.id")
+
+	listAlbumsStmt = psql.Select(
+		preffix(albumsTable, albumID),
+		preffix(albumsTable, albumCreatedAt),
+		preffix(albumsTable, albumPath),
+		preffix(albumsTable, albumDescription),
+		preffix(albumsTable, albumParentID),
+		preffix(albumsTable, albumThumbnailID),
+		albumChildID,
+		albumChildCreatedAt,
+		albumChildPath,
+		albumChildDescription,
+		albumChildThumbnailID,
+	).
+		From(albumsTable).
+		LeftJoin("albums as child on child.parent_id = albums.id")
 
 	listMediaStmt = psql.Select(
 		preffix(mediaTable, mediaID),

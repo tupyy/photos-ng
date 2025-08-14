@@ -49,16 +49,16 @@ func (a *AlbumService) GetAlbums(ctx context.Context, opts *AlbumOptions) ([]ent
 
 // GetAlbum retrieves a specific album by its ID
 func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, error) {
-	albums, err := a.dt.QueryAlbums(ctx, pg.FilterByAlbumId(id))
+	album, err := a.dt.QueryAlbum(ctx, pg.FilterByAlbumId(id))
 	if err != nil {
 		return nil, err
 	}
 
-	if len(albums) == 0 {
+	if album == nil {
 		return nil, NewErrAlbumNotFound(id)
 	}
 
-	return &albums[0], nil
+	return album, nil
 }
 
 // CreateAlbum creates a new album using an entity.Album
