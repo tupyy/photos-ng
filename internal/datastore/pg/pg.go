@@ -42,26 +42,7 @@ func NewPostgresDatastore(ctx context.Context, url string, options ...Option) (*
 }
 
 func (d *Datastore) QueryAlbum(ctx context.Context, opts ...QueryOption) (*entity.Album, error) {
-	result, err := d.queryAlbums(ctx, true, opts...)
-	if err != nil {
-		return nil, err
-	}
-	if len(result) == 0 {
-		return nil, nil
-	}
-	return &result[0], nil
-}
-
-func (d *Datastore) QueryAlbums(ctx context.Context, opts ...QueryOption) ([]entity.Album, error) {
-	return d.queryAlbums(ctx, false, opts...)
-}
-
-func (d *Datastore) queryAlbums(ctx context.Context, withMedia bool, opts ...QueryOption) ([]entity.Album, error) {
-	// Start with the base listAlbumsStmt and apply any query options
-	query := listAlbumsStmt
-	if withMedia {
-		query = listAlbumStmt
-	}
+	query := listAlbumStmt
 	for _, opt := range opts {
 		query = opt(query)
 	}
@@ -87,42 +68,84 @@ func (d *Datastore) queryAlbums(ctx context.Context, withMedia bool, opts ...Que
 			err   error
 		)
 
-		if withMedia {
-			err = rows.Scan(
-				&album.ID,
-				&album.CreatedAt,
-				&album.Path,
-				&album.Description,
-				&album.ParentID,
-				&album.ThumbnailID,
-				&album.ChildID,
-				&album.ChildCreatedAt,
-				&album.ChildPath,
-				&album.ChildDescription,
-				&album.ChildThumbnailID,
-				&album.MediaID,
-				&album.MediaCapturedAt,
-				&album.MediaAlbumID,
-				&album.MediaFileName,
-				&album.MediaThumbnail,
-				&album.MediaExif,
-				&album.MediaMediaType,
-			)
-		} else {
-			err = rows.Scan(
-				&album.ID,
-				&album.CreatedAt,
-				&album.Path,
-				&album.Description,
-				&album.ParentID,
-				&album.ThumbnailID,
-				&album.ChildID,
-				&album.ChildCreatedAt,
-				&album.ChildPath,
-				&album.ChildDescription,
-				&album.ChildThumbnailID,
-			)
+		err = rows.Scan(
+			&album.ID,
+			&album.CreatedAt,
+			&album.Path,
+			&album.Description,
+			&album.ParentID,
+			&album.ThumbnailID,
+			&album.ChildID,
+			&album.ChildCreatedAt,
+			&album.ChildPath,
+			&album.ChildDescription,
+			&album.ChildThumbnailID,
+			&album.MediaID,
+			&album.MediaCapturedAt,
+			&album.MediaAlbumID,
+			&album.MediaFileName,
+			&album.MediaThumbnail,
+			&album.MediaExif,
+			&album.MediaMediaType,
+		)
+		if err != nil {
+			return nil, err
 		}
+		albums.Add(album)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(albums) == 0 {
+		return nil, nil
+	}
+
+	return &albums.Entity()[0], nil
+}
+
+func (d *Datastore) QueryAlbums(ctx context.Context, opts ...QueryOption) ([]entity.Album, error) {
+	query := listAlbumsStmt
+	for _, opt := range opts {
+		query = opt(query)
+	}
+
+	// Build the SQL query
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	// Execute the query
+	rows, err := d.pool.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Scan results into album models
+	albums := models.Albums{}
+	for rows.Next() {
+		var (
+			album models.Album
+			err   error
+		)
+
+		err = rows.Scan(
+			&album.ID,
+			&album.CreatedAt,
+			&album.Path,
+			&album.Description,
+			&album.ParentID,
+			&album.ThumbnailID,
+			&album.MediaCount,
+			&album.ChildID,
+			&album.ChildCreatedAt,
+			&album.ChildPath,
+			&album.ChildDescription,
+			&album.ChildThumbnailID,
+		)
 		if err != nil {
 			return nil, err
 		}

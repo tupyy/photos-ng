@@ -586,6 +586,7 @@ components:
         - href
         - name
         - path
+        - mediaCount
       properties:
         id:
           type: string
@@ -619,6 +620,9 @@ components:
             required:
               - href
               - name
+        mediaCount:
+          type: integer
+          description: Total media including media of all its children
         media:
           type: array
           description: list of media href

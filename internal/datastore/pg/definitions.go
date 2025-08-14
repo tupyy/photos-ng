@@ -86,6 +86,7 @@ var (
 		preffix(albumsTable, albumDescription),
 		preffix(albumsTable, albumParentID),
 		preffix(albumsTable, albumThumbnailID),
+		"count_media_in_album_with_children(albums.id) as media_count",
 		albumChildID,
 		albumChildCreatedAt,
 		albumChildPath,

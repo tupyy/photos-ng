@@ -65,6 +65,9 @@ type Album struct {
 	// Media list of media href
 	Media *[]string `json:"media,omitempty"`
 
+	// MediaCount Total media including media of all its children
+	MediaCount int `json:"mediaCount"`
+
 	// Name name of the album
 	Name string `json:"name"`
 
@@ -203,25 +206,25 @@ type SyncAlbumResponse struct {
 // SyncJob defines model for SyncJob.
 type SyncJob struct {
 	// CompletedTasks List of processed files with their results
-	CompletedTasks *[]TaskResult `json:"completedTasks,omitempty"`
-	CreatedAt      time.Time     `json:"createdAt"`
-	FinishedAt     time.Time     `json:"finishedAt"`
+	CompletedTasks []TaskResult `json:"completedTasks"`
+	CreatedAt      time.Time    `json:"createdAt"`
+	FinishedAt     *time.Time   `json:"finishedAt,omitempty"`
 
 	// Id Unique identifier for the sync job
 	Id string `json:"id"`
 
 	// RemainingTasks Number of files still to be processed
-	RemainingTasks *int `json:"remainingTasks,omitempty"`
+	RemainingTasks int `json:"remainingTasks"`
 
 	// RemainingTime aproximative ramaining running tile in seconds
-	RemainingTime *string   `json:"remainingTime,omitempty"`
-	StartedAt     time.Time `json:"startedAt"`
+	RemainingTime *string    `json:"remainingTime,omitempty"`
+	StartedAt     *time.Time `json:"startedAt,omitempty"`
 
 	// Status Current status of the sync job
 	Status SyncJobStatus `json:"status"`
 
 	// TotalTasks Total number of files to process
-	TotalTasks *int `json:"totalTasks,omitempty"`
+	TotalTasks int `json:"totalTasks"`
 }
 
 // SyncJobStatus Current status of the sync job

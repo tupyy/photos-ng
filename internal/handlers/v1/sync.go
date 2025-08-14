@@ -61,21 +61,21 @@ func (s *ServerImpl) ListSyncJobs(c *gin.Context) {
 		apiJob := v1.SyncJob{
 			Id:             status.Id.String(),
 			Status:         v1.ConvertJobStatusToAPI(status.Status),
-			RemainingTasks: &remaining,
-			TotalTasks:     &total,
-			CompletedTasks: &taskResults,
+			RemainingTasks: remaining,
+			TotalTasks:     total,
+			CompletedTasks: taskResults,
 			CreatedAt:      status.CreatedAt,
 		}
 
 		// Set timing fields based on job status
 		if status.StartedAt != nil {
-			apiJob.StartedAt = *status.StartedAt
+			apiJob.StartedAt = status.StartedAt
 		} else {
-			apiJob.StartedAt = status.CreatedAt // Use created time if not started yet
+			apiJob.StartedAt = &status.CreatedAt // Use created time if not started yet
 		}
 
 		if status.CompletedAt != nil {
-			apiJob.FinishedAt = *status.CompletedAt
+			apiJob.FinishedAt = status.CompletedAt
 		}
 		// Don't set FinishedAt if job hasn't completed - let it be omitted
 
@@ -110,21 +110,21 @@ func (s *ServerImpl) GetSyncJob(c *gin.Context, id string) {
 	response := v1.SyncJob{
 		Id:             status.Id.String(),
 		Status:         v1.ConvertJobStatusToAPI(status.Status),
-		RemainingTasks: &remaining,
-		TotalTasks:     &total,
-		CompletedTasks: &taskResults,
+		RemainingTasks: remaining,
+		TotalTasks:     total,
+		CompletedTasks: taskResults,
 		CreatedAt:      status.CreatedAt,
 	}
 
 	// Set timing fields based on job status
 	if status.StartedAt != nil {
-		response.StartedAt = *status.StartedAt
+		response.StartedAt = status.StartedAt
 	} else {
-		response.StartedAt = status.CreatedAt // Use created time if not started yet
+		response.StartedAt = &status.CreatedAt // Use created time if not started yet
 	}
 
 	if status.CompletedAt != nil {
-		response.FinishedAt = *status.CompletedAt
+		response.FinishedAt = status.CompletedAt
 	}
 	// Don't set FinishedAt if job hasn't completed - let it be omitted
 

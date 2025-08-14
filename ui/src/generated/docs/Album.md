@@ -13,6 +13,7 @@ Name | Type | Description | Notes
 **thumbnail** | **string** | href of the thumbnail | [optional] [default to undefined]
 **description** | **string** |  | [optional] [default to undefined]
 **children** | [**Array&lt;AlbumChildrenInner&gt;**](AlbumChildrenInner.md) |  | [optional] [default to undefined]
+**mediaCount** | **number** | Total media including media of all its children | [default to undefined]
 **media** | **Array&lt;string&gt;** | list of media href | [optional] [default to undefined]
 
 ## Example
@@ -29,6 +30,7 @@ const instance: Album = {
     thumbnail,
     description,
     children,
+    mediaCount,
     media,
 };
 ```

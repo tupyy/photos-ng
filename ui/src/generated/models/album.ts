@@ -72,6 +72,12 @@ export interface Album {
      */
     'children'?: Array<AlbumChildrenInner>;
     /**
+     * Total media including media of all its children
+     * @type {number}
+     * @memberof Album
+     */
+    'mediaCount': number;
+    /**
      * list of media href
      * @type {Array<string>}
      * @memberof Album

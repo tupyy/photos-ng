@@ -39,6 +39,9 @@ func (aa Albums) Entity() []entity.Album {
 			if row.ThumbnailID != nil {
 				album.Thumbnail = row.ThumbnailID
 			}
+			if row.MediaCount != nil {
+				album.MediaCount = *row.MediaCount
+			}
 			// Child albums are added through join scenarios
 			if row.ChildID != nil {
 				_, ok := seenID[*row.ChildID]
@@ -97,6 +100,7 @@ type Album struct {
 	Description *string   `db:"description"`
 	ParentID    *string   `db:"parent_id"`
 	ThumbnailID *string   `db:"thumbnail_id"`
+	MediaCount  *int      `db:"media_count"`
 
 	// Fields for join scenarios (child albums)
 	ChildID          *string    `db:"child_id"`

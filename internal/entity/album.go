@@ -11,6 +11,7 @@ type Album struct {
 	ParentId    *string
 	Children    []Album
 	Media       []Media
+	MediaCount  int
 }
 
 func NewAlbum(folderPath string) Album {
