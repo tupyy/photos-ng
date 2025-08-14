@@ -26,14 +26,6 @@ type MediaOptions struct {
 func (mf *MediaOptions) QueriesFn() []pg.QueryOption {
 	qf := []pg.QueryOption{}
 
-	// Add pagination
-	if mf.MediaLimit > 0 {
-		qf = append(qf, pg.Limit(mf.MediaLimit))
-	}
-	if mf.MediaOffset > 0 {
-		qf = append(qf, pg.Offset(mf.MediaOffset))
-	}
-
 	// Add album filter
 	if mf.AlbumID != nil {
 		qf = append(qf, pg.FilterByColumnName("album_id", *mf.AlbumID))
@@ -54,6 +46,14 @@ func (mf *MediaOptions) QueriesFn() []pg.QueryOption {
 	} else {
 		// Default sort by captured_at descending
 		qf = append(qf, pg.SortByColumn("captured_at", true))
+	}
+
+	// Add pagination
+	if mf.MediaLimit > 0 {
+		qf = append(qf, pg.Limit(mf.MediaLimit))
+	}
+	if mf.MediaOffset > 0 {
+		qf = append(qf, pg.Offset(mf.MediaOffset))
 	}
 
 	return qf

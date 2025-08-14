@@ -14,18 +14,18 @@ import (
 // It supports filtering by album, type, date range, and includes sorting and pagination.
 // Returns HTTP 500 for server errors, or HTTP 200 with the media list on success.
 func (s *ServerImpl) ListMedia(c *gin.Context, params v1.ListMediaParams) {
+	// Build media opt from parameters
+	opt := &services.MediaOptions{}
+
 	// Set default values for pagination
 	limit := 20
 	if params.Limit != nil {
-		limit = *params.Limit
+		opt.MediaLimit = *params.Limit
 	}
 	offset := 0
 	if params.Offset != nil {
-		offset = *params.Offset
+		opt.MediaOffset = *params.Offset
 	}
-
-	// Build media opt from parameters
-	opt := &services.MediaOptions{}
 
 	// Add album filter
 	if params.AlbumId != nil {
