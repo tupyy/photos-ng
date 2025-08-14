@@ -27,6 +27,8 @@ import {
   selectAllMedia,
   clearSelection,
   setViewMode,
+  invalidateCache,
+  loadNextPage,
   MediaFilters,
 } from '@reducers/mediaSlice';
 import {
@@ -96,11 +98,11 @@ export const useMediaApi = () => {
     
     // Actions
     fetchMedia: useCallback(
-      (params?: Partial<MediaFilters>) => dispatch(fetchMedia(params || {})),
+      (params?: Partial<MediaFilters> & { forceRefresh?: boolean }) => dispatch(fetchMedia(params || {})),
       [dispatch]
     ),
     fetchMediaById: useCallback(
-      (id: string) => dispatch(fetchMediaById(id)),
+      (id: string, forceRefresh?: boolean) => dispatch(fetchMediaById({ id, forceRefresh })),
       [dispatch]
     ),
     updateMedia: useCallback(
@@ -128,6 +130,8 @@ export const useMediaApi = () => {
       (mode: 'grid' | 'list') => dispatch(setViewMode(mode)),
       [dispatch]
     ),
+    invalidateCache: useCallback(() => dispatch(invalidateCache()), [dispatch]),
+    loadNextPage: useCallback(() => dispatch(loadNextPage()), [dispatch]),
   };
 };
 

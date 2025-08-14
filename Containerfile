@@ -12,7 +12,7 @@ COPY ui/ ./
 RUN npm run build
 
 # Stage 2: Build Go backend
-FROM docker.io/golang:1.23-alpine AS backend-builder
+FROM docker.io/golang:1.23.12 as backend-builder
 
 ARG GIT_SHA
 
@@ -29,11 +29,13 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-X main.sha=${GIT_SHA}" -a -installsuffix cgo -o photos-ng .
 
 # Stage 3: Final runtime image
-FROM alpine:latest
+FROM docker.io/fedora:41
+
+RUN dnf install -y exiftool
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S photos-ng && \
-    adduser -S photos-ng -u 1001 -G photos-ng
+RUN groupadd -g 1000 photos-ng && \
+    useradd photos-ng -u 1000 -g photos-ng
 
 WORKDIR /app
 

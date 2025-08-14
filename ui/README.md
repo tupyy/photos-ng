@@ -56,7 +56,9 @@ npm run generate:api
 
 | Command | Description |
 |---------|-------------|
-| `npm run start:dev` | Start development server with hot reload |
+| `npm run start:dev` | Start development server with hot reload (local proxy) |
+| `npm run start:local` | Start development server with local backend proxy |
+| `npm run start:remote` | Start development server with remote backend proxy |
 | `npm run build` | Build for production |
 | `npm run clean` | Clean build artifacts |
 | `npm run generate:api` | Generate TypeScript API client from OpenAPI spec |
@@ -65,11 +67,35 @@ npm run generate:api
 
 ### Development Server
 
+The development server supports two proxy modes:
+
+#### Local Development (Default)
 ```bash
 npm run start:dev
+# or explicitly
+npm run start:local
 ```
+Proxies API requests to `http://localhost:8080` (local backend)
+
+#### Remote Development
+```bash
+npm run start:remote
+```
+Proxies API requests to `https://photos.tls.tupangiu.ro` (remote backend)
 
 The application will be available at [http://localhost:3000](http://localhost:3000).
+
+#### Proxy Configuration
+
+You can also control the proxy mode using environment variables:
+
+```bash
+# Local backend (default)
+PROXY_MODE=local npm run start:dev
+
+# Remote backend
+PROXY_MODE=remote npm run start:dev
+```
 
 ## 🎨 Features
 
@@ -100,9 +126,20 @@ The application will be available at [http://localhost:3000](http://localhost:30
 The API client is configured in `src/shared/api/apiConfig.ts`:
 
 ```typescript
-// Development: Uses proxy to localhost:8080
+// Development: Uses proxy (local or remote based on PROXY_MODE)
 // Production: Uses REACT_APP_API_URL environment variable
 ```
+
+#### Proxy Modes
+
+- **Local Mode** (`PROXY_MODE=local`): Proxies to `http://localhost:8080`
+  - Used for local backend development
+  - Default mode for development
+  
+- **Remote Mode** (`PROXY_MODE=remote`): Proxies to `https://photos.tls.tupangiu.ro`
+  - Used for testing against production backend
+  - Enables SSL verification
+  - Useful for frontend-only development
 
 ### Theme Configuration
 
@@ -149,8 +186,15 @@ The frontend communicates with the backend API through:
 
 ## 🚦 Development Workflow
 
+### Local Development
 1. **Start Backend**: Ensure the Go backend is running on port 8080
-2. **Start Frontend**: Run `npm run start:dev` 
+2. **Start Frontend**: Run `npm run start:local` 
+3. **API Changes**: Run `npm run generate:api` after OpenAPI spec updates
+4. **Styling**: Tailwind classes are processed automatically
+
+### Remote Development (Frontend Only)
+1. **Start Frontend**: Run `npm run start:remote`
+2. **No Backend Required**: Uses remote production backend
 3. **API Changes**: Run `npm run generate:api` after OpenAPI spec updates
 4. **Styling**: Tailwind classes are processed automatically
 
@@ -168,8 +212,10 @@ The build process includes:
 ### Common Issues
 
 **API Calls Failing**
-- Ensure backend is running on port 8080
+- **Local Mode**: Ensure backend is running on port 8080
+- **Remote Mode**: Check internet connection and remote server status
 - Check proxy configuration in Webpack dev config
+- Verify the correct proxy mode is being used (`npm run start:local` vs `npm run start:remote`)
 
 **Styles Not Loading**
 - Run `npm run css:build` to regenerate Tailwind CSS
