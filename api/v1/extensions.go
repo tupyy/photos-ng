@@ -20,6 +20,7 @@ func NewAlbum(album entity.Album) Album {
 		Path:        album.Path,
 		Description: album.Description,
 		Href:        "/api/v1/albums/" + album.ID,
+		MediaCount:  album.MediaCount,
 	}
 
 	_, name := path.Split(album.Path)
