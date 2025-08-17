@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Media } from '@generated/models';
 
 interface MediaViewerModalProps {
@@ -18,6 +18,11 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
 }) => {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Touch/swipe state
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   const currentMedia = media[currentIndex];
 
@@ -73,6 +78,31 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
     }
   }, [currentIndex, media.length, onIndexChange]);
 
+  // Swipe handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe && currentIndex < media.length - 1) {
+      handleNext();
+    }
+    if (isRightSwipe && currentIndex > 0) {
+      handlePrevious();
+    }
+  };
+
   const handleImageLoad = () => {
     setIsImageLoaded(true);
     setIsLoading(false);
@@ -86,7 +116,13 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
   if (!isOpen || !currentMedia) return null;
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div 
+      ref={modalRef}
+      className="fixed inset-0 z-50"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black bg-opacity-90 transition-opacity duration-300"
@@ -174,44 +210,27 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
           )}
         </div>
 
-        {/* Mobile Navigation Buttons - Below image on mobile */}
-        <div className="md:hidden flex justify-center gap-4 mt-4 mb-2">
-          <button
-            onClick={handlePrevious}
-            disabled={currentIndex === 0}
-            className="p-2 rounded-full bg-black bg-opacity-70 text-white hover:bg-opacity-90 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <button
-            onClick={handleNext}
-            disabled={currentIndex === media.length - 1}
-            className="p-2 rounded-full bg-black bg-opacity-70 text-white hover:bg-opacity-90 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Image Info - Below the image */}
-        <div className="w-full max-w-4xl px-4">
+        {/* Desktop Only: Image Info - Below the image */}
+        <div className="hidden md:block w-full max-w-4xl px-4">
           <div className="bg-black bg-opacity-70 rounded-lg p-3 md:p-4 text-white">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <h3 className="font-medium text-xs lg:text-lg">{currentMedia.filename}</h3>
-                <p className="text-xs md:text-sm text-gray-300 mt-1">
+                <h3 className="font-medium text-lg">{currentMedia.filename}</h3>
+                <p className="text-sm text-gray-300 mt-1">
                   {currentIndex + 1} of {media.length}
                 </p>
               </div>
-              <div className="text-right text-xs md:text-sm text-gray-300">
+              <div className="text-right text-sm text-gray-300">
                 <p>{currentMedia.type}</p>
                 <p>{new Date(currentMedia.capturedAt).toLocaleDateString()}</p>
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Mobile Only: Simple counter overlay */}
+        <div className="md:hidden fixed top-4 left-4 z-50 bg-black bg-opacity-70 rounded-lg px-3 py-2 text-white text-sm">
+          {currentIndex + 1} / {media.length}
         </div>
       </div>
     </div>

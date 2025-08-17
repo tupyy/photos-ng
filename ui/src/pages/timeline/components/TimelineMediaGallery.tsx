@@ -47,6 +47,9 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
+  // Scroll to top state (mobile only)
+  const [showScrollToTop, setShowScrollToTop] = useState(false);
+
   // Debug state values (dev only)
   if (process.env.NODE_ENV === 'development') {
     console.log('🔍 TimelineMediaGallery state:', {
@@ -63,6 +66,25 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
     threshold: 0,
     rootMargin: '200px',
   });
+
+  // Scroll detection effect for mobile scroll-to-top button
+  useEffect(() => {
+    const handleScroll = () => {
+      // Show scroll to top button when scrolled more than 300px on mobile
+      setShowScrollToTop(window.scrollY > 300);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  };
 
   // Trigger load more when sentinel comes into view
   useEffect(() => {
@@ -416,6 +438,20 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
         onClose={handleViewerClose}
         onIndexChange={handleIndexChange}
       />
+
+      {/* Floating Scroll to Top Button - Mobile only, hidden when modal is open */}
+      {showScrollToTop && !isViewerOpen && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 md:hidden z-50 p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          title="Scroll to top"
+          aria-label="Scroll to top"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 };

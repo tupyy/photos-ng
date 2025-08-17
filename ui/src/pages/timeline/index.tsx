@@ -18,6 +18,7 @@ import { useMediaApi, useStatsApi } from '@shared/hooks/useApi';
 import { ListMediaSortByEnum, ListMediaSortOrderEnum } from '@generated/api/media-api';
 import TimelineMediaGallery from './components/TimelineMediaGallery';
 import YearNavigation from './components/YearNavigation';
+import MobileYearDropdown from './components/MobileYearDropdown';
 import { TIMELINE_PAGE_SIZE } from '@app/shared/config';
 
 const TimelinePage: React.FC = () => {
@@ -175,9 +176,17 @@ const TimelinePage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-8">
+        <div className="md:flex md:gap-8">
           {/* Media Gallery */}
           <div className="flex-1 min-w-0">
+            {/* Mobile Year Dropdown - Only visible on mobile */}
+            <MobileYearDropdown
+              availableYears={availableYears}
+              selectedYear={visibleYear}
+              onYearSelect={handleYearSelect}
+              loading={loading || statsLoading}
+            />
+            
             <TimelineMediaGallery
               media={media || []}
               loading={loading || statsLoading}
@@ -191,8 +200,8 @@ const TimelinePage: React.FC = () => {
             />
           </div>
 
-          {/* Year Navigation Sidebar */}
-          <div className="w-30 flex-shrink-0">
+          {/* Year Navigation Sidebar - Hidden on mobile */}
+          <div className="hidden md:block w-30 flex-shrink-0">
             <YearNavigation
               availableYears={availableYears}
               selectedYear={visibleYear} // Use visibleYear instead of selectedYear

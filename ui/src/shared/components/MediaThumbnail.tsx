@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Media } from '@generated/models';
 
 interface MediaThumbnailProps {
@@ -10,7 +10,17 @@ interface MediaThumbnailProps {
 }
 
 const MediaThumbnail: React.FC<MediaThumbnailProps> = ({ media, onInfoClick, onClick, isSelectionMode = false, isSelected = false }) => {
-  const handleClick = () => {
+  const lastTapTime = useRef<number>(0);
+  const tapTimer = useRef<NodeJS.Timeout | null>(null);
+  const touchHandled = useRef<boolean>(false);
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Prevent click if it was already handled by touch
+    if (touchHandled.current) {
+      touchHandled.current = false;
+      return;
+    }
+    
     if (onClick) {
       onClick(media);
     }
@@ -19,6 +29,35 @@ const MediaThumbnail: React.FC<MediaThumbnailProps> = ({ media, onInfoClick, onC
   const handleInfoClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the main click
     onInfoClick(media);
+  };
+
+  // Double tap handler for mobile EXIF access
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent mouse events from firing
+    touchHandled.current = true; // Mark as handled by touch
+    
+    const now = Date.now();
+    const timeSinceLastTap = now - lastTapTime.current;
+    
+    if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
+      // Double tap detected - show EXIF
+      if (tapTimer.current) {
+        clearTimeout(tapTimer.current);
+        tapTimer.current = null;
+      }
+      onInfoClick(media);
+      lastTapTime.current = 0; // Reset to prevent triple tap
+    } else {
+      // First tap - wait to see if there's a second tap
+      lastTapTime.current = now;
+      tapTimer.current = setTimeout(() => {
+        // Single tap - trigger normal click
+        if (onClick) {
+          onClick(media);
+        }
+        tapTimer.current = null;
+      }, 300);
+    }
   };
 
   const handleError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -37,6 +76,7 @@ const MediaThumbnail: React.FC<MediaThumbnailProps> = ({ media, onInfoClick, onC
           : 'hover:opacity-80'
       }`}
       onClick={handleClick}
+      onTouchEnd={handleTouchEnd}
       data-media-id={media.id}
     >
       <img
