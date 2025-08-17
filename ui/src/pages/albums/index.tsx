@@ -18,6 +18,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector, selectAlbumsCreateFormOpen, selectCurrentAlbum } from '@shared/store';
 import { setPageActive, setCreateFormOpen, fetchAlbumById, setCurrentAlbum } from '@shared/reducers/albumsSlice';
 import { useAlbumsApi, useMediaApi } from '@shared/hooks/useApi';
+import { useThumbnail } from '@shared/contexts';
 import { ListMediaSortByEnum, ListMediaSortOrderEnum } from '@generated/api/media-api';
 import { Album } from '@shared/types/Album';
 import AlbumsList from './components/AlbumsList';
@@ -36,6 +37,9 @@ const AlbumsPage: React.FC = () => {
 
   // API hooks for data fetching and operations
   const { albums, loading, error, fetchAlbums, fetchAlbumById: fetchAlbumByIdApi, updateAlbum } = useAlbumsApi();
+  
+  // Thumbnail context
+  const { isThumbnailMode, startThumbnailSelection, exitThumbnailMode } = useThumbnail();
 
   // Local state for paginated media
   const [paginatedMedia, setPaginatedMedia] = useState<any[]>([]);
@@ -223,6 +227,33 @@ const AlbumsPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <div className="px-4 py-6 sm:px-0">
+        {/* Thumbnail Selection Mode Banner */}
+        {isThumbnailMode && (
+          <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <div>
+                  <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                    Thumbnail Selection Mode
+                  </h3>
+                  <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                    Navigate through folders and click on any photo to set it as the album thumbnail
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={exitThumbnailMode}
+                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 text-sm font-medium"
+              >
+                Exit
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Album Header - Show when viewing a specific album */}
         {id && currentAlbum && (
           <div className="mb-6">
@@ -304,6 +335,7 @@ const AlbumsPage: React.FC = () => {
               ? "This album doesn't contain any sub-albums."
               : 'Create your first album to get started organizing your photos.'
           }
+          onSetThumbnail={startThumbnailSelection}
         />
 
         {/* Media Gallery - Show only when viewing a specific album */}

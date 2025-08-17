@@ -10,9 +10,10 @@ export interface AlbumsListProps {
   error?: string | null;
   emptyStateTitle?: string;
   emptyStateMessage?: string;
+  onSetThumbnail?: (albumId: string) => void;
 }
 
-const AlbumsList: React.FC<AlbumsListProps> = ({ albums, loading = false, error = null }) => {
+const AlbumsList: React.FC<AlbumsListProps> = ({ albums, loading = false, error = null, onSetThumbnail }) => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -152,6 +153,7 @@ const AlbumsList: React.FC<AlbumsListProps> = ({ albums, loading = false, error 
             isSelectionMode={isSelectionMode}
             isSelected={selectedAlbumIds.includes(album.id)}
             onSelectionToggle={toggleAlbumSelection}
+            onSetThumbnail={onSetThumbnail}
           />
         ))}
       </div>

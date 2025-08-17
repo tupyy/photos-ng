@@ -121,7 +121,7 @@ func (a *AlbumService) UpdateAlbum(ctx context.Context, album entity.Album) (*en
 
 	// if thumbnail is present, check if the media belongs to the album
 	if album.Thumbnail != nil {
-		media, err := a.dt.QueryMedia(ctx, pg.FilterByMediaId(*album.Thumbnail), pg.FilterByColumnName("album_id", existingAlbum.ID), pg.Limit(1))
+		media, err := a.dt.QueryMedia(ctx, pg.FilterByMediaId(*album.Thumbnail), pg.Limit(1))
 		if err != nil {
 			return nil, err
 		}

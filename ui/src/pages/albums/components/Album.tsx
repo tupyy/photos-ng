@@ -7,13 +7,15 @@ export interface AlbumProps {
   isSelectionMode?: boolean;
   isSelected?: boolean;
   onSelectionToggle?: (albumId: string) => void;
+  onSetThumbnail?: (albumId: string) => void;
 }
 
 const Album: React.FC<AlbumProps> = ({ 
   album, 
   isSelectionMode = false, 
   isSelected = false, 
-  onSelectionToggle 
+  onSelectionToggle,
+  onSetThumbnail 
 }) => {
   const navigate = useNavigate();
 
@@ -32,6 +34,12 @@ const Album: React.FC<AlbumProps> = ({
     }
   };
 
+  const handleSetThumbnail = () => {
+    if (onSetThumbnail) {
+      onSetThumbnail(album.id);
+    }
+  };
+
   return (
     <div
       className={`relative aspect-square bg-white border rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 dark:bg-gray-800 cursor-pointer flex flex-col ${
@@ -46,14 +54,31 @@ const Album: React.FC<AlbumProps> = ({
       <div className="relative flex-shrink-0" style={{ height: '70%' }}>
         <div className="relative h-full bg-gray-100 dark:bg-gray-700 rounded-t-lg overflow-hidden">
           {album.thumbnail ? (
-            <img
-              src={album.thumbnail}
-              alt={album.name}
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-            />
+            <div className="relative w-full h-full">
+              <img
+                src={album.thumbnail}
+                alt={album.name}
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+              />
+              {/* Change Thumbnail button overlay - show on hover for albums with thumbnails */}
+              {(album.mediaCount || 0) > 0 && !isSelectionMode && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSetThumbnail();
+                    }}
+                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    title="Change thumbnail"
+                  >
+                    Change Thumbnail
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             // Stub image placeholder
-            <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-600">
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gray-200 dark:bg-gray-600">
               <svg
                 className="w-12 h-12 text-gray-400 dark:text-gray-500"
                 fill="none"
@@ -68,6 +93,20 @@ const Album: React.FC<AlbumProps> = ({
                   d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                 />
               </svg>
+              
+              {/* Set Thumbnail button - show for any album with media */}
+              {(album.mediaCount || 0) > 0 && !isSelectionMode && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSetThumbnail();
+                  }}
+                  className="mt-2 px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  title="Set thumbnail from photos in this album"
+                >
+                  Set Thumbnail
+                </button>
+              )}
             </div>
           )}
           

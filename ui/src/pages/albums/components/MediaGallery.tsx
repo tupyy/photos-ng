@@ -4,6 +4,7 @@ import MediaThumbnail from '@app/shared/components/MediaThumbnail';
 import ExifDrawer from '@app/shared/components/ExifDrawer';
 import { MediaViewerModal, ConfirmDeleteModal, Alert } from '@app/shared/components';
 import { useMediaApi, useAlbumsApi } from '@shared/hooks/useApi';
+import { useThumbnail } from '@shared/contexts';
 
 interface MediaGalleryProps {
   media: Media[];
@@ -30,6 +31,8 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   onPageChange,
   onMediaDeleted,
 }) => {
+  // Thumbnail context
+  const { isThumbnailMode, selectThumbnail } = useThumbnail();
   const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -182,9 +185,15 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
 
   // Media viewer modal handlers
   const handleMediaClick = (mediaItem: Media) => {
-    const index = allMedia.findIndex((m) => m.id === mediaItem.id);
-    setCurrentMediaIndex(index);
-    setIsViewerOpen(true);
+    if (isThumbnailMode) {
+      // In thumbnail selection mode, select this media as thumbnail
+      selectThumbnail(mediaItem.id);
+    } else {
+      // Normal mode, open media viewer
+      const index = allMedia.findIndex((m) => m.id === mediaItem.id);
+      setCurrentMediaIndex(index);
+      setIsViewerOpen(true);
+    }
   };
 
   const handleViewerClose = (currentMedia?: Media) => {
@@ -352,9 +361,18 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
       <div className="sticky top-0 z-30 bg-gray-50 dark:bg-slate-900 pb-4 mb-6 bg-opacity-95 dark:bg-opacity-95">
         <div className="flex items-center justify-between pt-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Photos ({total})
-            {isSelectionMode && selectedMediaIds.size > 0 && (
-              <span className="ml-2 text-sm text-blue-600 dark:text-blue-400">({selectedMediaIds.size} selected)</span>
+            {isThumbnailMode ? (
+              <>
+                <span className="text-blue-600 dark:text-blue-400">📸 Select Thumbnail</span>
+                <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">({total} photos)</span>
+              </>
+            ) : (
+              <>
+                Photos ({total})
+                {isSelectionMode && selectedMediaIds.size > 0 && (
+                  <span className="ml-2 text-sm text-blue-600 dark:text-blue-400">({selectedMediaIds.size} selected)</span>
+                )}
+              </>
             )}
           </h2>
 
@@ -378,7 +396,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
               </button>
             )}
 
-            {isSelectionMode ? (
+            {isSelectionMode && !isThumbnailMode ? (
               <>
                 <button
                   onClick={selectAllMedia}
@@ -448,7 +466,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
                   key={mediaItem.id}
                   media={mediaItem}
                   onInfoClick={handleInfoClick}
-                  onClick={isSelectionMode ? () => toggleMediaSelection(mediaItem.id) : handleMediaClick}
+                  onClick={isSelectionMode && !isThumbnailMode ? () => toggleMediaSelection(mediaItem.id) : handleMediaClick}
                   isSelectionMode={isSelectionMode}
                   isSelected={selectedMediaIds.has(mediaItem.id)}
                 />
