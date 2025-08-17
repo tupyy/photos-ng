@@ -1,6 +1,6 @@
 /**
  * Timeline Media Gallery Component
- * 
+ *
  * A specialized version of MediaGallery for the timeline page.
  * Key differences from regular MediaGallery:
  * - No selection capabilities (read-only view)
@@ -42,7 +42,7 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
   // EXIF drawer state
   const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  
+
   // Media viewer modal state
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
@@ -141,7 +141,7 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
         weekStart: new Date(weekKey),
         weekRange: formatWeekRange(new Date(weekKey)),
         media: mediaItems,
-        year: new Date(weekKey).getFullYear()
+        year: new Date(weekKey).getFullYear(),
       }))
       .sort((a, b) => b.weekStart.getTime() - a.weekStart.getTime());
   }, [media]);
@@ -150,7 +150,7 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
    * Flattened media array for modal navigation
    */
   const allMedia = React.useMemo(() => {
-    return groupedMedia.flatMap(group => group.media);
+    return groupedMedia.flatMap((group) => group.media);
   }, [groupedMedia]);
 
   /**
@@ -163,7 +163,7 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
    */
   React.useEffect(() => {
     if (!onVisibleYearChange || groupedMedia.length === 0) return;
-    
+
     // Use only intersection observer for better performance
     // Remove scroll listener completely to eliminate scroll jank
     const observer = new IntersectionObserver(
@@ -172,7 +172,7 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
         requestAnimationFrame(() => {
           // Filter intersecting entries and find the topmost one
           const intersectingEntries = entries
-            .filter(entry => entry.isIntersecting && entry.intersectionRatio > 0)
+            .filter((entry) => entry.isIntersecting && entry.intersectionRatio > 0)
             .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
 
           if (intersectingEntries.length > 0) {
@@ -192,7 +192,7 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
       {
         root: null,
         rootMargin: '-100px 0px -70% 0px', // More conservative margins
-        threshold: 0 // Single threshold for minimal callbacks
+        threshold: 0, // Single threshold for minimal callbacks
       }
     );
 
@@ -204,10 +204,10 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
     topDetector.style.height = '1px';
     topDetector.style.width = '100%';
     topDetector.style.pointerEvents = 'none';
-    
+
     const timelineContainer = document.querySelector('.timeline-container') || document.body;
     timelineContainer.appendChild(topDetector);
-    
+
     // Observer for top detector
     const topObserver = new IntersectionObserver(
       (entries) => {
@@ -223,15 +223,15 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
       {
         root: null,
         rootMargin: '0px',
-        threshold: 0
+        threshold: 0,
       }
     );
-    
+
     topObserver.observe(topDetector);
 
     // Observe year anchor elements
     const yearElements = document.querySelectorAll('[id^="year-"]');
-    yearElements.forEach(element => observer.observe(element));
+    yearElements.forEach((element) => observer.observe(element));
 
     return () => {
       observer.disconnect();
@@ -261,7 +261,7 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
    * Handles media click for full-screen viewing
    */
   const handleMediaClick = (media: Media) => {
-    const index = allMedia.findIndex(m => m.id === media.id);
+    const index = allMedia.findIndex((m) => m.id === media.id);
     if (index !== -1) {
       setCurrentMediaIndex(index);
       setIsViewerOpen(true);
@@ -273,7 +273,7 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
    */
   const handleViewerClose = (currentMedia?: Media) => {
     setIsViewerOpen(false);
-    
+
     // Scroll to the media that was being viewed when modal was closed
     if (currentMedia) {
       // Use setTimeout to ensure modal is fully closed before scrolling
@@ -283,7 +283,7 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
           mediaElement.scrollIntoView({
             behavior: 'smooth',
             block: 'center',
-            inline: 'nearest'
+            inline: 'nearest',
           });
         }
       }, 100);
@@ -326,12 +326,15 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
   if (!media || media.length === 0) {
     return (
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Photos
-        </h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Photos</h2>
         <div className="text-center py-12">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
           </svg>
           <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No photos found</h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -347,72 +350,54 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
       {/* Simple Header without selection controls */}
       <div className="sticky top-0 z-20 backdrop-blur flex-none transition-colors duration-500 supports-backdrop-blur:bg-white/60 dark:bg-slate-900 pb-4 mb-6">
         <div className="pt-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Photos ({allMedia.length})
-          </h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Photos ({allMedia.length})</h2>
         </div>
       </div>
-      
+
       {/* Grouped by weeks */}
       <div className="space-y-8">
         {groupedMedia.map((group, index) => {
           // Check if this is the first week of a new year
           const isFirstWeekOfYear = index === 0 || groupedMedia[index - 1].year !== group.year;
-          
+
           return (
             <div key={group.weekStart.toISOString()}>
               {/* Year anchor for scrolling - placed at first week of each year */}
-              {isFirstWeekOfYear && (
-                <div id={`year-${group.year}`} className="scroll-mt-24"></div>
-              )}
-              
+              {isFirstWeekOfYear && <div id={`year-${group.year}`} className="scroll-mt-24"></div>}
+
               {/* Week header */}
               <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
                 {group.weekRange}
               </h3>
-            
-            {/* Media grid for this week */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
-              {group.media.map((mediaItem) => (
-                <MediaThumbnail
-                  key={mediaItem.id}
-                  media={mediaItem}
-                  onInfoClick={handleInfoClick}
-                  onClick={handleMediaClick}
-                  isSelectionMode={false} // Always disabled for timeline
-                  isSelected={false} // Never selected in timeline
-                />
-              ))}
+
+              {/* Media grid for this week */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1">
+                {group.media.map((mediaItem) => (
+                  <MediaThumbnail
+                    key={mediaItem.id}
+                    media={mediaItem}
+                    onInfoClick={handleInfoClick}
+                    onClick={handleMediaClick}
+                    isSelectionMode={false} // Always disabled for timeline
+                    isSelected={false} // Never selected in timeline
+                  />
+                ))}
+              </div>
             </div>
-          </div>
           );
         })}
       </div>
 
       {/* Infinite scroll sentinel - always render at the bottom */}
-      <div 
-        ref={ref} 
-        className="w-full py-6 mt-8"
-        style={{ minHeight: '50px' }}
-        data-testid="infinite-scroll-sentinel"
-      >
+      <div ref={ref} className="w-full py-6 mt-8" style={{ minHeight: '50px' }} data-testid="infinite-scroll-sentinel">
         {hasMore ? (
           <div className="flex flex-col items-center space-y-3">
-            <LoadingProgressBar 
-              loading={loadingMore} 
-              message="Loading more photos..."
-              size="medium"
-            />
-            <div className="text-center text-sm text-gray-600 dark:text-gray-400 mb-3">
-              Loading more photos...
-            </div>
-
+            <LoadingProgressBar loading={loadingMore} message="Loading more photos..." size="medium" />
+            <div className="text-center text-sm text-gray-600 dark:text-gray-400 mb-3">Loading more photos...</div>
           </div>
         ) : (
           <div className="text-center">
-            <div className="text-green-600 dark:text-green-400 font-medium">
-              ✅ All photos loaded
-            </div>
+            <div className="text-green-600 dark:text-green-400 font-medium">✅ All photos loaded</div>
             <div className="text-xs text-gray-500 mt-1">
               {allMedia.length} of {total} photos
             </div>
@@ -434,7 +419,5 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
     </div>
   );
 };
-
-
 
 export default TimelineMediaGallery;

@@ -373,16 +373,11 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
                   viewBox="0 0 24 24"
                   xmlns="http://www.w3.org/2000/svg"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 15l7-7 7 7"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                 </svg>
               </button>
             )}
-            
+
             {isSelectionMode ? (
               <>
                 <button
@@ -447,7 +442,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
             </h3>
 
             {/* Media grid for this week */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1">
               {group.media.map((mediaItem) => (
                 <MediaThumbnail
                   key={mediaItem.id}
