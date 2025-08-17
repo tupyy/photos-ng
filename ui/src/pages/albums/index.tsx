@@ -41,22 +41,24 @@ const AlbumsPage: React.FC = () => {
   // Thumbnail context
   const { isThumbnailMode, startThumbnailSelection, exitThumbnailMode } = useThumbnail();
 
-  // Local state for paginated media
-  const [paginatedMedia, setPaginatedMedia] = useState<any[]>([]);
+  // Local state for infinite scroll media
+  const [accumulatedMedia, setAccumulatedMedia] = useState<any[]>([]);
   const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaLoadingMore, setMediaLoadingMore] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
 
   // Local state for inline description editing
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedDescription, setEditedDescription] = useState('');
 
-  // Media pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 100; // Number of media items per page
+  // Media infinite scroll state
+  const [currentOffset, setCurrentOffset] = useState(0);
+  const pageSize = 100; // Number of media items to load per batch
+  const [hasMoreMedia, setHasMoreMedia] = useState(true);
 
   /**
    * Main effect for page initialization and data fetching
-   * Runs when component mounts or when album ID or pagination changes
+   * Runs when component mounts or when album ID changes
    */
   useEffect(() => {
     // Set page as active when component mounts
@@ -152,69 +154,100 @@ const AlbumsPage: React.FC = () => {
     }
   };
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
+
 
   const handleMediaDeleted = () => {
     if (id) {
       // Refresh album data to get updated media list and check if thumbnail was affected
       fetchAlbumByIdApi(id);
-      // The useEffect will automatically refresh the paginated media when currentAlbum changes
+      // Reset the media accumulation state - the useEffect will reload media when currentAlbum changes
+      setCurrentOffset(0);
+      setAccumulatedMedia([]);
+      setHasMoreMedia(true);
     }
   };
 
-  // Reset page when album changes
+  // Reset media state when album changes
   useEffect(() => {
-    setCurrentPage(1);
+    setCurrentOffset(0);
+    setAccumulatedMedia([]);
+    setHasMoreMedia(true);
   }, [id]);
 
-  // Fetch media objects for current page when album or page changes
+  // Load initial media when album changes
   useEffect(() => {
-    const fetchPaginatedMedia = async () => {
-      if (!currentAlbum?.media || currentAlbum.media.length === 0) {
-        setPaginatedMedia([]);
-        return;
-      }
+    if (currentAlbum?.media && currentAlbum.media.length > 0) {
+      loadNextMediaBatch(true);
+    } else {
+      setAccumulatedMedia([]);
+    }
+  }, [currentAlbum]);
 
-      // Calculate pagination for media hrefs
-      const startIndex = (currentPage - 1) * pageSize;
-      const endIndex = Math.min(startIndex + pageSize, currentAlbum.media.length);
-      const currentPageHrefs = currentAlbum.media.slice(startIndex, endIndex);
+  const loadNextMediaBatch = async (isInitial = false) => {
+    if (!currentAlbum?.media || currentAlbum.media.length === 0) {
+      return;
+    }
 
-      if (currentPageHrefs.length === 0) {
-        setPaginatedMedia([]);
-        return;
-      }
+    const startIndex = isInitial ? 0 : currentOffset;
+    const endIndex = Math.min(startIndex + pageSize, currentAlbum.media.length);
+    const batchHrefs = currentAlbum.media.slice(startIndex, endIndex);
 
+    if (batchHrefs.length === 0) {
+      setHasMoreMedia(false);
+      return;
+    }
+
+    // Set appropriate loading state
+    if (isInitial) {
       setMediaLoading(true);
-      setMediaError(null);
+    } else {
+      setMediaLoadingMore(true);
+    }
+    setMediaError(null);
 
-      try {
-        // Fetch media objects for current page hrefs
-        const mediaPromises = currentPageHrefs.map(async (href) => {
-          // Extract media ID from href (e.g., "/api/v1/media/123" -> "123")
-          const mediaId = href.split('/').pop();
-          const response = await fetch(href);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch media ${mediaId}: ${response.status}`);
-          }
-          return response.json();
-        });
+    try {
+      // Fetch media objects for current batch hrefs
+      const mediaPromises = batchHrefs.map(async (href) => {
+        // Extract media ID from href (e.g., "/api/v1/media/123" -> "123")
+        const mediaId = href.split('/').pop();
+        const response = await fetch(href);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch media ${mediaId}: ${response.status}`);
+        }
+        return response.json();
+      });
 
-        const mediaObjects = await Promise.all(mediaPromises);
-        setPaginatedMedia(mediaObjects);
-      } catch (error) {
-        console.error('Error fetching paginated media:', error);
-        setMediaError(error instanceof Error ? error.message : 'Failed to fetch media');
-        setPaginatedMedia([]);
-      } finally {
-        setMediaLoading(false);
+      const mediaObjects = await Promise.all(mediaPromises);
+      
+      if (isInitial) {
+        setAccumulatedMedia(mediaObjects);
+      } else {
+        setAccumulatedMedia(prev => [...prev, ...mediaObjects]);
       }
-    };
+      
+      // Update offset and check if there's more media
+      const newOffset = endIndex;
+      setCurrentOffset(newOffset);
+      setHasMoreMedia(newOffset < currentAlbum.media.length);
+      
+    } catch (error) {
+      console.error('Error fetching media batch:', error);
+      setMediaError(error instanceof Error ? error.message : 'Failed to fetch media');
+      if (isInitial) {
+        setAccumulatedMedia([]);
+      }
+    } finally {
+      if (isInitial) {
+        setMediaLoading(false);
+      } else {
+        setMediaLoadingMore(false);
+      }
+    }
+  };
 
-    fetchPaginatedMedia();
-  }, [currentAlbum, currentPage, pageSize]);
+  const handleLoadMore = () => {
+    loadNextMediaBatch(false);
+  };
 
   // Determine which albums to show
   const albumsToShow: Album[] =
@@ -341,15 +374,15 @@ const AlbumsPage: React.FC = () => {
         {/* Media Gallery - Show only when viewing a specific album */}
         {id && currentAlbum && (
           <MediaGallery
-            media={paginatedMedia}
+            media={accumulatedMedia}
             loading={mediaLoading}
+            loadingMore={mediaLoadingMore}
             error={mediaError}
             albumName={currentAlbum.name}
             albumId={id}
             total={currentAlbum.media?.length || 0}
-            currentPage={currentPage}
-            pageSize={pageSize}
-            onPageChange={handlePageChange}
+            hasMore={hasMoreMedia}
+            onLoadMore={handleLoadMore}
             onMediaDeleted={handleMediaDeleted}
           />
         )}
