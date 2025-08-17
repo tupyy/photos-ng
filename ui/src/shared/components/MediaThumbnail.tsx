@@ -13,6 +13,8 @@ const MediaThumbnail: React.FC<MediaThumbnailProps> = ({ media, onInfoClick, onC
   const lastTapTime = useRef<number>(0);
   const tapTimer = useRef<NodeJS.Timeout | null>(null);
   const touchHandled = useRef<boolean>(false);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const isSwiping = useRef<boolean>(false);
 
   const handleClick = (e: React.MouseEvent) => {
     // Prevent click if it was already handled by touch
@@ -31,10 +33,55 @@ const MediaThumbnail: React.FC<MediaThumbnailProps> = ({ media, onInfoClick, onC
     onInfoClick(media);
   };
 
+  // Touch start handler to track initial position
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    isSwiping.current = false;
+  };
+
+  // Touch move handler to detect swipe gestures during movement
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPos.current) return;
+
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
+    const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
+    
+    // If movement is greater than 10px in any direction, consider it a swipe
+    if (deltaX > 10 || deltaY > 10) {
+      isSwiping.current = true;
+      // Cancel any pending tap timer since this is a swipe
+      if (tapTimer.current) {
+        clearTimeout(tapTimer.current);
+        tapTimer.current = null;
+      }
+    }
+  };
+
   // Double tap handler for mobile EXIF access
   const handleTouchEnd = (e: React.TouchEvent) => {
     e.preventDefault(); // Prevent mouse events from firing
     touchHandled.current = true; // Mark as handled by touch
+    
+    // Check if this was a swipe by comparing start and end positions
+    if (touchStartPos.current && e.changedTouches[0]) {
+      const touch = e.changedTouches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartPos.current.x);
+      const deltaY = Math.abs(touch.clientY - touchStartPos.current.y);
+      
+      // If movement is greater than 10px in any direction, consider it a swipe
+      if (deltaX > 10 || deltaY > 10) {
+        isSwiping.current = true;
+      }
+    }
+    
+    // If this was a swipe gesture, don't process as tap
+    if (isSwiping.current) {
+      isSwiping.current = false;
+      touchStartPos.current = null;
+      return;
+    }
     
     const now = Date.now();
     const timeSinceLastTap = now - lastTapTime.current;
@@ -51,13 +98,16 @@ const MediaThumbnail: React.FC<MediaThumbnailProps> = ({ media, onInfoClick, onC
       // First tap - wait to see if there's a second tap
       lastTapTime.current = now;
       tapTimer.current = setTimeout(() => {
-        // Single tap - trigger normal click
-        if (onClick) {
+        // Single tap - trigger normal click (only if not swiping)
+        if (onClick && !isSwiping.current) {
           onClick(media);
         }
         tapTimer.current = null;
       }, 300);
     }
+    
+    // Reset tracking variables
+    touchStartPos.current = null;
   };
 
   const handleError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -76,6 +126,8 @@ const MediaThumbnail: React.FC<MediaThumbnailProps> = ({ media, onInfoClick, onC
           : 'hover:opacity-80'
       }`}
       onClick={handleClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       data-media-id={media.id}
     >
