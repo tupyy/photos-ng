@@ -44,34 +44,7 @@ export const fetchAlbums = createAsyncThunk(
   'albums/fetchAlbums',
   async (params: { limit?: number; offset?: number } = {}) => {
     const response = await albumsApi.listAlbums(params.limit, params.offset);
-    const albums = response.data.albums || [];
-    
-    // For each album that has children, fetch the full child album details
-    const enrichedAlbums: Album[] = [];
-    
-    for (const album of albums) {
-      if (album.children && album.children.length > 0) {
-        try {
-          const childrenAlbums = await fetchChildrenAlbums(album.children);
-          enrichedAlbums.push({
-            ...album,
-            children: childrenAlbums,
-          });
-        } catch (error) {
-          console.warn(`Failed to fetch children for album ${album.id}:`, error);
-          // Keep the album with original children structure if fetch fails
-          enrichedAlbums.push(album as Album);
-        }
-      } else {
-        // Album has no children, add as-is
-        enrichedAlbums.push(album as Album);
-      }
-    }
-    
-    return {
-      ...response.data,
-      albums: enrichedAlbums,
-    };
+    return response.data;
   }
 );
 
