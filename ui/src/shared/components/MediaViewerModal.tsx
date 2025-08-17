@@ -90,7 +90,7 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
 
   const handleTouchEnd = () => {
     if (!touchStart || !touchEnd) return;
-    
+
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > 50;
     const isRightSwipe = distance < -50;
@@ -116,7 +116,7 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
   if (!isOpen || !currentMedia) return null;
 
   return (
-    <div 
+    <div
       ref={modalRef}
       className="fixed inset-0 z-50"
       onTouchStart={handleTouchStart}
@@ -124,7 +124,7 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
       onTouchEnd={handleTouchEnd}
     >
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black bg-opacity-90 transition-opacity duration-300"
         onClick={() => onClose(currentMedia)}
       />
@@ -226,11 +226,6 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Mobile Only: Simple counter overlay */}
-        <div className="md:hidden fixed top-4 left-4 z-50 bg-black bg-opacity-70 rounded-lg px-3 py-2 text-white text-sm">
-          {currentIndex + 1} / {media.length}
         </div>
       </div>
     </div>
