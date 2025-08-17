@@ -76,7 +76,7 @@ const AlbumsPage: React.FC = () => {
     return () => {
       dispatch(setPageActive(false));
     };
-  }, [dispatch, id]);
+  }, [dispatch, id, fetchAlbums, fetchAlbumByIdApi]);
 
   /**
    * Initialize edited description when currentAlbum changes

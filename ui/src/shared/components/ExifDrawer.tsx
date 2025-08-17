@@ -5,9 +5,10 @@ interface ExifDrawerProps {
   isOpen: boolean;
   media: Media | null;
   onClose: () => void;
+  onNavigateToAlbum?: (albumId: string) => void;
 }
 
-const ExifDrawer: React.FC<ExifDrawerProps> = ({ isOpen, media, onClose }) => {
+const ExifDrawer: React.FC<ExifDrawerProps> = ({ isOpen, media, onClose, onNavigateToAlbum }) => {
   // Handle ESC key to close drawer
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -26,6 +27,17 @@ const ExifDrawer: React.FC<ExifDrawerProps> = ({ isOpen, media, onClose }) => {
   }, [isOpen, onClose]);
 
   if (!isOpen || !media) return null;
+
+  // Extract album ID from albumHref
+  const getAlbumId = () => {
+    if (!media.albumHref) return null;
+    
+    // Extract album ID from href (last part after /albums/)
+    const albumIdMatch = media.albumHref.match(/albums\/([^\/]+)(?:\/.*)?$/);
+    return albumIdMatch ? albumIdMatch[1] : null;
+  };
+
+  const albumId = getAlbumId();
 
   // Format EXIF data for display
   const formatExifData = () => {
@@ -115,6 +127,23 @@ const ExifDrawer: React.FC<ExifDrawerProps> = ({ isOpen, media, onClose }) => {
                 </tbody>
               </table>
             </div>
+
+            {/* Album Navigation */}
+            {albumId && onNavigateToAlbum && (
+              <div className="mb-6">
+                <button
+                  onClick={() => onNavigateToAlbum(albumId)}
+                  className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                  title="Go to album containing this photo"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m8 5 4-2 4 2" />
+                  </svg>
+                  View Album
+                </button>
+              </div>
+            )}
 
             {/* EXIF Data */}
             {exifData.length > 0 ? (

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Media } from '@generated/models';
 import MediaThumbnail from '@app/shared/components/MediaThumbnail';
 import ExifDrawer from '@app/shared/components/ExifDrawer';
@@ -31,6 +32,8 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   onPageChange,
   onMediaDeleted,
 }) => {
+  const navigate = useNavigate();
+  
   // Thumbnail context
   const { isThumbnailMode, selectThumbnail } = useThumbnail();
   const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
@@ -181,6 +184,12 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   const handleCloseDrawer = () => {
     setIsDrawerOpen(false);
     setSelectedMedia(null);
+  };
+
+  const handleNavigateToAlbum = (targetAlbumId: string) => {
+    setIsDrawerOpen(false);
+    setSelectedMedia(null);
+    navigate(`/albums/${targetAlbumId}`);
   };
 
   // Media viewer modal handlers
@@ -482,7 +491,12 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
       )}
 
       {/* EXIF Drawer */}
-      <ExifDrawer isOpen={isDrawerOpen} media={selectedMedia} onClose={handleCloseDrawer} />
+      <ExifDrawer 
+        isOpen={isDrawerOpen} 
+        media={selectedMedia} 
+        onClose={handleCloseDrawer}
+        onNavigateToAlbum={handleNavigateToAlbum}
+      />
 
       {/* Media Viewer Modal */}
       <MediaViewerModal

@@ -11,6 +11,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Media } from '@generated/models';
 import MediaThumbnail from '@app/shared/components/MediaThumbnail';
 import ExifDrawer from '@app/shared/components/ExifDrawer';
@@ -39,6 +40,8 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
   onLoadMore,
   onVisibleYearChange,
 }) => {
+  const navigate = useNavigate();
+  
   // EXIF drawer state
   const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -280,6 +283,14 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
   };
 
   /**
+   * Handles navigation to album
+   */
+  const handleNavigateToAlbum = (albumId: string) => {
+    setIsDrawerOpen(false);
+    navigate(`/albums/${albumId}`);
+  };
+
+  /**
    * Handles media click for full-screen viewing
    */
   const handleMediaClick = (media: Media) => {
@@ -428,7 +439,7 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
       </div>
 
       {/* EXIF Drawer */}
-      <ExifDrawer isOpen={isDrawerOpen} media={selectedMedia} onClose={handleCloseDrawer} />
+      <ExifDrawer isOpen={isDrawerOpen} media={selectedMedia} onClose={handleCloseDrawer} onNavigateToAlbum={handleNavigateToAlbum} />
 
       {/* Media Viewer Modal */}
       <MediaViewerModal
