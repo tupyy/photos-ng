@@ -60,21 +60,7 @@ const Album: React.FC<AlbumProps> = ({
                 alt={album.name}
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
               />
-              {/* Change Thumbnail button overlay - show on hover for albums with thumbnails */}
-              {(album.mediaCount || 0) > 0 && !isSelectionMode && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSetThumbnail();
-                    }}
-                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                    title="Change thumbnail"
-                  >
-                    Change Thumbnail
-                  </button>
-                </div>
-              )}
+
             </div>
           ) : (
             // Stub image placeholder
@@ -93,20 +79,6 @@ const Album: React.FC<AlbumProps> = ({
                   d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                 />
               </svg>
-              
-              {/* Set Thumbnail button - show for any album with media */}
-              {(album.mediaCount || 0) > 0 && !isSelectionMode && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSetThumbnail();
-                  }}
-                  className="mt-2 px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                  title="Set thumbnail from photos in this album"
-                >
-                  Set Thumbnail
-                </button>
-              )}
             </div>
           )}
           
@@ -150,31 +122,54 @@ const Album: React.FC<AlbumProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-          <div className="flex items-center flex-shrink-0 min-w-0">
-            <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-            <span className="whitespace-nowrap text-xs">{album.mediaCount || 0}</span>
-          </div>
-
-          {(album.children?.length || 0) > 0 && (
+        <div className="flex items-center justify-between gap-3 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-3">
             <div className="flex items-center flex-shrink-0 min-w-0">
               <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth="2"
-                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2V7zm0 0V5a2 2 0 012-2h6l2 2h6a2 2 0 012 2v2M7 13h10"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                 />
               </svg>
-              <span className="whitespace-nowrap text-xs">{album.children?.length || 0}</span>
+              <span className="whitespace-nowrap text-xs">{album.mediaCount || 0}</span>
             </div>
+
+            {(album.children?.length || 0) > 0 && (
+              <div className="flex items-center flex-shrink-0 min-w-0">
+                <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2V7zm0 0V5a2 2 0 012-2h6l2 2h6a2 2 0 012 2v2M7 13h10"
+                  />
+                </svg>
+                <span className="whitespace-nowrap text-xs">{album.children?.length || 0}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Set/Change Thumbnail button - positioned at bottom right */}
+          {(album.mediaCount || 0) > 0 && !isSelectionMode && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSetThumbnail();
+              }}
+              className="p-1.5 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 dark:hover:border-blue-600 transition-colors flex-shrink-0"
+              title={album.thumbnail ? "Change thumbnail" : "Set thumbnail from photos in this album"}
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </button>
           )}
         </div>
       </div>
