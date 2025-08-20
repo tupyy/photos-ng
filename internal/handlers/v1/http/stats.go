@@ -3,7 +3,7 @@ package v1
 import (
 	"net/http"
 
-	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
+	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )

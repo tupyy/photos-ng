@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package photos_ng.api.v1.grpc;
+
+import "common.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/grpc";
+
+// Media message representing a media entity
+message Media {
+  string id = 1;                           // Unique identifier for the media
+  string href = 2;                         // API reference to this media
+  string album_href = 3;                   // Reference to the containing album
+  google.protobuf.Timestamp captured_at = 4; // When the media was captured
+  MediaType type = 5;                      // Type of media (photo/video)
+  string filename = 6;                     // Full path of the media file on disk
+  string thumbnail = 7;                    // Reference to thumbnail endpoint
+  string content = 8;                      // Reference to content endpoint
+  repeated ExifHeader exif = 9;            // EXIF metadata
+}
+
+// Request to list media with filtering and pagination
+message ListMediaRequest {
+  PaginationRequest pagination = 1;        // Pagination parameters (limit = batch size, offset = where to start)
+  optional string album_id = 2;            // Filter by album ID
+  optional MediaType type = 3;             // Filter by media type
+  optional string start_date = 4;          // Filter media captured on/after this date (YYYY-MM-DD)
+  optional string end_date = 5;            // Filter media captured on/before this date (YYYY-MM-DD)
+  optional MediaSortBy sort_by = 6;        // Sort field (default: captured_at)
+  optional SortOrder sort_order = 7;       // Sort order (default: desc)
+}
+
+// Response containing list of media
+message ListMediaResponse {
+  repeated Media media = 1;                // List of media items
+  PaginationResponse pagination = 2;       // Pagination metadata
+}
+
+// Request to upload new media
+message UploadMediaRequest {
+  string filename = 1;                     // Original filename
+  string album_id = 2;                     // Target album ID
+  bytes file_content = 3;                  // Binary file content
+  string content_type = 4;                 // MIME type of the file
+}
+
+// Request to get a specific media item by ID
+message GetMediaRequest {
+  string id = 1;                           // Media ID
+}
+
+// Request to update media metadata
+message UpdateMediaRequest {
+  optional google.protobuf.Timestamp captured_at = 1; // Updated capture date
+  repeated ExifHeader exif = 2;            // Updated EXIF data
+}
+
+// Request to update a specific media item by ID
+message UpdateMediaByIdRequest {
+  string id = 1;                           // Media ID
+  UpdateMediaRequest update = 2;           // Update data
+}
+
+// Request to delete a specific media item by ID
+message DeleteMediaRequest {
+  string id = 1;                           // Media ID
+}
+
+// Request to get media thumbnail
+message GetMediaThumbnailRequest {
+  string id = 1;                           // Media ID
+}
+
+// Request to get media content
+message GetMediaContentRequest {
+  string id = 1;                           // Media ID
+}
+
+// Response containing binary data (for thumbnails and content)
+message BinaryDataResponse {
+  bytes data = 1;                          // Binary content
+  string content_type = 2;                 // MIME type
+  string filename = 3;                     // Original filename (optional)
+}
+
+// Chunk of binary data for streaming large files
+message BinaryDataChunk {
+  bytes chunk = 1;                         // Chunk of binary data
+  string content_type = 2;                 // MIME type (sent with first chunk)
+  string filename = 3;                     // Original filename (sent with first chunk)
+  int64 total_size = 4;                    // Total file size in bytes (sent with first chunk)
+  int64 chunk_index = 5;                   // Index of this chunk (0-based)
+  bool is_last_chunk = 6;                  // True if this is the last chunk
+}
+
+// Media service definition
+service MediaService {
+  // List media with optional filtering, sorting, and pagination (streaming)
+  rpc ListMedia(ListMediaRequest) returns (stream Media);
+  
+  // Upload new media to an album
+  rpc UploadMedia(UploadMediaRequest) returns (Media);
+  
+  // Get a specific media item by ID
+  rpc GetMedia(GetMediaRequest) returns (Media);
+  
+  // Update a specific media item by ID
+  rpc UpdateMedia(UpdateMediaByIdRequest) returns (Media);
+  
+  // Delete a specific media item by ID
+  rpc DeleteMedia(DeleteMediaRequest) returns (google.protobuf.Empty);
+  
+  // Get media thumbnail
+  rpc GetMediaThumbnail(GetMediaThumbnailRequest) returns (BinaryDataResponse);
+  
+  // Get media content (streaming for large files)
+  rpc GetMediaContent(GetMediaContentRequest) returns (stream BinaryDataChunk);
+}

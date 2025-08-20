@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1"
+	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

@@ -1,0 +1,484 @@
+package grpc
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"strings"
+
+	v1grpc "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/grpc"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/emptypb"
+)
+
+// ServerImpl implements the gRPC PhotosNGService
+type ServerImpl struct {
+	v1grpc.UnimplementedPhotosNGServiceServer
+	albumSrv  *services.AlbumService
+	mediaSrv  *services.MediaService
+	statsSrv  *services.StatsService
+	syncSrv   *services.SyncService
+	datastore *pg.Datastore
+}
+
+// NewGRPCServer creates a new gRPC server implementation
+func NewGRPCServer(dt *pg.Datastore, fsDatastore *fs.Datastore) *ServerImpl {
+	albumSrv := services.NewAlbumService(dt, fsDatastore)
+	mediaSrv := services.NewMediaService(dt, fsDatastore)
+	syncSrv := services.NewSyncService(albumSrv, mediaSrv, fsDatastore)
+
+	return &ServerImpl{
+		albumSrv:  albumSrv,
+		mediaSrv:  mediaSrv,
+		statsSrv:  services.NewStatsService(dt),
+		syncSrv:   syncSrv,
+		datastore: dt,
+	}
+}
+
+// LoggingInterceptor is a basic gRPC interceptor for request logging (optional)
+func LoggingInterceptor() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		// Add any logging or metadata handling here if needed
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			// Log incoming metadata if needed
+			_ = md
+		}
+
+		return handler(ctx, req)
+	}
+}
+
+// StreamLoggingInterceptor is a basic gRPC interceptor for streaming request logging (optional)
+func StreamLoggingInterceptor() grpc.StreamServerInterceptor {
+	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		// Add any logging or metadata handling here if needed
+		return handler(srv, ss)
+	}
+}
+
+// Album operations implementation
+func (s *ServerImpl) ListAlbums(ctx context.Context, req *v1grpc.ListAlbumsRequest) (*v1grpc.ListAlbumsResponse, error) {
+	// Set default values for pagination
+	limit := 20
+	if req.Pagination != nil && req.Pagination.Limit > 0 {
+		limit = int(req.Pagination.Limit)
+	}
+	offset := 0
+	if req.Pagination != nil && req.Pagination.Offset >= 0 {
+		offset = int(req.Pagination.Offset)
+	}
+
+	hasParent := false
+	if req.WithParent != nil {
+		hasParent = *req.WithParent
+	}
+
+	// Create album service options
+	opts := services.NewAlbumOptionsWithOptions(
+		services.WithLimit(limit),
+		services.WithOffset(offset),
+		services.WithHasParent(hasParent),
+	)
+
+	albums, err := s.albumSrv.GetAlbums(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get total count for pagination (without limit/offset)
+	totalOpts := services.NewAlbumOptionsWithOptions(
+		services.WithHasParent(hasParent),
+	)
+	allAlbums, err := s.albumSrv.GetAlbums(ctx, totalOpts)
+	if err != nil {
+		return nil, err
+	}
+	total := len(allAlbums)
+
+	// Convert entity albums to gRPC albums
+	grpcAlbums := make([]*v1grpc.Album, 0, len(albums))
+	for _, album := range albums {
+		grpcAlbums = append(grpcAlbums, v1grpc.NewAlbum(album))
+	}
+
+	return &v1grpc.ListAlbumsResponse{
+		Albums: grpcAlbums,
+		Pagination: &v1grpc.PaginationResponse{
+			Total:  int32(total),
+			Limit:  int32(limit),
+			Offset: int32(offset),
+		},
+	}, nil
+}
+
+func (s *ServerImpl) GetAlbum(ctx context.Context, req *v1grpc.GetAlbumRequest) (*v1grpc.Album, error) {
+	album, err := s.albumSrv.GetAlbum(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return v1grpc.NewAlbum(*album), nil
+}
+
+func (s *ServerImpl) CreateAlbum(ctx context.Context, req *v1grpc.CreateAlbumRequest) (*v1grpc.Album, error) {
+	// Convert gRPC request to entity
+	album := req.Entity()
+
+	// Create album using service
+	createdAlbum, err := s.albumSrv.CreateAlbum(ctx, album)
+	if err != nil {
+		return nil, err
+	}
+
+	return v1grpc.NewAlbum(*createdAlbum), nil
+}
+
+func (s *ServerImpl) UpdateAlbum(ctx context.Context, req *v1grpc.UpdateAlbumByIdRequest) (*v1grpc.Album, error) {
+	// Get existing album
+	album, err := s.albumSrv.GetAlbum(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply updates
+	req.Update.ApplyTo(album)
+
+	// Update album using service
+	updatedAlbum, err := s.albumSrv.UpdateAlbum(ctx, *album)
+	if err != nil {
+		return nil, err
+	}
+
+	return v1grpc.NewAlbum(*updatedAlbum), nil
+}
+
+func (s *ServerImpl) DeleteAlbum(ctx context.Context, req *v1grpc.DeleteAlbumRequest) (*emptypb.Empty, error) {
+	err := s.albumSrv.DeleteAlbum(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (s *ServerImpl) SyncAlbum(ctx context.Context, req *v1grpc.SyncAlbumRequest) (*v1grpc.SyncAlbumResponse, error) {
+	// Note: SyncAlbum is handled via StartSync in this implementation
+	_, err := s.syncSrv.StartSync(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1grpc.SyncAlbumResponse{
+		Message:     "Album sync started",
+		SyncedItems: 0, // Will be populated as job progresses
+	}, nil
+}
+
+// Media operations implementation
+func (s *ServerImpl) ListMedia(req *v1grpc.ListMediaRequest, stream v1grpc.PhotosNGService_ListMediaServer) error {
+	// Get pagination parameters from client
+	limit := 50 // Default batch size
+	if req.Pagination != nil && req.Pagination.Limit > 0 {
+		limit = int(req.Pagination.Limit)
+	}
+	offset := 0
+	if req.Pagination != nil && req.Pagination.Offset >= 0 {
+		offset = int(req.Pagination.Offset)
+	}
+
+	// Build service options with client-specified pagination
+	opts := services.NewMediaOptionsWithOptions(
+		services.WithMediaLimit(limit),
+		services.WithMediaOffset(offset),
+	)
+
+	// Add optional filters
+	if req.AlbumId != nil {
+		opts = services.MediaOptionsWithOptions(opts, services.WithAlbumID(req.AlbumId))
+	}
+
+	if req.Type != nil && *req.Type != v1grpc.MediaType_MEDIA_TYPE_UNSPECIFIED {
+		var mediaType string
+		switch *req.Type {
+		case v1grpc.MediaType_MEDIA_TYPE_PHOTO:
+			mediaType = "photo"
+		case v1grpc.MediaType_MEDIA_TYPE_VIDEO:
+			mediaType = "video"
+		}
+		opts = services.MediaOptionsWithOptions(opts, services.WithMediaType(&mediaType))
+	}
+
+	// Add sorting options
+	if req.SortBy != nil {
+		var sortBy string
+		switch *req.SortBy {
+		case v1grpc.MediaSortBy_MEDIA_SORT_BY_CAPTURED_AT:
+			sortBy = "captured_at"
+		case v1grpc.MediaSortBy_MEDIA_SORT_BY_FILENAME:
+			sortBy = "filename"
+		case v1grpc.MediaSortBy_MEDIA_SORT_BY_TYPE:
+			sortBy = "type"
+		default:
+			sortBy = "captured_at" // Default to captured_at
+		}
+		opts = services.MediaOptionsWithOptions(opts, services.WithSortBy(sortBy))
+	} else {
+		// Default sorting: captured_at DESC (newest first)
+		opts = services.MediaOptionsWithOptions(opts, services.WithSortBy("captured_at"))
+	}
+
+	if req.SortOrder != nil {
+		switch *req.SortOrder {
+		case v1grpc.SortOrder_SORT_ORDER_ASC:
+			opts = services.MediaOptionsWithOptions(opts, services.WithDescending(false))
+		case v1grpc.SortOrder_SORT_ORDER_DESC:
+			opts = services.MediaOptionsWithOptions(opts, services.WithDescending(true))
+		default:
+			opts = services.MediaOptionsWithOptions(opts, services.WithDescending(true)) // Default to DESC (newest first)
+		}
+	} else {
+		// Default sort order: DESC (newest first)
+		opts = services.MediaOptionsWithOptions(opts, services.WithDescending(true))
+	}
+
+	// Fetch ONLY the requested batch from database
+	media, err := s.mediaSrv.GetMedia(stream.Context(), opts)
+	if err != nil {
+		return err
+	}
+
+	// Stream the batch (typically 50-100 items, not 10,000+)
+	for _, mediaItem := range media {
+		grpcMedia := v1grpc.NewMedia(mediaItem)
+		if err := stream.Send(grpcMedia); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *ServerImpl) GetMedia(ctx context.Context, req *v1grpc.GetMediaRequest) (*v1grpc.Media, error) {
+	media, err := s.mediaSrv.GetMediaByID(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return v1grpc.NewMedia(*media), nil
+}
+
+func (s *ServerImpl) UpdateMedia(ctx context.Context, req *v1grpc.UpdateMediaByIdRequest) (*v1grpc.Media, error) {
+	// Get existing media
+	media, err := s.mediaSrv.GetMediaByID(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply updates
+	req.Update.ApplyTo(media)
+
+	// Update media using service
+	updatedMedia, err := s.mediaSrv.UpdateMedia(ctx, *media)
+	if err != nil {
+		return nil, err
+	}
+
+	return v1grpc.NewMedia(*updatedMedia), nil
+}
+
+func (s *ServerImpl) DeleteMedia(ctx context.Context, req *v1grpc.DeleteMediaRequest) (*emptypb.Empty, error) {
+	err := s.mediaSrv.DeleteMedia(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (s *ServerImpl) GetMediaThumbnail(ctx context.Context, req *v1grpc.GetMediaThumbnailRequest) (*v1grpc.BinaryDataResponse, error) {
+	// Get media to access thumbnail
+	media, err := s.mediaSrv.GetMediaByID(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if media has thumbnail
+	if !media.HasThumbnail() {
+		return nil, fmt.Errorf("thumbnail not available for media: %s", req.Id)
+	}
+
+	return &v1grpc.BinaryDataResponse{
+		Data:        media.Thumbnail,
+		ContentType: "image/jpeg", // Thumbnails are typically JPEG
+		Filename:    media.Filename,
+	}, nil
+}
+
+func (s *ServerImpl) GetMediaContent(req *v1grpc.GetMediaContentRequest, stream v1grpc.PhotosNGService_GetMediaContentServer) error {
+	// Get media
+	media, err := s.mediaSrv.GetMediaByID(stream.Context(), req.Id)
+	if err != nil {
+		return err
+	}
+
+	// Get media content
+	contentFn, err := media.Content()
+	if err != nil {
+		return err
+	}
+
+	// Stream content in chunks
+	const chunkSize = 32 * 1024 // 32KB chunks
+	buffer := make([]byte, chunkSize)
+	chunkIndex := int64(0)
+	totalSize := int64(0) // Would need to get actual file size
+
+	// Determine content type based on file extension
+	contentType := "application/octet-stream"
+	if strings.HasSuffix(strings.ToLower(media.Filename), ".jpg") || strings.HasSuffix(strings.ToLower(media.Filename), ".jpeg") {
+		contentType = "image/jpeg"
+	} else if strings.HasSuffix(strings.ToLower(media.Filename), ".png") {
+		contentType = "image/png"
+	} else if strings.HasSuffix(strings.ToLower(media.Filename), ".mp4") {
+		contentType = "video/mp4"
+	}
+
+	for {
+		n, err := contentFn.Read(buffer)
+		if n > 0 {
+			chunk := &v1grpc.BinaryDataChunk{
+				Chunk:       buffer[:n],
+				ChunkIndex:  chunkIndex,
+				IsLastChunk: false,
+			}
+
+			// Include metadata in first chunk
+			if chunkIndex == 0 {
+				chunk.ContentType = contentType
+				chunk.Filename = media.Filename
+				chunk.TotalSize = totalSize
+			}
+
+			if err := stream.Send(chunk); err != nil {
+				return err
+			}
+			chunkIndex++
+		}
+
+		if err == io.EOF {
+			// Send final chunk to indicate end
+			finalChunk := &v1grpc.BinaryDataChunk{
+				Chunk:       []byte{},
+				ChunkIndex:  chunkIndex,
+				IsLastChunk: true,
+			}
+			return stream.Send(finalChunk)
+		}
+		if err != nil {
+			return err
+		}
+	}
+}
+
+func (s *ServerImpl) UploadMedia(ctx context.Context, req *v1grpc.UploadMediaRequest) (*v1grpc.Media, error) {
+	// Get album for the upload
+	album, err := s.albumSrv.GetAlbum(ctx, req.AlbumId)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create media entity from upload request
+	fileContent := bytes.NewReader(req.FileContent)
+	media := v1grpc.ToMediaEntity(req.Filename, req.AlbumId, fileContent, *album)
+
+	// Create media using service
+	createdMedia, err := s.mediaSrv.WriteMedia(ctx, media)
+	if err != nil {
+		return nil, err
+	}
+
+	return v1grpc.NewMedia(*createdMedia), nil
+}
+
+// Sync operations implementation
+func (s *ServerImpl) StartSyncJob(ctx context.Context, req *v1grpc.StartSyncRequest) (*v1grpc.StartSyncResponse, error) {
+	jobID, err := s.syncSrv.StartSync(ctx, req.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1grpc.StartSyncResponse{
+		Id: jobID,
+	}, nil
+}
+
+func (s *ServerImpl) ListSyncJobs(ctx context.Context, req *v1grpc.ListSyncJobsRequest) (*v1grpc.ListSyncJobsResponse, error) {
+	jobs := s.syncSrv.ListSyncJobStatuses()
+
+	grpcJobs := make([]*v1grpc.SyncJob, 0, len(jobs))
+	for _, job := range jobs {
+		grpcJobs = append(grpcJobs, v1grpc.NewSyncJob(job))
+	}
+
+	return &v1grpc.ListSyncJobsResponse{
+		Jobs: grpcJobs,
+	}, nil
+}
+
+func (s *ServerImpl) GetSyncJob(ctx context.Context, req *v1grpc.GetSyncJobRequest) (*v1grpc.SyncJob, error) {
+	job, err := s.syncSrv.GetSyncJobStatus(req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return v1grpc.NewSyncJob(*job), nil
+}
+
+func (s *ServerImpl) StopSyncJob(ctx context.Context, req *v1grpc.StopSyncJobRequest) (*v1grpc.StopSyncJobResponse, error) {
+	err := s.syncSrv.StopSyncJob(req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1grpc.StopSyncJobResponse{
+		Message: "Sync job stopped successfully",
+		JobId:   req.Id,
+	}, nil
+}
+
+func (s *ServerImpl) StopAllSyncJobs(ctx context.Context, req *v1grpc.StopAllSyncJobsRequest) (*v1grpc.StopAllSyncJobsResponse, error) {
+	err := s.syncSrv.StopAllSyncJobs()
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1grpc.StopAllSyncJobsResponse{
+		Message:      "All sync jobs stopped",
+		StoppedCount: 0, // StopAllSyncJobs doesn't return count
+	}, nil
+}
+
+// Stats operations implementation
+func (s *ServerImpl) GetStats(ctx context.Context, req *v1grpc.GetStatsRequest) (*v1grpc.StatsResponse, error) {
+	stats, err := s.statsSrv.GetStats(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	years := make([]int32, 0, len(stats.Years))
+	for _, year := range stats.Years {
+		years = append(years, int32(year))
+	}
+
+	return &v1grpc.StatsResponse{
+		Years:      years,
+		CountMedia: int32(stats.CountMedia),
+		CountAlbum: int32(stats.CountAlbum),
+	}, nil
+}

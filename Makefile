@@ -1,4 +1,4 @@
-.PHONY: generate build run clean help
+.PHONY: generate generate.proto generate.proto.protoc lint.proto clean.proto build run clean help
 
 # Default target
 .DEFAULT_GOAL := help
@@ -23,6 +23,42 @@ generate:
 	@echo "Generating code..."
 	go generate ./...
 	@echo "Code generation complete."
+
+# Generate protobuf code using buf in container
+generate.proto:
+	@echo "Generating protobuf code with buf in container..."
+	$(PODMAN) run --rm \
+		-v $(CURDIR)/api/v1/grpc:/workspace \
+		-w /workspace \
+		bufbuild/buf:latest \
+		generate
+	@echo "Protobuf generation complete."
+
+# Generate protobuf code using protoc in container
+generate.proto.protoc:
+	@echo "Generating protobuf code with protoc in container..."
+	$(PODMAN) run --rm \
+		-v $(CURDIR)/api/v1/grpc:/workspace \
+		-w /workspace \
+		namely/protoc-all:1.51_1 \
+		-f *.proto -l go -o .
+	@echo "Protobuf generation complete."
+
+# Lint protobuf files in container
+lint.proto:
+	@echo "Linting protobuf files in container..."
+	$(PODMAN) run --rm \
+		-v $(CURDIR)/api/v1/grpc:/workspace \
+		-w /workspace \
+		bufbuild/buf:latest \
+		lint
+	@echo "Protobuf linting complete."
+
+# Clean protobuf generated files
+clean.proto:
+	@echo "Cleaning protobuf generated files..."
+	rm -f api/v1/grpc/*.pb.go
+	@echo "Protobuf clean complete."
 
 # Build the application
 build:
@@ -91,11 +127,15 @@ deploy.image: podman.build podman.push ## Build and push the container image to 
 # Display help information
 help:
 	@echo "Available targets:"
-	@echo "  generate  	- Generate code from specs and run go generate"
-	@echo "  build     	- Build the application binary"
-	@echo "  run       	- Run the application directly with go run"
-	@echo "  clean     	- Clean build artifacts"
-	@echo "  db.start  	- Start the database"
-	@echo "  db.stop   	- Stop the database"
-	@echo "  db.migrate	- Migrate the database" 
-	@echo "  help      - Show this help message"
+	@echo "  generate          - Generate code from specs and run go generate"
+	@echo "  generate.proto    - Generate protobuf code using buf in container"
+	@echo "  generate.proto.protoc - Generate protobuf code using protoc in container"
+	@echo "  lint.proto        - Lint protobuf files in container"
+	@echo "  clean.proto       - Clean generated protobuf files"
+	@echo "  build             - Build the application binary"
+	@echo "  run               - Run the application directly with go run"
+	@echo "  clean             - Clean build artifacts"
+	@echo "  db.start          - Start the database"
+	@echo "  db.stop           - Stop the database"
+	@echo "  db.migrate        - Migrate the database" 
+	@echo "  help              - Show this help message"

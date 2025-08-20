@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package photos_ng.api.v1.grpc;
+
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/grpc";
+
+// Task result for sync operations
+message TaskResult {
+  string item = 1;                         // Name of the processed file/folder
+  TaskResultItemType item_type = 2;        // Type of item (file or folder)
+  int32 duration = 3;                      // Processing time in seconds
+  TaskResultStatus result = 4;             // Result status (success or error)
+}
+
+// Sync job information
+message SyncJob {
+  string id = 1;                                      // Unique identifier for the sync job
+  SyncJobStatus status = 2;                           // Current status of the sync job
+  int32 remaining_tasks = 3;                          // Number of files still to be processed
+  int32 total_tasks = 4;                             // Total number of files to process
+  repeated TaskResult completed_tasks = 5;            // List of processed files with results
+  google.protobuf.Timestamp created_at = 6;          // When the job was created
+  optional google.protobuf.Timestamp started_at = 7; // When the job started processing
+  optional google.protobuf.Timestamp finished_at = 8; // When the job finished
+  optional int32 remaining_time = 9;                  // Approximate remaining time in seconds
+}
+
+// Request to start a new sync job
+message StartSyncRequest {
+  string path = 1;                         // File system path to sync
+}
+
+// Response when starting a sync job
+message StartSyncResponse {
+  string id = 1;                           // Unique identifier for the created sync job
+}
+
+// Request to list all sync jobs
+message ListSyncJobsRequest {
+  // No parameters needed - returns all jobs
+}
+
+// Response containing list of sync jobs
+message ListSyncJobsResponse {
+  repeated SyncJob jobs = 1;               // List of sync jobs
+}
+
+// Request to get a specific sync job by ID
+message GetSyncJobRequest {
+  string id = 1;                           // Sync job ID
+}
+
+// Request to stop a specific sync job by ID
+message StopSyncJobRequest {
+  string id = 1;                           // Sync job ID
+}
+
+// Response when stopping a sync job
+message StopSyncJobResponse {
+  string message = 1;                      // Success message
+  string job_id = 2;                       // ID of the stopped job
+}
+
+// Request to stop all running sync jobs
+message StopAllSyncJobsRequest {
+  // No parameters needed
+}
+
+// Response when stopping all sync jobs
+message StopAllSyncJobsResponse {
+  string message = 1;                      // Success message
+  int32 stopped_count = 2;                 // Number of jobs that were stopped
+}
+
+// Sync service definition
+service SyncService {
+  // Start a new sync job for the specified path
+  rpc StartSyncJob(StartSyncRequest) returns (StartSyncResponse);
+  
+  // List all sync jobs (running and completed)
+  rpc ListSyncJobs(ListSyncJobsRequest) returns (ListSyncJobsResponse);
+  
+  // Get detailed information about a specific sync job
+  rpc GetSyncJob(GetSyncJobRequest) returns (SyncJob);
+  
+  // Stop a specific sync job by ID
+  rpc StopSyncJob(StopSyncJobRequest) returns (StopSyncJobResponse);
+  
+  // Stop all running sync jobs
+  rpc StopAllSyncJobs(StopAllSyncJobsRequest) returns (StopAllSyncJobsResponse);
+}

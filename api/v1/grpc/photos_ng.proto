@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package photos_ng.api.v1.grpc;
+
+import "albums.proto";
+import "media.proto";
+import "sync.proto";
+import "stats.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/grpc";
+
+// Main Photos NG service that aggregates all functionality
+service PhotosNGService {
+  // Album operations
+  rpc ListAlbums(ListAlbumsRequest) returns (ListAlbumsResponse);
+  rpc CreateAlbum(CreateAlbumRequest) returns (Album);
+  rpc GetAlbum(GetAlbumRequest) returns (Album);
+  rpc UpdateAlbum(UpdateAlbumByIdRequest) returns (Album);
+  rpc DeleteAlbum(DeleteAlbumRequest) returns (google.protobuf.Empty);
+  rpc SyncAlbum(SyncAlbumRequest) returns (SyncAlbumResponse);
+  
+  // Media operations
+  rpc ListMedia(ListMediaRequest) returns (stream Media);
+  rpc UploadMedia(UploadMediaRequest) returns (Media);
+  rpc GetMedia(GetMediaRequest) returns (Media);
+  rpc UpdateMedia(UpdateMediaByIdRequest) returns (Media);
+  rpc DeleteMedia(DeleteMediaRequest) returns (google.protobuf.Empty);
+  rpc GetMediaThumbnail(GetMediaThumbnailRequest) returns (BinaryDataResponse);
+  rpc GetMediaContent(GetMediaContentRequest) returns (stream BinaryDataChunk);
+  
+  // Sync operations
+  rpc StartSyncJob(StartSyncRequest) returns (StartSyncResponse);
+  rpc ListSyncJobs(ListSyncJobsRequest) returns (ListSyncJobsResponse);
+  rpc GetSyncJob(GetSyncJobRequest) returns (SyncJob);
+  rpc StopSyncJob(StopSyncJobRequest) returns (StopSyncJobResponse);
+  rpc StopAllSyncJobs(StopAllSyncJobsRequest) returns (StopAllSyncJobsResponse);
+  
+  // Stats operations
+  rpc GetStats(GetStatsRequest) returns (StatsResponse);
+}

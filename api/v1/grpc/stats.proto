@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package photos_ng.api.v1.grpc;
+
+option go_package = "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/grpc";
+
+// Application statistics
+message StatsResponse {
+  repeated int32 years = 1;                // List of years that contain media
+  int32 count_media = 2;                   // Total number of media items
+  int32 count_album = 3;                   // Total number of albums
+}
+
+// Request to get application statistics
+message GetStatsRequest {
+  // No parameters needed
+}
+
+// Stats service definition
+service StatsService {
+  // Get application statistics including album count, media count, and years with media
+  rpc GetStats(GetStatsRequest) returns (StatsResponse);
+}

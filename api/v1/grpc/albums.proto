@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package photos_ng.api.v1.grpc;
+
+import "common.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/grpc";
+
+// Album child reference
+message AlbumChild {
+  string href = 1;  // Reference to child album
+  string name = 2;  // Name of the child album
+}
+
+// Album message representing an album entity
+message Album {
+  string id = 1;                        // Unique identifier for the album
+  string href = 2;                      // API reference to this album
+  string name = 3;                      // Display name of the album
+  string path = 4;                      // File system path of the album
+  optional string parent_href = 5;      // Reference to parent album (if any)
+  optional string thumbnail = 6;        // Reference to thumbnail image
+  optional string description = 7;      // Album description
+  repeated AlbumChild children = 8;     // List of child album references
+  int32 media_count = 9;               // Total media count including children
+  repeated string media = 10;          // List of media references in this album
+}
+
+// Request to create a new album
+message CreateAlbumRequest {
+  string name = 1;                     // Name of the album (required)
+  optional string parent_id = 2;       // ID of the parent album
+  optional string description = 3;     // Album description
+}
+
+// Request to update an existing album
+message UpdateAlbumRequest {
+  optional string description = 1;     // Updated description
+  optional string thumbnail = 2;       // ID of the media to use as thumbnail
+}
+
+// Request to list albums
+message ListAlbumsRequest {
+  PaginationRequest pagination = 1;    // Pagination parameters
+  optional bool with_parent = 2;       // Include albums with parents (default: false)
+}
+
+// Response containing list of albums
+message ListAlbumsResponse {
+  repeated Album albums = 1;           // List of albums
+  PaginationResponse pagination = 2;   // Pagination metadata
+}
+
+// Request to get a specific album by ID
+message GetAlbumRequest {
+  string id = 1;                       // Album ID
+}
+
+// Request to update a specific album by ID
+message UpdateAlbumByIdRequest {
+  string id = 1;                       // Album ID
+  UpdateAlbumRequest update = 2;       // Update data
+}
+
+// Request to delete a specific album by ID
+message DeleteAlbumRequest {
+  string id = 1;                       // Album ID
+}
+
+// Request to sync a specific album
+message SyncAlbumRequest {
+  string id = 1;                       // Album ID
+}
+
+// Response for album sync operation
+message SyncAlbumResponse {
+  string message = 1;                  // Sync completion message
+  int32 synced_items = 2;             // Number of items synced
+}
+
+// Albums service definition
+service AlbumsService {
+  // List all albums with optional pagination and filtering
+  rpc ListAlbums(ListAlbumsRequest) returns (ListAlbumsResponse);
+  
+  // Create a new album
+  rpc CreateAlbum(CreateAlbumRequest) returns (Album);
+  
+  // Get a specific album by ID
+  rpc GetAlbum(GetAlbumRequest) returns (Album);
+  
+  // Update a specific album by ID
+  rpc UpdateAlbum(UpdateAlbumByIdRequest) returns (Album);
+  
+  // Delete a specific album by ID
+  rpc DeleteAlbum(DeleteAlbumRequest) returns (google.protobuf.Empty);
+  
+  // Sync an album with the file system
+  rpc SyncAlbum(SyncAlbumRequest) returns (SyncAlbumResponse);
+}
