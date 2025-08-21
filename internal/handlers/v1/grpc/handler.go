@@ -16,8 +16,8 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// ServerImpl implements the gRPC PhotosNGService
-type ServerImpl struct {
+// Handler implements the gRPC PhotosNGService
+type Handler struct {
 	v1grpc.UnimplementedPhotosNGServiceServer
 	albumSrv  *services.AlbumService
 	mediaSrv  *services.MediaService
@@ -26,13 +26,13 @@ type ServerImpl struct {
 	datastore *pg.Datastore
 }
 
-// NewGRPCServer creates a new gRPC server implementation
-func NewGRPCServer(dt *pg.Datastore, fsDatastore *fs.Datastore) *ServerImpl {
+// NewHandler creates a new gRPC server implementation
+func NewHandler(dt *pg.Datastore, fsDatastore *fs.Datastore) *Handler {
 	albumSrv := services.NewAlbumService(dt, fsDatastore)
 	mediaSrv := services.NewMediaService(dt, fsDatastore)
 	syncSrv := services.NewSyncService(albumSrv, mediaSrv, fsDatastore)
 
-	return &ServerImpl{
+	return &Handler{
 		albumSrv:  albumSrv,
 		mediaSrv:  mediaSrv,
 		statsSrv:  services.NewStatsService(dt),
@@ -63,7 +63,7 @@ func StreamLoggingInterceptor() grpc.StreamServerInterceptor {
 }
 
 // Album operations implementation
-func (s *ServerImpl) ListAlbums(ctx context.Context, req *v1grpc.ListAlbumsRequest) (*v1grpc.ListAlbumsResponse, error) {
+func (s *Handler) ListAlbums(ctx context.Context, req *v1grpc.ListAlbumsRequest) (*v1grpc.ListAlbumsResponse, error) {
 	// Set default values for pagination
 	limit := 20
 	if req.Pagination != nil && req.Pagination.Limit > 0 {
@@ -117,7 +117,7 @@ func (s *ServerImpl) ListAlbums(ctx context.Context, req *v1grpc.ListAlbumsReque
 	}, nil
 }
 
-func (s *ServerImpl) GetAlbum(ctx context.Context, req *v1grpc.GetAlbumRequest) (*v1grpc.Album, error) {
+func (s *Handler) GetAlbum(ctx context.Context, req *v1grpc.GetAlbumRequest) (*v1grpc.Album, error) {
 	album, err := s.albumSrv.GetAlbum(ctx, req.Id)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (s *ServerImpl) GetAlbum(ctx context.Context, req *v1grpc.GetAlbumRequest) 
 	return v1grpc.NewAlbum(*album), nil
 }
 
-func (s *ServerImpl) CreateAlbum(ctx context.Context, req *v1grpc.CreateAlbumRequest) (*v1grpc.Album, error) {
+func (s *Handler) CreateAlbum(ctx context.Context, req *v1grpc.CreateAlbumRequest) (*v1grpc.Album, error) {
 	// Convert gRPC request to entity
 	album := req.Entity()
 
@@ -139,7 +139,7 @@ func (s *ServerImpl) CreateAlbum(ctx context.Context, req *v1grpc.CreateAlbumReq
 	return v1grpc.NewAlbum(*createdAlbum), nil
 }
 
-func (s *ServerImpl) UpdateAlbum(ctx context.Context, req *v1grpc.UpdateAlbumByIdRequest) (*v1grpc.Album, error) {
+func (s *Handler) UpdateAlbum(ctx context.Context, req *v1grpc.UpdateAlbumByIdRequest) (*v1grpc.Album, error) {
 	// Get existing album
 	album, err := s.albumSrv.GetAlbum(ctx, req.Id)
 	if err != nil {
@@ -158,7 +158,7 @@ func (s *ServerImpl) UpdateAlbum(ctx context.Context, req *v1grpc.UpdateAlbumByI
 	return v1grpc.NewAlbum(*updatedAlbum), nil
 }
 
-func (s *ServerImpl) DeleteAlbum(ctx context.Context, req *v1grpc.DeleteAlbumRequest) (*emptypb.Empty, error) {
+func (s *Handler) DeleteAlbum(ctx context.Context, req *v1grpc.DeleteAlbumRequest) (*emptypb.Empty, error) {
 	err := s.albumSrv.DeleteAlbum(ctx, req.Id)
 	if err != nil {
 		return nil, err
@@ -167,7 +167,7 @@ func (s *ServerImpl) DeleteAlbum(ctx context.Context, req *v1grpc.DeleteAlbumReq
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ServerImpl) SyncAlbum(ctx context.Context, req *v1grpc.SyncAlbumRequest) (*v1grpc.SyncAlbumResponse, error) {
+func (s *Handler) SyncAlbum(ctx context.Context, req *v1grpc.SyncAlbumRequest) (*v1grpc.SyncAlbumResponse, error) {
 	// Note: SyncAlbum is handled via StartSync in this implementation
 	_, err := s.syncSrv.StartSync(ctx, req.Id)
 	if err != nil {
@@ -181,7 +181,7 @@ func (s *ServerImpl) SyncAlbum(ctx context.Context, req *v1grpc.SyncAlbumRequest
 }
 
 // Media operations implementation
-func (s *ServerImpl) ListMedia(req *v1grpc.ListMediaRequest, stream v1grpc.PhotosNGService_ListMediaServer) error {
+func (s *Handler) ListMedia(req *v1grpc.ListMediaRequest, stream v1grpc.PhotosNGService_ListMediaServer) error {
 	// Get pagination parameters from client
 	limit := 50 // Default batch size
 	if req.Pagination != nil && req.Pagination.Limit > 0 {
@@ -264,7 +264,7 @@ func (s *ServerImpl) ListMedia(req *v1grpc.ListMediaRequest, stream v1grpc.Photo
 	return nil
 }
 
-func (s *ServerImpl) GetMedia(ctx context.Context, req *v1grpc.GetMediaRequest) (*v1grpc.Media, error) {
+func (s *Handler) GetMedia(ctx context.Context, req *v1grpc.GetMediaRequest) (*v1grpc.Media, error) {
 	media, err := s.mediaSrv.GetMediaByID(ctx, req.Id)
 	if err != nil {
 		return nil, err
@@ -273,7 +273,7 @@ func (s *ServerImpl) GetMedia(ctx context.Context, req *v1grpc.GetMediaRequest) 
 	return v1grpc.NewMedia(*media), nil
 }
 
-func (s *ServerImpl) UpdateMedia(ctx context.Context, req *v1grpc.UpdateMediaByIdRequest) (*v1grpc.Media, error) {
+func (s *Handler) UpdateMedia(ctx context.Context, req *v1grpc.UpdateMediaByIdRequest) (*v1grpc.Media, error) {
 	// Get existing media
 	media, err := s.mediaSrv.GetMediaByID(ctx, req.Id)
 	if err != nil {
@@ -292,7 +292,7 @@ func (s *ServerImpl) UpdateMedia(ctx context.Context, req *v1grpc.UpdateMediaByI
 	return v1grpc.NewMedia(*updatedMedia), nil
 }
 
-func (s *ServerImpl) DeleteMedia(ctx context.Context, req *v1grpc.DeleteMediaRequest) (*emptypb.Empty, error) {
+func (s *Handler) DeleteMedia(ctx context.Context, req *v1grpc.DeleteMediaRequest) (*emptypb.Empty, error) {
 	err := s.mediaSrv.DeleteMedia(ctx, req.Id)
 	if err != nil {
 		return nil, err
@@ -301,7 +301,7 @@ func (s *ServerImpl) DeleteMedia(ctx context.Context, req *v1grpc.DeleteMediaReq
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ServerImpl) GetMediaThumbnail(ctx context.Context, req *v1grpc.GetMediaThumbnailRequest) (*v1grpc.BinaryDataResponse, error) {
+func (s *Handler) GetMediaThumbnail(ctx context.Context, req *v1grpc.GetMediaThumbnailRequest) (*v1grpc.BinaryDataResponse, error) {
 	// Get media to access thumbnail
 	media, err := s.mediaSrv.GetMediaByID(ctx, req.Id)
 	if err != nil {
@@ -320,7 +320,7 @@ func (s *ServerImpl) GetMediaThumbnail(ctx context.Context, req *v1grpc.GetMedia
 	}, nil
 }
 
-func (s *ServerImpl) GetMediaContent(req *v1grpc.GetMediaContentRequest, stream v1grpc.PhotosNGService_GetMediaContentServer) error {
+func (s *Handler) GetMediaContent(req *v1grpc.GetMediaContentRequest, stream v1grpc.PhotosNGService_GetMediaContentServer) error {
 	// Get media
 	media, err := s.mediaSrv.GetMediaByID(stream.Context(), req.Id)
 	if err != nil {
@@ -386,7 +386,7 @@ func (s *ServerImpl) GetMediaContent(req *v1grpc.GetMediaContentRequest, stream 
 	}
 }
 
-func (s *ServerImpl) UploadMedia(ctx context.Context, req *v1grpc.UploadMediaRequest) (*v1grpc.Media, error) {
+func (s *Handler) UploadMedia(ctx context.Context, req *v1grpc.UploadMediaRequest) (*v1grpc.Media, error) {
 	// Get album for the upload
 	album, err := s.albumSrv.GetAlbum(ctx, req.AlbumId)
 	if err != nil {
@@ -407,7 +407,7 @@ func (s *ServerImpl) UploadMedia(ctx context.Context, req *v1grpc.UploadMediaReq
 }
 
 // Sync operations implementation
-func (s *ServerImpl) StartSyncJob(ctx context.Context, req *v1grpc.StartSyncRequest) (*v1grpc.StartSyncResponse, error) {
+func (s *Handler) StartSyncJob(ctx context.Context, req *v1grpc.StartSyncRequest) (*v1grpc.StartSyncResponse, error) {
 	jobID, err := s.syncSrv.StartSync(ctx, req.Path)
 	if err != nil {
 		return nil, err
@@ -418,7 +418,7 @@ func (s *ServerImpl) StartSyncJob(ctx context.Context, req *v1grpc.StartSyncRequ
 	}, nil
 }
 
-func (s *ServerImpl) ListSyncJobs(ctx context.Context, req *v1grpc.ListSyncJobsRequest) (*v1grpc.ListSyncJobsResponse, error) {
+func (s *Handler) ListSyncJobs(ctx context.Context, req *v1grpc.ListSyncJobsRequest) (*v1grpc.ListSyncJobsResponse, error) {
 	jobs := s.syncSrv.ListSyncJobStatuses()
 
 	grpcJobs := make([]*v1grpc.SyncJob, 0, len(jobs))
@@ -431,7 +431,7 @@ func (s *ServerImpl) ListSyncJobs(ctx context.Context, req *v1grpc.ListSyncJobsR
 	}, nil
 }
 
-func (s *ServerImpl) GetSyncJob(ctx context.Context, req *v1grpc.GetSyncJobRequest) (*v1grpc.SyncJob, error) {
+func (s *Handler) GetSyncJob(ctx context.Context, req *v1grpc.GetSyncJobRequest) (*v1grpc.SyncJob, error) {
 	job, err := s.syncSrv.GetSyncJobStatus(req.Id)
 	if err != nil {
 		return nil, err
@@ -440,7 +440,7 @@ func (s *ServerImpl) GetSyncJob(ctx context.Context, req *v1grpc.GetSyncJobReque
 	return v1grpc.NewSyncJob(*job), nil
 }
 
-func (s *ServerImpl) StopSyncJob(ctx context.Context, req *v1grpc.StopSyncJobRequest) (*v1grpc.StopSyncJobResponse, error) {
+func (s *Handler) StopSyncJob(ctx context.Context, req *v1grpc.StopSyncJobRequest) (*v1grpc.StopSyncJobResponse, error) {
 	err := s.syncSrv.StopSyncJob(req.Id)
 	if err != nil {
 		return nil, err
@@ -452,7 +452,7 @@ func (s *ServerImpl) StopSyncJob(ctx context.Context, req *v1grpc.StopSyncJobReq
 	}, nil
 }
 
-func (s *ServerImpl) StopAllSyncJobs(ctx context.Context, req *v1grpc.StopAllSyncJobsRequest) (*v1grpc.StopAllSyncJobsResponse, error) {
+func (s *Handler) StopAllSyncJobs(ctx context.Context, req *v1grpc.StopAllSyncJobsRequest) (*v1grpc.StopAllSyncJobsResponse, error) {
 	err := s.syncSrv.StopAllSyncJobs()
 	if err != nil {
 		return nil, err
@@ -465,7 +465,7 @@ func (s *ServerImpl) StopAllSyncJobs(ctx context.Context, req *v1grpc.StopAllSyn
 }
 
 // Stats operations implementation
-func (s *ServerImpl) GetStats(ctx context.Context, req *v1grpc.GetStatsRequest) (*v1grpc.StatsResponse, error) {
+func (s *Handler) GetStats(ctx context.Context, req *v1grpc.GetStatsRequest) (*v1grpc.StatsResponse, error) {
 	stats, err := s.statsSrv.GetStats(ctx)
 	if err != nil {
 		return nil, err

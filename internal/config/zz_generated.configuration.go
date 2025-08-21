@@ -34,7 +34,7 @@ func NewConfigWithOptionsAndDefaults(opts ...ConfigOption) *Config {
 func (c *Config) ToOption() ConfigOption {
 	return func(to *Config) {
 		to.Database = c.Database
-		to.ServerPort = c.ServerPort
+		to.HttpPort = c.HttpPort
 		to.GrpcPort = c.GrpcPort
 		to.DataRootFolder = c.DataRootFolder
 		to.GinMode = c.GinMode
@@ -49,7 +49,7 @@ func (c *Config) ToOption() ConfigOption {
 func (c *Config) DebugMap() map[string]any {
 	debugMap := map[string]any{}
 	debugMap["Database"] = helpers.DebugValue(c.Database, false)
-	debugMap["ServerPort"] = helpers.DebugValue(c.ServerPort, false)
+	debugMap["HttpPort"] = helpers.DebugValue(c.HttpPort, false)
 	debugMap["GrpcPort"] = helpers.DebugValue(c.GrpcPort, false)
 	debugMap["DataRootFolder"] = helpers.DebugValue(c.DataRootFolder, false)
 	debugMap["GinMode"] = helpers.DebugValue(c.GinMode, false)
@@ -83,10 +83,10 @@ func WithDatabase(database *Database) ConfigOption {
 	}
 }
 
-// WithServerPort returns an option that can set ServerPort on a Config
-func WithServerPort(serverPort int) ConfigOption {
+// WithHttpPort returns an option that can set HttpPort on a Config
+func WithHttpPort(httpPort int) ConfigOption {
 	return func(c *Config) {
-		c.ServerPort = serverPort
+		c.HttpPort = httpPort
 	}
 }
 

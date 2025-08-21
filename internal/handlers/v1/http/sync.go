@@ -13,7 +13,7 @@ import (
 
 // StartSyncJob handles POST /api/v1/sync requests to start a new sync operation.
 // Accepts a path in the request body and returns HTTP 202 with job ID on success.
-func (s *ServerImpl) StartSyncJob(c *gin.Context) {
+func (s *Handler) StartSyncJob(c *gin.Context) {
 	var request v1.StartSyncRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		zap.S().Errorw("invalid request body", "error", err)
@@ -45,7 +45,7 @@ func (s *ServerImpl) StartSyncJob(c *gin.Context) {
 
 // ListSyncJobs handles GET /api/v1/sync requests to list all sync jobs.
 // Returns HTTP 200 with list of sync jobs on success.
-func (s *ServerImpl) ListSyncJobs(c *gin.Context) {
+func (s *Handler) ListSyncJobs(c *gin.Context) {
 	// Get all job statuses from the SyncService
 	statuses := s.syncSrv.ListSyncJobStatuses()
 
@@ -91,7 +91,7 @@ func (s *ServerImpl) ListSyncJobs(c *gin.Context) {
 
 // GetSyncJob handles GET /api/v1/sync/{id} requests to get details of a specific sync job.
 // Returns HTTP 404 if job not found, HTTP 200 with job details on success.
-func (s *ServerImpl) GetSyncJob(c *gin.Context, id string) {
+func (s *Handler) GetSyncJob(c *gin.Context, id string) {
 	// Get job status from SyncService
 	status, err := s.syncSrv.GetSyncJobStatus(id)
 	if err != nil {
@@ -132,7 +132,7 @@ func (s *ServerImpl) GetSyncJob(c *gin.Context, id string) {
 }
 
 // StopSyncJob stops a specific sync job by ID
-func (s *ServerImpl) StopSyncJob(c *gin.Context, id string) {
+func (s *Handler) StopSyncJob(c *gin.Context, id string) {
 	// Stop the job using SyncService
 	err := s.syncSrv.StopSyncJob(id)
 	if err != nil {
@@ -151,7 +151,7 @@ func (s *ServerImpl) StopSyncJob(c *gin.Context, id string) {
 }
 
 // StopAllSyncJobs stops all running sync jobs
-func (s *ServerImpl) StopAllSyncJobs(c *gin.Context) {
+func (s *Handler) StopAllSyncJobs(c *gin.Context) {
 	// Get running jobs count before stopping
 	runningJobStatuses := s.syncSrv.ListSyncJobStatusesByStatus(services.StatusRunning)
 	stoppedCount := len(runningJobStatuses)

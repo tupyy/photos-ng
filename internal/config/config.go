@@ -2,9 +2,9 @@ package config
 
 //go:generate go run github.com/ecordell/optgen -output zz_generated.configuration.go . Config
 type Config struct {
-	Database   *Database `debugmap:"visible"`
-	ServerPort int       `debugmap:"visible" default:"8080"`
-	GrpcPort   int       `debugmap:"visible" default:"9090"`
+	Database *Database `debugmap:"visible"`
+	HttpPort int       `debugmap:"visible" default:"8080"`
+	GrpcPort int       `debugmap:"visible" default:"9090"`
 
 	DataRootFolder string `debugmap:"visible"`
 	GinMode        string `debugmap:"visible"`

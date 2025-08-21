@@ -10,7 +10,7 @@ import (
 
 // GetStats handles GET /api/v1/stats requests to retrieve application statistics.
 // Returns HTTP 500 for server errors, or HTTP 200 with the stats on success.
-func (s *ServerImpl) GetStats(c *gin.Context) {
+func (s *Handler) GetStats(c *gin.Context) {
 	// Get stats from the service
 	stats, err := s.statsSrv.GetStats(c.Request.Context())
 	if err != nil {

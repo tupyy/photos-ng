@@ -4,13 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
 	"path"
-	"syscall"
 	"time"
 
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/server/middlewares"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
@@ -22,32 +18,24 @@ const (
 	DevServer        string = "dev"
 )
 
-type Server interface {
-	Run(context.Context)
-}
-
-type RunnableServerConfig struct {
-	Datastore    *pg.Datastore
-	GraceTimeout time.Duration
-	Port         int
-	// RegisterHandlersFn holds a map of handler for each api version
+type HttpServerConfig struct {
+	GraceTimeout       time.Duration
+	Port               int
 	RegisterHandlersFn map[string]func(router *gin.RouterGroup)
-	CloseCb            func() error
 	GinMode            string
 	ApiVersion         string
 	Mode               string
 	StaticsFolder      string
 }
 
-type runnableServer struct {
-	srv         *http.Server
-	cfg         *RunnableServerConfig
-	engine      *gin.Engine
-	closePostCb func() error
+type HttpServer struct {
+	srv    *http.Server
+	cfg    *HttpServerConfig
+	engine *gin.Engine
 }
 
-// NewRunnableServer creates a new runnable server instance with the provided configuration.
-func NewRunnableServer(cfg *RunnableServerConfig) Server {
+// NewHttpServer creates a new runnable server instance with the provided configuration.
+func NewHttpServer(cfg *HttpServerConfig) *HttpServer {
 	gin.SetMode(cfg.GinMode)
 	engine := gin.New()
 
@@ -84,32 +72,22 @@ func NewRunnableServer(cfg *RunnableServerConfig) Server {
 		Handler: engine,
 	}
 
-	return &runnableServer{srv: srv, cfg: cfg, closePostCb: cfg.CloseCb}
+	return &HttpServer{srv: srv, cfg: cfg}
 }
 
 // Run starts the HTTP server and handles graceful shutdown when the context is cancelled.
-func (r *runnableServer) Run(ctx context.Context) {
-	go func() {
-		if err := r.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			zap.S().Fatalw("server closed", "error", err)
-		}
-	}()
+func (r *HttpServer) Start(ctx context.Context) error {
+	if err := r.srv.ListenAndServe(); err != nil {
+		zap.S().Named("http").Errorw("failed to start server", "error", err)
+		return err
+	}
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	zap.S().Infow("shutdown server", "grace timeout", fmt.Sprintf("%s", r.cfg.GraceTimeout))
+	return nil
+}
 
-	newCtx, cancel := context.WithTimeout(ctx, r.cfg.GraceTimeout)
-	defer cancel()
-	go func() {
-		if err := r.srv.Shutdown(newCtx); err != nil {
-			zap.S().Errorw("server shutdown", "error", err)
-		}
-	}()
-
-	<-newCtx.Done()
-	zap.S().Info("server exiting")
-
-	_ = r.closePostCb()
+func (r *HttpServer) Stop(ctx context.Context, doneCh chan any) {
+	if err := r.srv.Shutdown(ctx); err != nil {
+		zap.S().Errorw("server shutdown", "error", err)
+	}
+	doneCh <- struct{}{}
 }

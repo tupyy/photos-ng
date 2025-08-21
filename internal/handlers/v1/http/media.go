@@ -13,7 +13,7 @@ import (
 // ListMedia handles GET /api/v1/media requests to retrieve a list of media items.
 // It supports filtering by album, type, date range, and includes sorting and pagination.
 // Returns HTTP 500 for server errors, or HTTP 200 with the media list on success.
-func (s *ServerImpl) ListMedia(c *gin.Context, params v1.ListMediaParams) {
+func (s *Handler) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 	// Build media opt from parameters
 	opt := &services.MediaOptions{}
 
@@ -91,7 +91,7 @@ func (s *ServerImpl) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 // GetMedia handles GET /api/v1/media/{id} requests to retrieve a specific media item by ID.
 // Returns HTTP 404 if the media is not found, HTTP 500 for server errors,
 // or HTTP 200 with the media data on success.
-func (s *ServerImpl) GetMedia(c *gin.Context, id string) {
+func (s *Handler) GetMedia(c *gin.Context, id string) {
 	// Create media service and get the media
 	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
 	if err != nil {
@@ -116,7 +116,7 @@ func (s *ServerImpl) GetMedia(c *gin.Context, id string) {
 // UpdateMedia handles PUT /api/v1/media/{id} requests to update media metadata.
 // Returns HTTP 400 for validation errors, HTTP 404 if media not found,
 // HTTP 500 for server errors, or HTTP 200 with the updated media on success.
-func (s *ServerImpl) UpdateMedia(c *gin.Context, id string) {
+func (s *Handler) UpdateMedia(c *gin.Context, id string) {
 	var request v1.UpdateMediaRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, v1.Error{
@@ -171,7 +171,7 @@ func (s *ServerImpl) UpdateMedia(c *gin.Context, id string) {
 // DeleteMedia handles DELETE /api/v1/media/{id} requests to delete a media item.
 // Returns HTTP 404 if media not found, HTTP 500 for server errors,
 // or HTTP 204 on successful deletion.
-func (s *ServerImpl) DeleteMedia(c *gin.Context, id string) {
+func (s *Handler) DeleteMedia(c *gin.Context, id string) {
 	// Create media service and delete the media
 	err := s.mediaSrv.DeleteMedia(c.Request.Context(), id)
 	if err != nil {
@@ -197,7 +197,7 @@ func (s *ServerImpl) DeleteMedia(c *gin.Context, id string) {
 // GetMediaContent handles GET /api/v1/media/{id}/content requests to serve the full media content.
 // Returns HTTP 404 if media not found, HTTP 500 for server errors,
 // or the binary media content with appropriate content-type on success.
-func (s *ServerImpl) GetMediaContent(c *gin.Context, id string) {
+func (s *Handler) GetMediaContent(c *gin.Context, id string) {
 	// Get the media from service
 	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
 	if err != nil {
@@ -246,7 +246,7 @@ func (s *ServerImpl) GetMediaContent(c *gin.Context, id string) {
 // GetMediaThumbnail handles GET /api/v1/media/{id}/thumbnail requests to serve media thumbnails.
 // Returns HTTP 404 if media not found, HTTP 500 for server errors,
 // or the binary thumbnail data on success.
-func (s *ServerImpl) GetMediaThumbnail(c *gin.Context, id string) {
+func (s *Handler) GetMediaThumbnail(c *gin.Context, id string) {
 	// Get the media from service
 	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
 	if err != nil {
@@ -285,7 +285,7 @@ func (s *ServerImpl) GetMediaThumbnail(c *gin.Context, id string) {
 // UploadMedia handles POST /api/v1/media requests to upload a new media file.
 // Returns HTTP 400 for validation errors, HTTP 404 if album not found,
 // HTTP 500 for server errors, or HTTP 201 with the created media on success.
-func (s *ServerImpl) UploadMedia(c *gin.Context) {
+func (s *Handler) UploadMedia(c *gin.Context) {
 	// Parse multipart form
 	err := c.Request.ParseMultipartForm(32 << 20) // 32 MB max
 	if err != nil {

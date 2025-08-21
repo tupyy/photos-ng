@@ -12,7 +12,7 @@ import (
 // ListAlbums handles GET /api/v1/albums requests to retrieve a list of albums.
 // It supports pagination through limit and offset parameters.
 // Returns HTTP 500 for server errors, or HTTP 200 with the album list on success.
-func (s *ServerImpl) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
+func (s *Handler) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 	// Set default values for pagination
 	limit := 20
 	if params.Limit != nil {
@@ -79,7 +79,7 @@ func (s *ServerImpl) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 // It validates the request body and creates a new album in the database.
 // Returns HTTP 400 for validation errors, HTTP 500 for server errors,
 // or HTTP 201 with the created album on success.
-func (s *ServerImpl) CreateAlbum(c *gin.Context) {
+func (s *Handler) CreateAlbum(c *gin.Context) {
 	var request v1.CreateAlbumRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, v1.Error{
@@ -105,7 +105,7 @@ func (s *ServerImpl) CreateAlbum(c *gin.Context) {
 // GetAlbum handles GET /api/v1/albums/{id} requests to retrieve a specific album by ID.
 // Returns HTTP 404 if the album is not found, HTTP 500 for server errors,
 // or HTTP 200 with the album data on success.
-func (s *ServerImpl) GetAlbum(c *gin.Context, id string) {
+func (s *Handler) GetAlbum(c *gin.Context, id string) {
 	// Create album service and get the album
 	album, err := s.albumSrv.GetAlbum(c.Request.Context(), id)
 	if err != nil {
@@ -130,7 +130,7 @@ func (s *ServerImpl) GetAlbum(c *gin.Context, id string) {
 // UpdateAlbum handles PUT /api/v1/albums/{id} requests to update an album's metadata.
 // Returns HTTP 400 for validation errors, HTTP 404 if album not found,
 // HTTP 500 for server errors, or HTTP 200 with the updated album on success.
-func (s *ServerImpl) UpdateAlbum(c *gin.Context, id string) {
+func (s *Handler) UpdateAlbum(c *gin.Context, id string) {
 	var request v1.UpdateAlbumRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, v1.Error{
@@ -190,7 +190,7 @@ func (s *ServerImpl) UpdateAlbum(c *gin.Context, id string) {
 // DeleteAlbum handles DELETE /api/v1/albums/{id} requests to delete an album.
 // Returns HTTP 404 if album not found, HTTP 500 for server errors,
 // or HTTP 204 on successful deletion.
-func (s *ServerImpl) DeleteAlbum(c *gin.Context, id string) {
+func (s *Handler) DeleteAlbum(c *gin.Context, id string) {
 	// Create album service and delete the album
 	err := s.albumSrv.DeleteAlbum(c.Request.Context(), id)
 	if err != nil {
@@ -216,6 +216,6 @@ func (s *ServerImpl) DeleteAlbum(c *gin.Context, id string) {
 // SyncAlbum handles POST /api/v1/albums/{id}/sync requests to synchronize an album with the file system.
 // Returns HTTP 404 if album not found, HTTP 500 for server errors,
 // or HTTP 200 with sync results on success.
-func (s *ServerImpl) SyncAlbum(c *gin.Context, id string) {
+func (s *Handler) SyncAlbum(c *gin.Context, id string) {
 	c.JSON(http.StatusOK, gin.H{})
 }
