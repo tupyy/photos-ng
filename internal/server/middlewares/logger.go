@@ -37,10 +37,10 @@ func Logger() gin.HandlerFunc {
 			if len(c.Errors) > 0 {
 				// Append error field if this is an erroneous request.
 				for _, e := range c.Errors.Errors() {
-					zap.S().Desugar().Error(e, fields...)
+					zap.S().Named("http").Desugar().Error(e, fields...)
 				}
 			} else {
-				zap.S().Desugar().Info(path, fields...)
+				zap.S().Named("http").Desugar().Info(path, fields...)
 			}
 		}
 	}

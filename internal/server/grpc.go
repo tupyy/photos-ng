@@ -7,7 +7,7 @@ import (
 	"time"
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/grpc"
-	grpchandlers "git.tls.tupangiu.ro/cosmin/photos-ng/internal/handlers/v1/grpc"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/server/interceptors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -28,8 +28,8 @@ type GrpcServer struct {
 func NewGrpcServer(cfg *GrpcServerConfig) (*GrpcServer, error) {
 	// Create gRPC server with optional logging middleware
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(grpchandlers.LoggingInterceptor()),
-		grpc.StreamInterceptor(grpchandlers.StreamLoggingInterceptor()),
+		grpc.UnaryInterceptor(interceptors.LoggingInterceptor()),
+		grpc.StreamInterceptor(interceptors.StreamLoggingInterceptor()),
 	)
 
 	// Create gRPC handler

@@ -11,8 +11,6 @@ import (
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -38,27 +36,6 @@ func NewHandler(dt *pg.Datastore, fsDatastore *fs.Datastore) *Handler {
 		statsSrv:  services.NewStatsService(dt),
 		syncSrv:   syncSrv,
 		datastore: dt,
-	}
-}
-
-// LoggingInterceptor is a basic gRPC interceptor for request logging (optional)
-func LoggingInterceptor() grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		// Add any logging or metadata handling here if needed
-		if md, ok := metadata.FromIncomingContext(ctx); ok {
-			// Log incoming metadata if needed
-			_ = md
-		}
-
-		return handler(ctx, req)
-	}
-}
-
-// StreamLoggingInterceptor is a basic gRPC interceptor for streaming request logging (optional)
-func StreamLoggingInterceptor() grpc.StreamServerInterceptor {
-	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		// Add any logging or metadata handling here if needed
-		return handler(srv, ss)
 	}
 }
 
