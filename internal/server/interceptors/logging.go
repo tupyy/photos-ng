@@ -34,7 +34,7 @@ func LoggingInterceptor() grpc.UnaryServerInterceptor {
 		// Create logger with common fields
 		logger := zap.S().Named("grpc").With(
 			"method", info.FullMethod,
-			"duration", duration,
+			"duration_ms", float64(duration.Nanoseconds())/1e6,
 			"status_code", st.String(),
 			"client_addr", clientAddr,
 		)
@@ -77,7 +77,7 @@ func StreamLoggingInterceptor() grpc.StreamServerInterceptor {
 		// Create logger with common fields
 		logger := zap.S().Named("grpc").With(
 			"method", info.FullMethod,
-			"duration", duration,
+			"duration_ms", float64(duration.Nanoseconds())/1e6,
 			"status_code", st.String(),
 			"client_addr", clientAddr,
 			"is_client_stream", info.IsClientStream,

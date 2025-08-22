@@ -5,7 +5,6 @@ import (
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 // GetStats handles GET /api/v1/stats requests to retrieve application statistics.

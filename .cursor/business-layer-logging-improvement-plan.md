@@ -1,8 +1,8 @@
-# Business Layer Logging & Error Management Improvement Plan
+# Business Layer Logging & Error Management Improvement Plan - UPDATED
 
-## Current State Analysis
+## Current State Analysis (Updated Post-ServiceError Implementation)
 
-After analyzing the Photos NG business layer (services), I've identified critical gaps in error handling and logging that make debugging difficult when errors occur.
+After implementing the new ServiceError system, we've addressed the error handling gaps. However, there are still opportunities to improve **debug logging** in the business layer without duplicating error logs that handlers already capture.
 
 ### Current Logging Pattern Analysis
 
@@ -22,80 +22,87 @@ zap.S().Infow("sync job created and scheduled", "job_id", jobID, "path", albumPa
 zap.S().Warnw("failed to read exif metadata value", "error", "value is not a string", "value", v)
 ```
 
-### Critical Problems Identified
+### ✅ SOLVED: Error Handling (ServiceError Implementation)
 
-#### 1. **Silent Failures Everywhere**
+**What was implemented:**
+- ✅ ServiceError system with structured context 
+- ✅ Type-safe error handling with HTTP status mapping
+- ✅ Handler layer logs errors with rich context extracted from ServiceError
+- ✅ No duplicate error logging between services and handlers
+
+**Example of current error flow:**
 ```go
-// Current pattern - NO context when errors occur
+// Services layer - Return structured errors (NO logging)
 func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, error) {
+    if id == "" {
+        return nil, NewValidationError(ctx, "get_album", "invalid_input").
+            WithContext("validation_error", "empty_album_id")
+    }
+    
     album, err := a.dt.QueryAlbum(ctx, pg.FilterByAlbumId(id))
     if err != nil {
-        return nil, err  // Silent failure - no logging!
+        return nil, NewDatabaseWriteError(ctx, "get_album", err).
+            WithAlbumID(id).AtStep("query_album")
     }
-    // ...
+    // ... return structured error with context
 }
 
-// When this fails, you have NO idea:
-// - Which album ID was requested
-// - What database error occurred  
-// - Who made the request
-// - What query was executed
-```
-
-#### 2. **Database Operations Have Zero Visibility**
-```go
-// Current pattern - Database operations are black boxes
-func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*entity.Media, error) {
-    err = m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
-        // Multiple operations happen here with NO logging:
-        // 1. File processing
-        // 2. Thumbnail generation  
-        // 3. EXIF extraction
-        // 4. Database write
-        // 5. File system write
-        
-        // If ANY step fails, you have no idea which one!
-        return writer.WriteMedia(ctx, media)
-    })
-    if err != nil {
-        return nil, err  // Silent failure again!
-    }
+// Handlers layer - Log once with full context
+album, err := s.albumSrv.GetAlbum(ctx, id)
+if err != nil {
+    logErrorWithContext("failed to get album", err) // Rich logging here
+    c.JSON(getHTTPStatusFromError(err), v1.Error{Message: err.Error()})
 }
 ```
 
-#### 3. **Transaction Failures Are Invisible**
+### 🎯 NEW FOCUS: Debug Logging for Development & Troubleshooting
+
+**Remaining Opportunities:**
+
+#### 1. **Transaction Step Visibility**
 ```go
-// WriteTx failures provide no context
-err := a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
-    // Could fail at:
-    // - Transaction start
-    // - File system operation
+// Current: Multi-step transactions are black boxes
+err = m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
+    // 5+ operations happen here with NO visibility during development
+    // - File processing
+    // - Thumbnail generation  
+    // - EXIF extraction
     // - Database write
-    // - Transaction commit
-    // But you'll never know which!
+    // - File system write
 })
 ```
 
-#### 4. **Business Logic Errors Have No Context**
+#### 2. **Performance Debugging**
 ```go
-// Example: Album creation failure
-func (a *AlbumService) CreateAlbum(ctx context.Context, album entity.Album) (*entity.Album, error) {
-    // No logging when:
-    // - Parent album doesn't exist
-    // - Path computation fails  
-    // - Album already exists
-    // - File system creation fails
-}
+// No visibility into:
+// - How long each operation takes
+// - Which operations are slow
+// - Resource usage patterns
 ```
 
-## Comprehensive Improvement Plan
+#### 3. **Business Logic Flow Tracing**
+```go
+// No debug visibility into:
+// - Path computation logic
+// - Parent-child relationship handling
+// - Content hash comparisons
+// - EXIF processing results
+```
 
-### Phase 1: Structured Service Logging Infrastructure
+## UPDATED Implementation Plan: Debug Logging Only
 
-#### 1.1 Create Service-Specific Loggers
+**Key Principle: NO ERROR LOGGING in services layer**
+- ❌ Don't log errors in services (handlers already do this)
+- ✅ Do log debug/trace information for development
+- ✅ Do log performance metrics
+- ✅ Do log business logic flow
+
+### Phase 1: Debug Logging Infrastructure (No Error Duplication)
+
+#### 1.1 Create Debug-Only Service Loggers
 
 ```go
-// internal/services/logging.go
+// internal/services/debug_logging.go
 package services
 
 import (
@@ -103,100 +110,122 @@ import (
     "time"
     
     "go.uber.org/zap"
-    "go.uber.org/zap/zapcore"
 )
 
-// ServiceLogger provides structured logging for business services
-type ServiceLogger struct {
+// DebugLogger provides debug-only logging for business services
+// IMPORTANT: Never logs errors (that's handled by handlers)
+type DebugLogger struct {
     logger    *zap.Logger
     service   string
-    requestID string
 }
 
-func NewServiceLogger(service string) *ServiceLogger {
-    return &ServiceLogger{
+func NewDebugLogger(service string) *DebugLogger {
+    return &DebugLogger{
         logger:  zap.L().Named(service),
         service: service,
     }
 }
 
-func (l *ServiceLogger) WithContext(ctx context.Context) *ServiceLogger {
-    requestID := GetRequestID(ctx) // Extract from context
-    return &ServiceLogger{
-        logger:    l.logger.With(zap.String("request_id", requestID)),
-        service:   l.service,
-        requestID: requestID,
+func (l *DebugLogger) WithContext(ctx context.Context) *DebugLogger {
+    // Extract request ID if available
+    if requestID, ok := ctx.Value("request_id").(string); ok {
+        return &DebugLogger{
+            logger:  l.logger.With(zap.String("request_id", requestID)),
+            service: l.service,
+        }
     }
+    return l
 }
 
-// Operation logging methods
-func (l *ServiceLogger) StartOperation(operation string, params map[string]interface{}) *OperationLogger {
+// Debug flow logging methods (NO error logging)
+func (l *DebugLogger) StartOperation(operation string, params map[string]any) *OperationTracer {
     start := time.Now()
     
-    l.logger.Info("Operation started",
+    l.logger.Debug("Operation started",
         zap.String("operation", operation),
         zap.Any("params", params),
-        zap.Time("started_at", start),
     )
     
-    return &OperationLogger{
-        ServiceLogger: l,
-        operation:     operation,
-        startTime:     start,
-        params:        params,
+    return &OperationTracer{
+        DebugLogger: l,
+        operation:   operation,
+        startTime:   start,
+        params:      params,
     }
 }
 
-type OperationLogger struct {
-    *ServiceLogger
+type OperationTracer struct {
+    *DebugLogger
     operation string
     startTime time.Time
-    params    map[string]interface{}
+    params    map[string]any
 }
 
-func (ol *OperationLogger) Success(result interface{}) {
-    duration := time.Since(ol.startTime)
-    ol.logger.Info("Operation completed successfully",
-        zap.String("operation", ol.operation),
+func (ot *OperationTracer) Step(step string, data map[string]any) {
+    ot.logger.Debug("Operation step",
+        zap.String("operation", ot.operation),
+        zap.String("step", step),
+        zap.Duration("elapsed", time.Since(ot.startTime)),
+        zap.Any("data", data),
+    )
+}
+
+func (ot *OperationTracer) Success(result map[string]any) {
+    duration := time.Since(ot.startTime)
+    ot.logger.Debug("Operation completed",
+        zap.String("operation", ot.operation),
         zap.Duration("duration", duration),
         zap.Any("result", result),
     )
 }
 
-func (ol *OperationLogger) Error(err error, context map[string]interface{}) {
-    duration := time.Since(ol.startTime)
-    
-    fields := []zap.Field{
-        zap.String("operation", ol.operation),
-        zap.Duration("duration", duration),
-        zap.Error(err),
-        zap.Any("params", ol.params),
-    }
-    
-    if context != nil {
-        fields = append(fields, zap.Any("error_context", context))
-    }
-    
-    ol.logger.Error("Operation failed", fields...)
+// NO Error() method - errors are handled by handlers layer
+
+func (ot *OperationTracer) Performance(metric string, value any) {
+    ot.logger.Debug("Performance metric",
+        zap.String("operation", ot.operation),
+        zap.String("metric", metric),
+        zap.Any("value", value),
+        zap.Duration("elapsed", time.Since(ot.startTime)),
+    )
 }
 
-func (ol *OperationLogger) Warn(message string, context map[string]interface{}) {
-    ol.logger.Warn(message,
-        zap.String("operation", ol.operation),
-        zap.Any("context", context),
+// Convenience methods for common debug scenarios
+func (l *DebugLogger) DatabaseQuery(operation string, filters int, duration time.Duration, found bool) {
+    l.logger.Debug("Database query",
+        zap.String("operation", operation),
+        zap.Int("filters", filters),
+        zap.Duration("duration", duration),
+        zap.Bool("found", found),
+    )
+}
+
+func (l *DebugLogger) FileOperation(operation, filepath string, size int64, duration time.Duration) {
+    l.logger.Debug("File operation",
+        zap.String("operation", operation),
+        zap.String("filepath", filepath),
+        zap.Int64("size", size),
+        zap.Duration("duration", duration),
+    )
+}
+
+func (l *DebugLogger) BusinessLogic(description string, data map[string]any) {
+    l.logger.Debug("Business logic",
+        zap.String("description", description),
+        zap.Any("data", data),
     )
 }
 ```
 
-#### 1.2 Enhanced Album Service with Comprehensive Logging
+#### 1.2 Enhanced Album Service with Debug-Only Logging
 
 ```go
-// internal/services/album.go (Enhanced)
+// internal/services/album.go (Enhanced with Debug Logging)
 package services
 
 import (
     "context"
-    "fmt"
+    "time"
     
     "git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
     "git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
@@ -206,61 +235,59 @@ import (
 type AlbumService struct {
     dt     *pg.Datastore
     fs     *fs.Datastore
-    logger *ServiceLogger
+    debug  *DebugLogger
 }
 
 func NewAlbumService(dt *pg.Datastore, fsDatastore *fs.Datastore) *AlbumService {
     return &AlbumService{
-        dt:     dt,
-        fs:     fsDatastore,
-        logger: NewServiceLogger("album_service"),
+        dt:    dt,
+        fs:    fsDatastore,
+        debug: NewDebugLogger("album_service"),
     }
 }
 
 func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, error) {
-    log := a.logger.WithContext(ctx).StartOperation("get_album", map[string]interface{}{
+    debug := a.debug.WithContext(ctx)
+    tracer := debug.StartOperation("get_album", map[string]any{
         "album_id": id,
     })
     
-    // Input validation logging
+    // Input validation (return ServiceError, no logging)
     if id == "" {
-        err := fmt.Errorf("album ID cannot be empty")
-        log.Error(err, map[string]interface{}{
-            "validation_error": "empty_album_id",
-        })
-        return nil, err
+        return nil, NewValidationError(ctx, "get_album", "invalid_input").
+            WithContext("validation_error", "empty_album_id")
     }
     
-    // Database query logging
-    log.ServiceLogger.logger.Debug("Querying album from database",
-        zap.String("album_id", id),
-        zap.String("query_type", "single_album"),
-    )
+    // Database query with debug timing
+    tracer.Step("database_query", map[string]any{
+        "query_type": "single_album",
+        "filters": 1,
+    })
     
+    start := time.Now()
     album, err := a.dt.QueryAlbum(ctx, pg.FilterByAlbumId(id))
+    queryDuration := time.Since(start)
+    
+    // Debug performance info (not error logging)
+    debug.DatabaseQuery("query_album", 1, queryDuration, album != nil)
+    
     if err != nil {
-        log.Error(err, map[string]interface{}{
-            "database_operation": "query_album",
-            "album_id":          id,
-            "error_type":        "database_error",
-        })
-        return nil, fmt.Errorf("failed to query album %s: %w", id, err)
+        // Return ServiceError (handlers will log the error)
+        return nil, NewDatabaseWriteError(ctx, "get_album", err).
+            WithAlbumID(id).AtStep("query_album")
     }
     
     if album == nil {
-        err := NewErrAlbumNotFound(id)
-        log.Error(err, map[string]interface{}{
-            "album_id":    id,
-            "error_type":  "not_found",
-            "search_type": "by_id",
-        })
-        return nil, err
+        // Return ServiceError (handlers will log the error) 
+        return nil, NewAlbumNotFoundError(ctx, id)
     }
     
-    log.Success(map[string]interface{}{
+    // Debug success info
+    tracer.Success(map[string]any{
         "album_id":   album.ID,
         "album_name": album.Name,
         "album_path": album.Path,
+        "query_duration": queryDuration,
     })
     
     return album, nil
@@ -873,50 +900,47 @@ func NewFileSystemError(ctx context.Context, service, operation, filepath string
 
 ### Expected Debugging Improvements
 
-#### Before (Current State):
+#### Current State (Post-ServiceError):
 ```
-ERROR: failed to create album
-// That's it. No context, no details, no way to debug.
-```
-
-#### After (Improved State):
-```json
-{
-  "level": "error",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "message": "Operation failed",
-  "service": "album_service",
-  "operation": "create_album",
-  "request_id": "req_abc123",
-  "duration": "150ms",
-  "params": {
-    "album_id": "123e4567-e89b-12d3-a456-426614174000",
-    "album_name": "Vacation Photos",
-    "album_path": "/photos/2024/vacation",
-    "parent_id": "parent_123"
-  },
-  "error_context": {
-    "transaction_operation": "create_album_tx",
-    "filesystem_operation": "create_folder",
-    "folder_path": "/photos/2024/vacation",
-    "error_type": "permission_denied"
-  },
-  "error": "mkdir /photos/2024/vacation: permission denied"
-}
+// Handlers layer - Single error log with full context
+ERROR [req_abc123] failed to create album operation=create_album step=filesystem_create condition=filesystem_operation_failed album_id=123e4567 album_path=/photos/2024/vacation filepath=/photos/2024/vacation cause="mkdir /photos/2024/vacation: permission denied"
 ```
 
-#### Log Correlation Example:
+#### Enhanced State (With Debug Logging):
 ```
-10:30:00.100 [req_abc123] INFO  album_service: Operation started operation=create_album album_path=/photos/2024/vacation
-10:30:00.105 [req_abc123] DEBUG album_service: Checking if album already exists album_id=123e4567
-10:30:00.110 [req_abc123] DEBUG datastore: Database query started operation=query_album
-10:30:00.125 [req_abc123] DEBUG datastore: Database query completed operation=query_album duration=15ms found=false
-10:30:00.130 [req_abc123] DEBUG album_service: Album does not exist, proceeding with creation
-10:30:00.135 [req_abc123] DEBUG album_service: Starting database transaction for album creation
-10:30:00.140 [req_abc123] DEBUG album_service: Writing album to database
-10:30:00.155 [req_abc123] DEBUG album_service: Creating album folder on filesystem folder_path=/photos/2024/vacation
-10:30:00.250 [req_abc123] ERROR album_service: Filesystem folder creation failed error="mkdir /photos/2024/vacation: permission denied"
-10:30:00.255 [req_abc123] ERROR album_service: Operation failed operation=create_album duration=155ms
+// Services layer - Debug flow tracing (only when debug level enabled)
+DEBUG [req_abc123] album_service: Operation started operation=create_album album_id=123e4567 album_path=/photos/2024/vacation
+DEBUG [req_abc123] album_service: Operation step operation=create_album step=existence_check elapsed=5ms
+DEBUG [req_abc123] album_service: Database query operation=query_album filters=1 duration=15ms found=false
+DEBUG [req_abc123] album_service: Business logic description="album does not exist, proceeding with creation"
+DEBUG [req_abc123] album_service: Operation step operation=create_album step=transaction_start elapsed=25ms
+DEBUG [req_abc123] album_service: Operation step operation=create_album step=database_write elapsed=40ms
+DEBUG [req_abc123] album_service: Operation step operation=create_album step=filesystem_create elapsed=45ms data={"folder_path":"/photos/2024/vacation"}
+DEBUG [req_abc123] album_service: File operation operation=create_folder filepath=/photos/2024/vacation size=0 duration=155ms
+
+// Handlers layer - Single error log (same as before)
+ERROR [req_abc123] failed to create album operation=create_album step=filesystem_create condition=filesystem_operation_failed album_id=123e4567 album_path=/photos/2024/vacation filepath=/photos/2024/vacation cause="mkdir /photos/2024/vacation: permission denied"
 ```
 
-This comprehensive logging will make debugging **10x faster** by providing complete request context and detailed operation flow visibility.
+#### Key Benefits:
+
+1. **No Duplicate Error Logs** 
+   - Services: Debug flow only
+   - Handlers: Single error with full context
+
+2. **Development Visibility**
+   - See exactly which step failed
+   - Performance timing for each operation
+   - Business logic decision points
+
+3. **Production Ready**
+   - Debug logs disabled in production
+   - Only structured error context from handlers
+   - No performance impact
+
+4. **Correlation Friendly**
+   - Request ID in all logs
+   - Clear operation flow
+   - Easy to trace through complex transactions
+
+This approach provides **development debugging visibility** without the **production noise** of duplicate error logging.
