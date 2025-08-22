@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
 const path = require('path');
+const webpack = require('webpack');
 const { merge } = require('webpack-merge');
 const common = require('./webpack.common.js');
 const { stylePaths } = require('./stylePaths');
@@ -25,7 +26,14 @@ console.log(`🔗 Proxy mode: ${PROXY_MODE} -> ${proxyTarget}`);
 
 module.exports = merge(common('development'), {
   mode: 'development',
-  devtool: 'eval-source-map',
+  devtool: false,
+  plugins: [
+    new webpack.SourceMapDevToolPlugin({
+      filename: '[file].map',
+      include: /\.js$/,
+      exclude: /node_modules/,
+    }),
+  ],
   devServer: {
     host: HOST,
     port: PORT,

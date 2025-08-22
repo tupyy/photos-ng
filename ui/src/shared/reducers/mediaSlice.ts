@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { Media, UpdateMediaRequest, ListMediaResponse } from '@generated/models';
-import { ListMediaTypeEnum, ListMediaSortByEnum, ListMediaSortOrderEnum } from '@generated/api/media-api';
+import { ListMediaTypeEnum, ListMediaSortByEnum, ListMediaSortOrderEnum, ListMediaDirectionEnum } from '@generated/api/media-api';
 import { mediaApi } from '@api/apiConfig';
 import { CacheMetadata, CachedResponse, createCacheMetadata, isCacheValid, shouldMakeConditionalRequest } from '@shared/types';
 
@@ -10,6 +10,7 @@ export const fetchMedia = createAsyncThunk(
   async (params: {
     limit?: number;
     cursor?: string;
+    direction?: ListMediaDirectionEnum;
     albumId?: string;
     type?: ListMediaTypeEnum;
     startDate?: string;
@@ -20,18 +21,18 @@ export const fetchMedia = createAsyncThunk(
   } = {}, { getState }) => {
     const state = getState() as any;
     const currentCache = state.media.cache;
-    
+
     // Check if we can use cached data (unless force refresh is requested)
     if (!params.forceRefresh && currentCache && isCacheValid(currentCache)) {
       // Return a special action to indicate cache hit
       throw new Error('CACHE_HIT');
     }
-    
+
     // If we have expired cache, clear it automatically
     if (currentCache && !isCacheValid(currentCache)) {
       // Cache will be replaced with fresh data after the request
     }
-    
+
     // Prepare conditional request headers if we have cache metadata
     const conditionalHeaders: Record<string, string> = {};
     if (currentCache && shouldMakeConditionalRequest(currentCache)) {
@@ -42,10 +43,11 @@ export const fetchMedia = createAsyncThunk(
         conditionalHeaders['If-Modified-Since'] = currentCache.lastModified;
       }
     }
-    
+
     const response = await mediaApi.listMedia(
       params.limit,
       params.cursor,
+      params.direction,
       params.albumId,
       params.type,
       params.startDate,
@@ -56,10 +58,10 @@ export const fetchMedia = createAsyncThunk(
         headers: conditionalHeaders
       }
     );
-    
+
     // Create cache metadata from response headers
     const cache = createCacheMetadata(response.headers || {});
-    
+
     return {
       data: response.data,
       cache
@@ -73,18 +75,18 @@ export const fetchMediaById = createAsyncThunk(
     const state = getState() as any;
     const currentMedia = state.media.currentMedia;
     const currentMediaCache = state.media.currentMediaCache;
-    
+
     // Check if we can use cached data for this specific media item
-    if (!params.forceRefresh && 
-        currentMedia && 
-        currentMedia.id === params.id && 
-        currentMediaCache && 
+    if (!params.forceRefresh &&
+        currentMedia &&
+        currentMedia.id === params.id &&
+        currentMediaCache &&
         isCacheValid(currentMediaCache)) {
       throw new Error('CACHE_HIT');
     }
-    
+
     // If we have expired cache for this media, it will be replaced after the request
-    
+
     // Prepare conditional request headers
     const conditionalHeaders: Record<string, string> = {};
     if (currentMediaCache && shouldMakeConditionalRequest(currentMediaCache)) {
@@ -95,13 +97,13 @@ export const fetchMediaById = createAsyncThunk(
         conditionalHeaders['If-Modified-Since'] = currentMediaCache.lastModified;
       }
     }
-    
+
     const response = await mediaApi.getMedia(params.id, {
       headers: conditionalHeaders
     });
-    
+
     const cache = createCacheMetadata(response.headers || {});
-    
+
     return {
       data: response.data,
       cache
@@ -136,7 +138,8 @@ export interface MediaFilters {
   sortBy?: ListMediaSortByEnum;
   sortOrder?: ListMediaSortOrderEnum;
   limit: number;
-  cursor?: string;
+  cursor: string;
+  direction?: ListMediaDirectionEnum;
 }
 
 // State interface
@@ -191,12 +194,13 @@ const mediaSlice = createSlice({
     setFilters: (state, action: PayloadAction<Partial<MediaFilters>>) => {
       state.filters = { ...state.filters, ...action.payload };
       // Reset to first page when filters change
-      if (action.payload.albumId !== undefined || 
+      if (action.payload.albumId !== undefined ||
           action.payload.type !== undefined ||
           action.payload.startDate !== undefined ||
           action.payload.endDate !== undefined ||
           action.payload.sortBy !== undefined ||
-          action.payload.sortOrder !== undefined) {
+          action.payload.sortOrder !== undefined ||
+          action.payload.direction !== undefined) {
         state.filters.cursor = undefined;
         state.nextCursor = null;
         state.hasMore = true;
@@ -251,46 +255,62 @@ const mediaSlice = createSlice({
       .addCase(fetchMedia.fulfilled, (state, action: PayloadAction<CachedResponse<ListMediaResponse>>) => {
         state.loading = false;
         state.loadingMore = false;
-        
+
         // Update cache metadata
         state.cache = action.payload.cache;
-        
+
         // Update basic response data
         state.filters.limit = action.payload.data.limit;
-        
-        // Determine if this is a fresh load or infinite scroll based on the request cursor
+
+        // Determine if this is a fresh load or infinite scroll based on the request cursor and forceRefresh
         const requestCursor = action.meta.arg?.cursor;
-        
-        if (!requestCursor) {
+        const forceRefresh = action.meta.arg?.forceRefresh;
+
+        if (!requestCursor || forceRefresh) {
           // Fresh load - replace the media array
+          // This happens when no cursor (initial load) or forceRefresh is true (year jumping)
           state.media = action.payload.data.media;
         } else {
-          // Infinite scroll - append new media items
+          // Infinite scroll - append or prepend based on direction
+          const direction = action.meta.arg?.direction;
           const existingIds = new Set(state.media.map(m => m.id));
           const newMedia = action.payload.data.media.filter(m => !existingIds.has(m.id));
-          state.media.push(...newMedia);
+          
+          if (direction === ListMediaDirectionEnum.Backward) {
+            // Backward direction: prepend to beginning (older content)
+            state.media.unshift(...newMedia);
+          } else {
+            // Forward direction: append to end (newer content)
+            state.media.push(...newMedia);
+          }
         }
-        
-        // Compute cursor from last media item (if any)
+
+        // Compute cursor for next navigation based on direction
         if (state.media.length > 0) {
-          const lastMedia = state.media[state.media.length - 1];
+          const direction = action.meta.arg?.direction;
+          // For forward direction, cursor is from last item (to continue forward)
+          // For backward direction, cursor is from first item (to continue backward)
+          const referenceMedia = direction === ListMediaDirectionEnum.Backward 
+            ? state.media[0] 
+            : state.media[state.media.length - 1];
+            
           // Ensure capturedAt is in full timestamp format
-          let capturedAt = lastMedia.capturedAt;
+          let capturedAt = referenceMedia.capturedAt;
           if (capturedAt && !capturedAt.includes('T')) {
             // If it's just a date, add time portion
             capturedAt = capturedAt + 'T00:00:00Z';
           }
           state.nextCursor = btoa(JSON.stringify({
             captured_at: capturedAt,
-            id: lastMedia.id
+            id: referenceMedia.id
           }));
         } else {
           state.nextCursor = null;
         }
-        
+
         // If we got no new items, we've reached the end
         state.hasMore = action.payload.data.media.length > 0;
-        
+
         // Debug logging (dev only)
         if (process.env.NODE_ENV === 'development') {
           console.log('📥 API Response:', {
@@ -309,7 +329,7 @@ const mediaSlice = createSlice({
           state.loadingMore = false;
           return; // Keep existing data and cache
         }
-        
+
         state.loading = false;
         state.loadingMore = false;
         state.error = action.error.message || 'Failed to fetch media';
@@ -325,7 +345,7 @@ const mediaSlice = createSlice({
         state.loading = false;
         state.currentMedia = action.payload.data;
         state.currentMediaCache = action.payload.cache;
-        
+
         // Also update the media in the main list if it exists
         const index = state.media.findIndex(media => media.id === action.payload.data.id);
         if (index !== -1) {
@@ -338,7 +358,7 @@ const mediaSlice = createSlice({
           state.loading = false;
           return; // Keep existing data and cache
         }
-        
+
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch media';
       });

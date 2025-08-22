@@ -25,9 +25,11 @@ interface TimelineMediaGalleryProps {
   error?: string | null;
   total?: number;
   hasMore?: boolean;
-  onLoadMore?: () => void;
+  scrollToYear?: number | null;
+  onLoadMore?: (direction: 'forward' | 'backward') => void;
   onMediaRefresh?: () => void;
   onVisibleYearChange?: (year: number | null) => void;
+  onScrollComplete?: () => void;
 }
 
 const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
@@ -37,11 +39,13 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
   error = null,
   total = 0,
   hasMore = true,
+  scrollToYear = null,
   onLoadMore,
   onVisibleYearChange,
+  onScrollComplete,
 }) => {
   const navigate = useNavigate();
-  
+
   // EXIF drawer state
   const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -64,8 +68,14 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
     });
   }
 
-  // Use react-intersection-observer - simple and direct
-  const { ref, inView } = useInView({
+  // Use react-intersection-observer for bottom sentinel (forward direction)
+  const { ref: bottomRef, inView: bottomInView } = useInView({
+    threshold: 0,
+    rootMargin: '200px',
+  });
+
+  // Use react-intersection-observer for top sentinel (backward direction)
+  const { ref: topRef, inView: topInView } = useInView({
     threshold: 0,
     rootMargin: '200px',
   });
@@ -89,15 +99,39 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
     });
   };
 
-  // Trigger load more when sentinel comes into view
+  // Trigger load more when bottom sentinel comes into view (forward direction)
   useEffect(() => {
-    if (inView && !loadingMore && onLoadMore) {
+    if (bottomInView && !loadingMore && onLoadMore) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🚀 Intersection observer triggered - loading more');
+        console.log('🚀 Bottom sentinel triggered - loading more forward');
       }
-      onLoadMore();
+      onLoadMore('forward');
     }
-  }, [inView, loadingMore, onLoadMore]);
+  }, [bottomInView, loadingMore, onLoadMore]);
+
+  // Handle scrolling to year when scrollToYear prop changes
+  useEffect(() => {
+    if (scrollToYear && media && media.length > 0) {
+      // Check if the year is available in the current media
+      const hasYearLoaded = media.some((m) => new Date(m.capturedAt).getFullYear() === scrollToYear);
+
+      if (hasYearLoaded) {
+        // Small delay to ensure DOM has updated after media rendering
+        setTimeout(() => {
+          const yearElement = document.getElementById(`year-${scrollToYear}`);
+          if (yearElement) {
+            yearElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+              inline: 'nearest',
+            });
+            // Notify parent that scroll is complete
+            onScrollComplete?.();
+          }
+        }, 100);
+      }
+    }
+  }, [scrollToYear, media, onScrollComplete]);
 
   /**
    * Helper function to get the start of the week (Monday) for a given date
@@ -387,16 +421,26 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
         </div>
       </div>
 
+      {/* Top sentinel for backward infinite scroll */}
+      <div ref={topRef} className="w-full py-2" style={{ minHeight: '10px' }} data-testid="backward-scroll-sentinel">
+        {/* This sentinel triggers loading older content when it comes into view */}
+      </div>
+
       {/* Grouped by weeks */}
       <div className="space-y-8">
         {groupedMedia.map((group, index) => {
-          // Check if this is the first week of a new year
+          // Check if this is the first week of a new year (handles both directions)
           const isFirstWeekOfYear = index === 0 || groupedMedia[index - 1].year !== group.year;
+          // Check if this is the last week of a year (for backward scroll scenarios)
+          const isLastWeekOfYear = index === groupedMedia.length - 1 || groupedMedia[index + 1].year !== group.year;
 
           return (
             <div key={group.weekStart.toISOString()}>
               {/* Year anchor for scrolling - placed at first week of each year */}
               {isFirstWeekOfYear && <div id={`year-${group.year}`} className="scroll-mt-24"></div>}
+
+              {/* Additional year anchor for last week to handle backward navigation */}
+              {isLastWeekOfYear && !isFirstWeekOfYear && <div id={`year-${group.year}-end`} className="scroll-mt-24"></div>}
 
               {/* Week header */}
               <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
@@ -421,8 +465,8 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
         })}
       </div>
 
-      {/* Infinite scroll sentinel - always render at the bottom */}
-      <div ref={ref} className="w-full py-6 mt-8" style={{ minHeight: '50px' }} data-testid="infinite-scroll-sentinel">
+      {/* Bottom sentinel for forward infinite scroll - always render at the bottom */}
+      <div ref={bottomRef} className="w-full py-6 mt-8" style={{ minHeight: '50px' }} data-testid="forward-scroll-sentinel">
         {hasMore ? (
           <div className="flex flex-col items-center space-y-3">
             <LoadingProgressBar loading={loadingMore} message="Loading more photos..." size="medium" />

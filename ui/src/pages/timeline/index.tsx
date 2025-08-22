@@ -15,7 +15,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '@shared/store';
 import { useMediaApi, useStatsApi } from '@shared/hooks/useApi';
-import { ListMediaSortByEnum, ListMediaSortOrderEnum } from '@generated/api/media-api';
+import { ListMediaSortByEnum, ListMediaSortOrderEnum, ListMediaDirectionEnum } from '@generated/api/media-api';
 import TimelineMediaGallery from './components/TimelineMediaGallery';
 import YearNavigation from './components/YearNavigation';
 import MobileYearDropdown from './components/MobileYearDropdown';
@@ -40,8 +40,10 @@ const TimelinePage: React.FC = () => {
   }
 
   // State for year scrolling
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
   const [visibleYear, setVisibleYear] = useState<number | null>(null); // Year currently in view
+  const [currentDirection, setCurrentDirection] = useState<ListMediaDirectionEnum>(ListMediaDirectionEnum.Forward); // Track current navigation direction
+  const [scrollToYear, setScrollToYear] = useState<number | null>(null); // Year to scroll to after media loads
   const pageSize = TIMELINE_PAGE_SIZE; // Load more items to enable scrolling through years
 
   /**
@@ -57,6 +59,7 @@ const TimelinePage: React.FC = () => {
       limit: pageSize,
       sortBy: ListMediaSortByEnum.CapturedAt,
       sortOrder: ListMediaSortOrderEnum.Desc,
+      direction: ListMediaDirectionEnum.Forward,
     });
   }, [fetchMedia, fetchStats]);
 
@@ -70,76 +73,92 @@ const TimelinePage: React.FC = () => {
 
   /**
    * Handles loading more media for infinite scroll
+   * Supports both forward and backward directions
    */
-  const handleLoadMore = useCallback(() => {
+  const handleLoadMore = useCallback((direction: 'forward' | 'backward') => {
     if (!loadingMore && hasMore) {
+      const scrollDirection = direction === 'backward'
+        ? ListMediaDirectionEnum.Backward
+        : ListMediaDirectionEnum.Forward;
+
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Loading more with cursor:', nextCursor);
+        console.log('🔄 Loading more with cursor:', nextCursor, 'direction:', scrollDirection);
       }
-      
+
       fetchMedia({
         limit: pageSize,
         cursor: nextCursor,
         sortBy: ListMediaSortByEnum.CapturedAt,
         sortOrder: ListMediaSortOrderEnum.Desc,
+        direction: scrollDirection,
       });
+
+      // Update current direction for future operations
+      setCurrentDirection(scrollDirection);
     }
   }, [loadingMore, hasMore, nextCursor, fetchMedia, pageSize]);
 
   /**
-   * Handles year selection from navigation
-   * Fetches media for that year if not loaded, otherwise scrolls to it
+   * Creates a cursor for jumping to a specific year
+   * Uses December 31st of the previous year as the cursor position
    */
-  const handleYearSelect = (year: number | null) => {
-    setSelectedYear(year);
-    
+  const createYearCursor = (year: number): string => {
+    // Create cursor for December 31st of the previous year at midnight
+    const yearStart = `${year}-12-31T00:00:00Z`;
+    // Use a dummy ID that will be lexicographically first
+    const cursor = {
+      captured_at: yearStart,
+      id: '00000000000000000000000000000000', // 32 chars of zeros for earliest possible ID
+    };
+    return btoa(JSON.stringify(cursor));
+  };
+
+  /**
+   * Handles year selection from navigation
+   * Uses cursor-based jumping to navigate to specific years
+   */
+  const handleYearSelect = async (year: number | null) => {
     if (!year) {
-      // "All Years" selected - reload from the beginning
-      fetchMedia({
-        limit: pageSize,
-        sortBy: ListMediaSortByEnum.CapturedAt,
-        sortOrder: ListMediaSortOrderEnum.Desc,
-      });
       return;
     }
 
     // Check if we have media for this year loaded
-    const hasYearLoaded = media?.some(m => new Date(m.capturedAt).getFullYear() === year);
-    
+    const hasYearLoaded = media?.some((m) => new Date(m.capturedAt).getFullYear() === year);
+
     if (hasYearLoaded) {
-      // Year is loaded, scroll to it
-      const yearElement = document.getElementById(`year-${year}`);
-      if (yearElement) {
-        yearElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-          inline: 'nearest',
-        });
-      }
+      // Year is loaded, tell TimelineMediaGallery to scroll to it
+      setScrollToYear(year);
     } else {
-      // Year not loaded, fetch media starting from that year
-      const startDate = `${year}-01-01`;
-      const endDate = `${year}-12-31`;
-      
+      // Year not loaded, use cursor-based jumping
+      const yearCursor = createYearCursor(year);
+
       if (process.env.NODE_ENV === 'development') {
-        console.log(`🗓️ Fetching media for year ${year}`, { startDate, endDate });
-        console.log('🧪 Testing: First try without date filters to see if we get any data...');
+        console.log(`🗓️ Jumping to year ${year} using cursor-based navigation`);
+        console.log('📍 Year cursor:', yearCursor);
       }
-      
-      // Test: Try fetching without date filters first to see if the issue is with date filtering
-      const queryParams = {
-        limit: pageSize,
-        // startDate,  // Temporarily disabled
-        // endDate,    // Temporarily disabled
-        sortBy: ListMediaSortByEnum.CapturedAt,
-        sortOrder: ListMediaSortOrderEnum.Desc,
-      };
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📤 API Query Parameters (without date filters for testing):', queryParams);
+
+      let direction = ListMediaDirectionEnum.Forward;
+      if (year - currentYear > 0) {
+        setCurrentDirection(ListMediaDirectionEnum.Backward);
       }
-      
-      fetchMedia(queryParams);
+
+      try {
+        await fetchMedia({
+          limit: pageSize,
+          cursor: yearCursor,
+          direction: direction,
+          sortBy: ListMediaSortByEnum.CapturedAt,
+          sortOrder: ListMediaSortOrderEnum.Desc,
+          forceRefresh: true, // Force refresh to replace existing media instead of appending
+        });
+        setCurrentYear(year);
+        // Only set scroll year after fetch completes successfully
+        setScrollToYear(year);
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Failed to fetch media for year:', year, error);
+        }
+      }
     }
   };
 
@@ -160,10 +179,12 @@ const TimelinePage: React.FC = () => {
     fetchStats();
 
     // Refresh media from the beginning
+    setCurrentDirection(ListMediaDirectionEnum.Forward);
     fetchMedia({
       limit: pageSize,
       sortBy: ListMediaSortByEnum.CapturedAt,
       sortOrder: ListMediaSortOrderEnum.Desc,
+      direction: ListMediaDirectionEnum.Forward,
     });
   };
 
@@ -181,7 +202,7 @@ const TimelinePage: React.FC = () => {
               onYearSelect={handleYearSelect}
               loading={loading || statsLoading}
             />
-            
+
             <TimelineMediaGallery
               media={media || []}
               loading={loading || statsLoading}
@@ -189,9 +210,11 @@ const TimelinePage: React.FC = () => {
               error={error}
               total={statsData?.countMedia || 0}
               hasMore={hasMore}
+              scrollToYear={scrollToYear}
               onLoadMore={handleLoadMore}
               onMediaRefresh={handleMediaRefresh}
               onVisibleYearChange={handleVisibleYearChange}
+              onScrollComplete={() => setScrollToYear(null)}
             />
           </div>
 

@@ -6,7 +6,7 @@ import { albumsApi } from '@api/apiConfig';
 // Helper function to fetch children albums (first level only)
 const fetchChildrenAlbums = async (children: any[]): Promise<Album[]> => {
   const childAlbums: Album[] = [];
-  
+
   for (const child of children) {
     try {
       // Use the href directly to fetch the album
@@ -15,7 +15,7 @@ const fetchChildrenAlbums = async (children: any[]): Promise<Album[]> => {
         throw new Error(`HTTP ${childResponse.status}`);
       }
       const childAlbum = await childResponse.json();
-      
+
       // Add the child album as-is (don't fetch children's children)
       childAlbums.push(childAlbum);
     } catch (error) {
@@ -35,7 +35,7 @@ const fetchChildrenAlbums = async (children: any[]): Promise<Album[]> => {
       });
     }
   }
-  
+
   return childAlbums;
 };
 
@@ -53,7 +53,7 @@ export const fetchAlbumById = createAsyncThunk(
   async (id: string): Promise<Album> => {
     const response = await albumsApi.getAlbum(id);
     const album = response.data;
-    
+
     // If the album has children, fetch their full details
     if (album.children && album.children.length > 0) {
       try {
@@ -67,7 +67,7 @@ export const fetchAlbumById = createAsyncThunk(
         return album as Album;
       }
     }
-    
+
     return album as Album;
   }
 );
@@ -301,12 +301,12 @@ const albumsSlice = createSlice({
   },
 });
 
-export const { 
-  setPageActive, 
-  setCreateFormOpen, 
-  setCurrentAlbum, 
-  clearCurrentAlbum, 
-  clearError, 
+export const {
+  setPageActive,
+  setCreateFormOpen,
+  setCurrentAlbum,
+  clearCurrentAlbum,
+  clearError,
   setFilters,
   toggleAlbumSelection,
   selectAllAlbums,
