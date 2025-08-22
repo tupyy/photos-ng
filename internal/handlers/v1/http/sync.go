@@ -26,9 +26,9 @@ func (s *Handler) StartSyncJob(c *gin.Context) {
 	// Start sync job using the SyncService
 	jobID, err := s.syncSrv.StartSync(c.Request.Context(), request.Path)
 	if err != nil {
-		zap.S().Errorw("failed to start sync job", "path", request.Path, "error", err)
-		c.JSON(http.StatusInternalServerError, v1.Error{
-			Message: "Failed to start sync job",
+		logErrorWithContext("failed to start sync job", err, zap.String("path", request.Path))
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
 		})
 		return
 	}
@@ -95,9 +95,9 @@ func (s *Handler) GetSyncJob(c *gin.Context, id string) {
 	// Get job status from SyncService
 	status, err := s.syncSrv.GetSyncJobStatus(id)
 	if err != nil {
-		zap.S().Warnw("sync job not found", "jobId", id, "error", err)
-		c.JSON(http.StatusNotFound, v1.Error{
-			Message: "Sync job not found",
+		logErrorWithContext("sync job not found", err, zap.String("jobId", id))
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
 		})
 		return
 	}
@@ -136,9 +136,9 @@ func (s *Handler) StopSyncJob(c *gin.Context, id string) {
 	// Stop the job using SyncService
 	err := s.syncSrv.StopSyncJob(id)
 	if err != nil {
-		zap.S().Warnw("failed to stop sync job", "jobId", id, "error", err)
-		c.JSON(http.StatusNotFound, v1.Error{
-			Message: "Sync job not found",
+		logErrorWithContext("failed to stop sync job", err, zap.String("jobId", id))
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
 		})
 		return
 	}
@@ -159,9 +159,9 @@ func (s *Handler) StopAllSyncJobs(c *gin.Context) {
 	// Stop all jobs using SyncService
 	err := s.syncSrv.StopAllSyncJobs()
 	if err != nil {
-		zap.S().Errorw("failed to stop all sync jobs", "error", err)
-		c.JSON(http.StatusInternalServerError, v1.Error{
-			Message: "Failed to stop all sync jobs",
+		logErrorWithContext("failed to stop all sync jobs", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
 		})
 		return
 	}

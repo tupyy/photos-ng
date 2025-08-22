@@ -37,8 +37,8 @@ func (s *Handler) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 
 	albums, err := s.albumSrv.GetAlbums(c.Request.Context(), opts)
 	if err != nil {
-		zap.S().Errorw("failed to get albums", "error", err)
-		c.JSON(http.StatusInternalServerError, v1.Error{
+		logErrorWithContext("failed to get albums", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
 			Message: err.Error(),
 		})
 		return
@@ -51,8 +51,8 @@ func (s *Handler) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 	)
 	allAlbums, err := s.albumSrv.GetAlbums(c.Request.Context(), totalOpts)
 	if err != nil {
-		zap.S().Errorw("failed to get total albums count", "error", err)
-		c.JSON(http.StatusInternalServerError, v1.Error{
+		logErrorWithContext("failed to get total albums count", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
 			Message: err.Error(),
 		})
 		return
@@ -91,8 +91,8 @@ func (s *Handler) CreateAlbum(c *gin.Context) {
 	// Convert request to entity and create the album
 	createdAlbum, err := s.albumSrv.CreateAlbum(c.Request.Context(), request.Entity())
 	if err != nil {
-		zap.S().Errorw("failed to create album", "error", err)
-		c.JSON(http.StatusInternalServerError, v1.Error{
+		logErrorWithContext("failed to create album", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
 			Message: err.Error(),
 		})
 		return
@@ -109,19 +109,11 @@ func (s *Handler) GetAlbum(c *gin.Context, id string) {
 	// Create album service and get the album
 	album, err := s.albumSrv.GetAlbum(c.Request.Context(), id)
 	if err != nil {
-		switch err.(type) {
-		case *services.ErrResourceNotFound:
-			c.JSON(http.StatusNotFound, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		default:
-			zap.S().Errorw("failed to get album", "error", err, "album_id", id)
-			c.JSON(http.StatusInternalServerError, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		}
+		logErrorWithContext("failed to get album", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, v1.NewAlbum(*album))
@@ -142,19 +134,11 @@ func (s *Handler) UpdateAlbum(c *gin.Context, id string) {
 	// Get the existing album and apply updates
 	album, err := s.albumSrv.GetAlbum(c.Request.Context(), id)
 	if err != nil {
-		switch err.(type) {
-		case *services.ErrResourceNotFound:
-			c.JSON(http.StatusNotFound, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		default:
-			zap.S().Errorw("failed to get album for update", "error", err, "album_id", id)
-			c.JSON(http.StatusInternalServerError, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		}
+		logErrorWithContext("failed to get album for update", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
+		})
+		return
 	}
 
 	// Apply updates from request to entity
@@ -163,24 +147,11 @@ func (s *Handler) UpdateAlbum(c *gin.Context, id string) {
 	// Update the album
 	updatedAlbum, err := s.albumSrv.UpdateAlbum(c.Request.Context(), *album)
 	if err != nil {
-		switch err.(type) {
-		case *services.ErrResourceNotFound:
-			c.JSON(http.StatusNotFound, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		case *services.ErrUpdateAlbum:
-			c.JSON(http.StatusBadRequest, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		default:
-			zap.S().Errorw("failed to update album", "error", err, "album_id", id)
-			c.JSON(http.StatusInternalServerError, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		}
+		logErrorWithContext("failed to update album", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
+		})
+		return
 	}
 
 	zap.S().Infow("album updated", "album_id", id)
@@ -194,19 +165,11 @@ func (s *Handler) DeleteAlbum(c *gin.Context, id string) {
 	// Create album service and delete the album
 	err := s.albumSrv.DeleteAlbum(c.Request.Context(), id)
 	if err != nil {
-		switch err.(type) {
-		case *services.ErrResourceNotFound:
-			c.JSON(http.StatusNotFound, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		default:
-			zap.S().Errorw("failed to delete album", "error", err, "album_id", id)
-			c.JSON(http.StatusInternalServerError, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		}
+		logErrorWithContext("failed to delete album", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
+		})
+		return
 	}
 
 	zap.S().Infow("album deleted", "album_id", id)

@@ -38,13 +38,15 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 	syncJob, err := NewSyncJob(rootAlbum, s.albumService, s.mediaService, s.fsDatastore)
 	if err != nil {
 		zap.S().Errorw("failed to create sync job", "path", albumPath, "error", err)
-		return "", fmt.Errorf("failed to create sync job: %w", err)
+		return "", NewSyncJobError(ctx, "create_job", "", err).
+			WithContext("album_path", albumPath)
 	}
 
 	// Add job to scheduler
 	if err := s.scheduler.Add(syncJob); err != nil {
 		zap.S().Errorw("failed to add job to scheduler", "job_id", syncJob.GetId(), "error", err)
-		return "", fmt.Errorf("failed to schedule job: %w", err)
+		return "", NewSyncJobError(ctx, "schedule_job", syncJob.GetId().String(), err).
+			WithContext("album_path", albumPath)
 	}
 
 	jobID := syncJob.GetId().String()
@@ -55,10 +57,15 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 
 // GetSyncJobStatus returns the status of a sync job by ID
 func (s *SyncService) GetSyncJobStatus(jobID string) (*JobProgress, error) {
+	if jobID == "" {
+		return nil, NewValidationError(context.Background(), "get_sync_job_status", "invalid_input").
+			WithContext("validation_error", "empty_job_id")
+	}
 
 	syncJob := s.scheduler.Get(jobID)
 	if syncJob == nil {
-		return nil, fmt.Errorf("sync job not found: %s", jobID)
+		return nil, NewNotFoundError(context.Background(), "get_sync_job_status", "job_not_found").
+			WithContext("job_id", jobID)
 	}
 
 	status := syncJob.Status()
@@ -89,15 +96,20 @@ func (s *SyncService) ListSyncJobStatusesByStatus(status JobStatus) []JobProgres
 
 // StopSyncJob stops a specific sync job
 func (s *SyncService) StopSyncJob(jobID string) error {
+	if jobID == "" {
+		return NewValidationError(context.Background(), "stop_sync_job", "invalid_input").
+			WithContext("validation_error", "empty_job_id")
+	}
 
 	syncJob := s.scheduler.Get(jobID)
 	if syncJob == nil {
-		return fmt.Errorf("sync job not found: %s", jobID)
+		return NewNotFoundError(context.Background(), "stop_sync_job", "job_not_found").
+			WithContext("job_id", jobID)
 	}
 
 	if err := syncJob.Stop(); err != nil {
 		zap.S().Errorw("failed to stop sync job", "job_id", jobID, "error", err)
-		return fmt.Errorf("failed to stop sync job: %w", err)
+		return NewSyncJobError(context.Background(), "stop_job", jobID, err)
 	}
 
 	zap.S().Infow("sync job stopped", "job_id", jobID)
@@ -106,19 +118,20 @@ func (s *SyncService) StopSyncJob(jobID string) error {
 
 // StopAllSyncJobs stops all running sync jobs
 func (s *SyncService) StopAllSyncJobs() error {
-
 	runningJobs := s.scheduler.GetByStatus(StatusRunning)
 	var errors []error
 
 	for _, syncJob := range runningJobs {
 		if err := syncJob.Stop(); err != nil {
 			zap.S().Errorw("failed to stop sync job", "job_id", syncJob.GetId(), "error", err)
-			errors = append(errors, fmt.Errorf("failed to stop job %s: %w", syncJob.GetId(), err))
+			errors = append(errors, NewSyncJobError(context.Background(), "stop_job", syncJob.GetId().String(), err))
 		}
 	}
 
 	if len(errors) > 0 {
-		return fmt.Errorf("failed to stop some jobs: %v", errors)
+		return NewInternalError(context.Background(), "stop_all_sync_jobs", "multiple_job_failures", fmt.Errorf("failed to stop some jobs: %v", errors)).
+			WithContext("failed_count", len(errors)).
+			WithContext("total_count", len(runningJobs))
 	}
 
 	zap.S().Infow("all sync jobs stopped", "count", len(runningJobs))

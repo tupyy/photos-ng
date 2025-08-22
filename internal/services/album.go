@@ -2,7 +2,7 @@ package services
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"path"
 	"strings"
 
@@ -49,13 +49,20 @@ func (a *AlbumService) GetAlbums(ctx context.Context, opts *AlbumOptions) ([]ent
 
 // GetAlbum retrieves a specific album by its ID
 func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, error) {
+	if id == "" {
+		return nil, NewValidationError(ctx, "get_album", "invalid_input").
+			WithContext("validation_error", "empty_album_id")
+	}
+
 	album, err := a.dt.QueryAlbum(ctx, pg.FilterByAlbumId(id))
 	if err != nil {
-		return nil, err
+		return nil, NewDatabaseWriteError(ctx, "get_album", err).
+			WithAlbumID(id).
+			AtStep("query_album")
 	}
 
 	if album == nil {
-		return nil, NewErrAlbumNotFound(id)
+		return nil, NewAlbumNotFoundError(ctx, id)
 	}
 
 	return album, nil
@@ -65,18 +72,28 @@ func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, 
 func (a *AlbumService) CreateAlbum(ctx context.Context, album entity.Album) (*entity.Album, error) {
 	// Check if the album already exists
 	isAlbumExists := true
-	if _, err := a.GetAlbum(ctx, album.ID); err != nil && IsErrResourceNotFound(err) {
-		isAlbumExists = false
+	if _, err := a.GetAlbum(ctx, album.ID); err != nil {
+		var notFoundErr *NotFoundError
+		if errors.As(err, &notFoundErr) {
+			isAlbumExists = false
+		} else {
+			return nil, NewInternalError(ctx, "create_album", "check_album_exists", err).
+				WithAlbumID(album.ID)
+		}
+	} else {
+		return nil, NewAlbumExistsError(ctx, album.ID, album.Path)
 	}
 
 	// Get parent if parentID exists and recompute path and id of the new album.
 	if album.ParentId != nil {
 		parent, err := a.GetAlbum(ctx, *album.ParentId)
 		if err != nil {
-			if IsErrResourceNotFound(err) {
-				return nil, NewErrResourceNotFound(fmt.Errorf("album %s parent does not exists", album.ID))
+			var notFoundErr *NotFoundError
+			if errors.As(err, &notFoundErr) {
+				return nil, NewParentAlbumNotFoundError(ctx, *album.ParentId)
 			}
-			return nil, err
+			return nil, NewInternalError(ctx, "create_album", "validate_parent", err).
+				WithParentID(*album.ParentId)
 		}
 		// Only join paths if the album path doesn't already contain the parent path
 		// This maintains backward compatibility with UI calls (which need joining)
@@ -91,30 +108,35 @@ func (a *AlbumService) CreateAlbum(ctx context.Context, album entity.Album) (*en
 	err := a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
 		// Write the album to database
 		if err := writer.WriteAlbum(ctx, album); err != nil {
-			return err
+			return NewDatabaseWriteError(ctx, "create_album", err).
+				WithAlbumID(album.ID).
+				WithAlbumPath(album.Path)
 		}
 
 		// If it's a new album, create the folder on disk
 		if !isAlbumExists {
 			if err := a.fs.CreateFolder(ctx, album.Path); err != nil {
-				return err
+				return NewFilesystemError(ctx, "create_album", "filesystem_create", album.Path, err)
 			}
 		}
 
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, NewInternalError(ctx, "create_album", "transaction", err).
+			WithAlbumID(album.ID).
+			WithAlbumPath(album.Path)
 	}
 
 	return &album, nil
 }
 
-// CreateAlbum creates a new album using an entity.Album
+// UpdateAlbum updates an existing album
 func (a *AlbumService) UpdateAlbum(ctx context.Context, album entity.Album) (*entity.Album, error) {
 	existingAlbum, err := a.GetAlbum(ctx, album.ID)
 	if err != nil {
-		return nil, err
+		return nil, NewInternalError(ctx, "update_album", "validate_exists", err).
+			WithAlbumID(album.ID)
 	}
 
 	existingAlbum.Description = album.Description
@@ -123,11 +145,16 @@ func (a *AlbumService) UpdateAlbum(ctx context.Context, album entity.Album) (*en
 	if album.Thumbnail != nil {
 		media, err := a.dt.QueryMedia(ctx, pg.FilterByMediaId(*album.Thumbnail), pg.Limit(1))
 		if err != nil {
-			return nil, err
+			return nil, NewDatabaseWriteError(ctx, "update_album", err).
+				WithAlbumID(album.ID).
+				WithContext("thumbnail_id", *album.Thumbnail).
+				AtStep("validate_thumbnail")
 		}
 
 		if len(media) == 0 {
-			return nil, NewErrUpdateAlbum(fmt.Sprintf("thumbnail %s does not exists in the album", *album.Thumbnail))
+			return nil, NewValidationError(ctx, "update_album", "thumbnail_not_found").
+				WithAlbumID(album.ID).
+				WithContext("thumbnail_id", *album.Thumbnail)
 		}
 
 		existingAlbum.Thumbnail = album.Thumbnail
@@ -138,7 +165,8 @@ func (a *AlbumService) UpdateAlbum(ctx context.Context, album entity.Album) (*en
 		return writer.WriteAlbum(ctx, *existingAlbum)
 	})
 	if err != nil {
-		return nil, err
+		return nil, NewDatabaseWriteError(ctx, "update_album", err).
+			WithAlbumID(album.ID)
 	}
 
 	return existingAlbum, nil
@@ -149,22 +177,29 @@ func (a *AlbumService) DeleteAlbum(ctx context.Context, id string) error {
 	// Check if album exists
 	album, err := a.GetAlbum(ctx, id)
 	if err != nil {
-		return err
+		return NewInternalError(ctx, "delete_album", "validate_exists", err).
+			WithAlbumID(id)
 	}
 
 	// Delete the album from the datastore using a write transaction
 	err = a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
 		// Delete the album folder from the file system
 		if err := a.fs.DeleteFolder(ctx, album.Path); err != nil {
-			return err
+			return NewFilesystemError(ctx, "delete_album", "filesystem_delete", album.Path, err)
 		}
 
 		// Delete the album from the database
-		return writer.DeleteAlbum(ctx, id)
+		if err := writer.DeleteAlbum(ctx, id); err != nil {
+			return NewDatabaseWriteError(ctx, "delete_album", err).
+				WithAlbumID(id)
+		}
 
+		return nil
 	})
 	if err != nil {
-		return err
+		return NewInternalError(ctx, "delete_album", "transaction", err).
+			WithAlbumID(id).
+			WithAlbumPath(album.Path)
 	}
 
 	return nil

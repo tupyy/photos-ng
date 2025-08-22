@@ -62,8 +62,8 @@ func (s *Handler) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 	// Create media service and get media
 	mediaItems, err := s.mediaSrv.GetMedia(c.Request.Context(), opt)
 	if err != nil {
-		zap.S().Errorw("failed to get media", "error", err)
-		c.JSON(http.StatusInternalServerError, v1.Error{
+		logErrorWithContext("failed to get media", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
 			Message: err.Error(),
 		})
 		return
@@ -95,19 +95,11 @@ func (s *Handler) GetMedia(c *gin.Context, id string) {
 	// Create media service and get the media
 	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
 	if err != nil {
-		switch err.(type) {
-		case *services.ErrResourceNotFound:
-			c.JSON(http.StatusNotFound, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		default:
-			zap.S().Errorw("failed to get media", "error", err, "media_id", id)
-			c.JSON(http.StatusInternalServerError, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		}
+		logErrorWithContext("failed to get media", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
+		})
+		return
 	}
 
 	c.JSON(http.StatusOK, v1.NewMedia(*media))
@@ -128,19 +120,11 @@ func (s *Handler) UpdateMedia(c *gin.Context, id string) {
 	// Get the existing media and apply updates
 	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
 	if err != nil {
-		switch err.(type) {
-		case *services.ErrResourceNotFound:
-			c.JSON(http.StatusNotFound, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		default:
-			zap.S().Errorw("failed to get media for update", "error", err, "media_id", id)
-			c.JSON(http.StatusInternalServerError, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		}
+		logErrorWithContext("failed to get media for update", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
+		})
+		return
 	}
 
 	// Apply updates from request to entity
@@ -149,19 +133,11 @@ func (s *Handler) UpdateMedia(c *gin.Context, id string) {
 	// Update the media
 	updatedMedia, err := s.mediaSrv.UpdateMedia(c.Request.Context(), *media)
 	if err != nil {
-		switch err.(type) {
-		case *services.ErrResourceNotFound:
-			c.JSON(http.StatusNotFound, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		default:
-			zap.S().Errorw("failed to update media", "error", err, "media_id", id)
-			c.JSON(http.StatusInternalServerError, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		}
+		logErrorWithContext("failed to update media", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
+		})
+		return
 	}
 
 	zap.S().Infow("media updated", "media_id", id)
@@ -175,19 +151,11 @@ func (s *Handler) DeleteMedia(c *gin.Context, id string) {
 	// Create media service and delete the media
 	err := s.mediaSrv.DeleteMedia(c.Request.Context(), id)
 	if err != nil {
-		switch err.(type) {
-		case *services.ErrResourceNotFound:
-			c.JSON(http.StatusNotFound, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		default:
-			zap.S().Errorw("failed to delete media", "error", err, "media_id", id)
-			c.JSON(http.StatusInternalServerError, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		}
+		logErrorWithContext("failed to delete media", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
+		})
+		return
 	}
 
 	zap.S().Infow("media deleted", "media_id", id)
@@ -201,19 +169,11 @@ func (s *Handler) GetMediaContent(c *gin.Context, id string) {
 	// Get the media from service
 	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
 	if err != nil {
-		switch err.(type) {
-		case *services.ErrResourceNotFound:
-			c.JSON(http.StatusNotFound, v1.Error{
-				Message: "Media not found: " + id,
-			})
-			return
-		default:
-			zap.S().Errorw("failed to get media", "error", err, "media_id", id)
-			c.JSON(http.StatusInternalServerError, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		}
+		logErrorWithContext("failed to get media", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
+		})
+		return
 	}
 
 	// Check if content function is available
@@ -250,19 +210,11 @@ func (s *Handler) GetMediaThumbnail(c *gin.Context, id string) {
 	// Get the media from service
 	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
 	if err != nil {
-		switch err.(type) {
-		case *services.ErrResourceNotFound:
-			c.JSON(http.StatusNotFound, v1.Error{
-				Message: "Media not found: " + id,
-			})
-			return
-		default:
-			zap.S().Errorw("failed to get media", "error", err, "media_id", id)
-			c.JSON(http.StatusInternalServerError, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		}
+		logErrorWithContext("failed to get media", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
+		})
+		return
 	}
 
 	// Check if media has thumbnail
@@ -328,19 +280,11 @@ func (s *Handler) UploadMedia(c *gin.Context) {
 	// Get the album to ensure it exists
 	album, err := s.albumSrv.GetAlbum(c.Request.Context(), albumId)
 	if err != nil {
-		switch err.(type) {
-		case *services.ErrResourceNotFound:
-			c.JSON(http.StatusNotFound, v1.Error{
-				Message: "Album not found: " + albumId,
-			})
-			return
-		default:
-			zap.S().Errorw("failed to get album", "error", err, "album_id", albumId)
-			c.JSON(http.StatusInternalServerError, v1.Error{
-				Message: err.Error(),
-			})
-			return
-		}
+		logErrorWithContext("failed to get album", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
+		})
+		return
 	}
 
 	// Convert request data to entity using the mapping function
@@ -349,8 +293,8 @@ func (s *Handler) UploadMedia(c *gin.Context) {
 	// Write the media using the service
 	createdMedia, err := s.mediaSrv.WriteMedia(c.Request.Context(), media)
 	if err != nil {
-		zap.S().Errorw("failed to write media", "error", err, "filename", filename, "album_id", albumId)
-		c.JSON(http.StatusInternalServerError, v1.Error{
+		logErrorWithContext("failed to write media", err, zap.String("filename", filename), zap.String("album_id", albumId))
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
 			Message: err.Error(),
 		})
 		return

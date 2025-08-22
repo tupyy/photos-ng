@@ -14,9 +14,9 @@ func (s *Handler) GetStats(c *gin.Context) {
 	// Get stats from the service
 	stats, err := s.statsSrv.GetStats(c.Request.Context())
 	if err != nil {
-		zap.S().Errorw("failed to get stats", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+		logErrorWithContext("failed to get stats", err)
+		c.JSON(getHTTPStatusFromError(err), v1.Error{
+			Message: err.Error(),
 		})
 		return
 	}
