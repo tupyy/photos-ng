@@ -12,7 +12,7 @@ COPY ui/ ./
 RUN npm run build
 
 # Stage 2: Build Go backend
-FROM docker.io/golang:1.23.12 as backend-builder
+FROM docker.io/golang:1.24.6 as backend-builder
 
 ARG GIT_SHA
 
