@@ -38,6 +38,13 @@ func (s *Handler) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 		opt.Cursor = cursor
 	}
 
+	// Parse direction parameter (default to "forward")
+	if params.Direction != nil {
+		opt.Direction = string(*params.Direction)
+	} else {
+		opt.Direction = "forward"
+	}
+
 	// Add album filter
 	if params.AlbumId != nil {
 		opt.AlbumID = params.AlbumId

@@ -31,6 +31,12 @@ const (
 	Ok TaskResultResult0 = "ok"
 )
 
+// Defines values for ListMediaParamsDirection.
+const (
+	Backward ListMediaParamsDirection = "backward"
+	Forward  ListMediaParamsDirection = "forward"
+)
+
 // Defines values for ListMediaParamsType.
 const (
 	Photo ListMediaParamsType = "photo"
@@ -298,6 +304,9 @@ type ListMediaParams struct {
 	// Cursor Cursor for pagination (base64 encoded)
 	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
 
+	// Direction Pagination direction
+	Direction *ListMediaParamsDirection `form:"direction,omitempty" json:"direction,omitempty"`
+
 	// AlbumId Filter media by album ID
 	AlbumId *string `form:"album_id,omitempty" json:"album_id,omitempty"`
 
@@ -316,6 +325,9 @@ type ListMediaParams struct {
 	// SortOrder Sort order
 	SortOrder *ListMediaParamsSortOrder `form:"sortOrder,omitempty" json:"sortOrder,omitempty"`
 }
+
+// ListMediaParamsDirection defines parameters for ListMedia.
+type ListMediaParamsDirection string
 
 // ListMediaParamsType defines parameters for ListMedia.
 type ListMediaParamsType string

@@ -170,16 +170,30 @@ func FilterByMediaDate(start, end *time.Time) func(orig sq.SelectBuilder) sq.Sel
 }
 
 // FilterByCursor creates a filter for cursor-based pagination using captured_at and id.
-// This implements the WHERE condition: captured_at < cursor_time OR (captured_at = cursor_time AND id < cursor_id)
-// which allows for consistent pagination regardless of page depth.
+// For forward direction: captured_at < cursor_time OR (captured_at = cursor_time AND id < cursor_id)
+// For backward direction: captured_at > cursor_time OR (captured_at = cursor_time AND id > cursor_id)
 //
 // Parameters:
 //   - capturedAt: The captured_at timestamp from the cursor
 //   - id: The id from the cursor for tie-breaking when timestamps are equal
+//   - direction: "forward" for older photos, "backward" for newer photos
 //
 // Returns: A QueryOption function that can be applied to a SelectBuilder.
-func FilterByCursor(capturedAt time.Time, id string) QueryOption {
+func FilterByCursor(capturedAt time.Time, id string, direction string) QueryOption {
 	return func(orig sq.SelectBuilder) sq.SelectBuilder {
+		if direction == "backward" {
+			// Backward: get newer photos (captured_at > cursor)
+			return orig.Where(
+				sq.Or{
+					sq.Gt{"media.captured_at": capturedAt},
+					sq.And{
+						sq.Eq{"media.captured_at": capturedAt},
+						sq.Gt{"media.id": id},
+					},
+				},
+			)
+		}
+		// Forward: get older photos (captured_at < cursor) - default behavior
 		return orig.Where(
 			sq.Or{
 				sq.Lt{"media.captured_at": capturedAt},

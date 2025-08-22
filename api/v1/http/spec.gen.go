@@ -256,6 +256,14 @@ func (siw *ServerInterfaceWrapper) ListMedia(c *gin.Context) {
 		return
 	}
 
+	// ------------- Optional query parameter "direction" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "direction", c.Request.URL.Query(), &params.Direction)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter direction: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	// ------------- Optional query parameter "album_id" -------------
 
 	err = runtime.BindQueryParameter("form", true, false, "album_id", c.Request.URL.Query(), &params.AlbumId)

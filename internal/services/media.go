@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"slices"
 	"time"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
@@ -58,6 +59,21 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 		// Return ServiceError (handlers will log the error)
 		return nil, NewDatabaseWriteError(ctx, "get_media", err).
 			AtStep("query_media")
+	}
+
+	// Reverse results for backward direction to maintain DESC timeline order
+	if filter.Direction == "backward" {
+		tracer.Step("reverse_results").
+			WithInt("total_items", len(media)).
+			WithString("direction", "backward").
+			Log()
+		
+		// Reverse the slice to maintain chronological order (newest first)
+		slices.Reverse(media)
+		
+		debug.BusinessLogic("reversed results for backward navigation").
+			WithInt("total_items", len(media)).
+			Log()
 	}
 
 	// Apply date filtering in-memory for now

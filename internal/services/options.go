@@ -53,6 +53,7 @@ func DecodeCursor(encoded string) (*PaginationCursor, error) {
 type MediaOptions struct {
 	MediaLimit int               `debugmap:"visible"`
 	Cursor     *PaginationCursor `debugmap:"visible"`
+	Direction  string            `debugmap:"visible"`
 	SortBy     string            `debugmap:"visible"`
 	AlbumID    *string           `debugmap:"visible"`
 	MediaType  *string           `debugmap:"visible"`
@@ -80,12 +81,23 @@ func (mf *MediaOptions) QueriesFn() []pg.QueryOption {
 
 	// Add cursor-based filtering
 	if mf.Cursor != nil {
-		qf = append(qf, pg.FilterByCursor(mf.Cursor.CapturedAt, mf.Cursor.ID))
+		direction := mf.Direction
+		if direction == "" {
+			direction = "forward" // default direction
+		}
+		qf = append(qf, pg.FilterByCursor(mf.Cursor.CapturedAt, mf.Cursor.ID, direction))
 	}
 
-	// Always sort by captured_at DESC, id DESC for cursor pagination
-	qf = append(qf, pg.SortByColumn("captured_at", true))
-	qf = append(qf, pg.SortByColumn("id", true))
+	// Add direction-based sorting
+	if mf.Direction == "backward" {
+		// Backward: sort ASC to get newer photos, then reverse in service
+		qf = append(qf, pg.SortByColumn("captured_at", false)) // ASC
+		qf = append(qf, pg.SortByColumn("id", false))          // ASC
+	} else {
+		// Forward: sort DESC to get older photos (default behavior)
+		qf = append(qf, pg.SortByColumn("captured_at", true)) // DESC
+		qf = append(qf, pg.SortByColumn("id", true))          // DESC
+	}
 
 	// Add limit
 	if mf.MediaLimit > 0 {

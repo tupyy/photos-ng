@@ -36,6 +36,7 @@ func (m *MediaOptions) ToOption() MediaOptionsOption {
 	return func(to *MediaOptions) {
 		to.MediaLimit = m.MediaLimit
 		to.Cursor = m.Cursor
+		to.Direction = m.Direction
 		to.SortBy = m.SortBy
 		to.AlbumID = m.AlbumID
 		to.MediaType = m.MediaType
@@ -49,6 +50,7 @@ func (m *MediaOptions) DebugMap() map[string]any {
 	debugMap := map[string]any{}
 	debugMap["MediaLimit"] = helpers.DebugValue(m.MediaLimit, false)
 	debugMap["Cursor"] = helpers.DebugValue(m.Cursor, false)
+	debugMap["Direction"] = helpers.DebugValue(m.Direction, false)
 	debugMap["SortBy"] = helpers.DebugValue(m.SortBy, false)
 	debugMap["AlbumID"] = helpers.DebugValue(m.AlbumID, false)
 	debugMap["MediaType"] = helpers.DebugValue(m.MediaType, false)
@@ -84,6 +86,13 @@ func WithMediaLimit(mediaLimit int) MediaOptionsOption {
 func WithCursor(cursor *PaginationCursor) MediaOptionsOption {
 	return func(m *MediaOptions) {
 		m.Cursor = cursor
+	}
+}
+
+// WithDirection returns an option that can set Direction on a MediaOptions
+func WithDirection(direction string) MediaOptionsOption {
+	return func(m *MediaOptions) {
+		m.Direction = direction
 	}
 }
 
