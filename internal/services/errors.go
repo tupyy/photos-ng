@@ -53,10 +53,7 @@ func (e *ServiceError) buildMessage() []string {
 
 	// Add key context values to message
 	for key, value := range e.Context {
-		switch key {
-		case "album_id", "media_id", "filename", "album_path", "filepath", "parent_id", "job_id":
 			parts = append(parts, key, fmt.Sprintf("%v", value))
-		}
 	}
 
 	if e.RequestID != "" {
