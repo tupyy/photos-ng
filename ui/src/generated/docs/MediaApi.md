@@ -241,7 +241,7 @@ const configuration = new Configuration();
 const apiInstance = new MediaApi(configuration);
 
 let limit: number; //Maximum number of media items to return (optional) (default to 20)
-let offset: number; //Number of media items to skip (optional) (default to 0)
+let cursor: string; //Cursor for pagination (base64 encoded) (optional) (default to undefined)
 let albumId: string; //Filter media by album ID (optional) (default to undefined)
 let type: 'photo' | 'video'; //Filter media by type (optional) (default to undefined)
 let startDate: string; //Filter media captured on or after this date (optional) (default to undefined)
@@ -251,7 +251,7 @@ let sortOrder: 'asc' | 'desc'; //Sort order (optional) (default to 'desc')
 
 const { status, data } = await apiInstance.listMedia(
     limit,
-    offset,
+    cursor,
     albumId,
     type,
     startDate,
@@ -266,7 +266,7 @@ const { status, data } = await apiInstance.listMedia(
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
 | **limit** | [**number**] | Maximum number of media items to return | (optional) defaults to 20|
-| **offset** | [**number**] | Number of media items to skip | (optional) defaults to 0|
+| **cursor** | [**string**] | Cursor for pagination (base64 encoded) | (optional) defaults to undefined|
 | **albumId** | [**string**] | Filter media by album ID | (optional) defaults to undefined|
 | **type** | [**&#39;photo&#39; | &#39;video&#39;**]**Array<&#39;photo&#39; &#124; &#39;video&#39;>** | Filter media by type | (optional) defaults to undefined|
 | **startDate** | [**string**] | Filter media captured on or after this date | (optional) defaults to undefined|

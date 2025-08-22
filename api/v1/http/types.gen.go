@@ -139,11 +139,8 @@ type ListMediaResponse struct {
 	Limit int     `json:"limit"`
 	Media []Media `json:"media"`
 
-	// Offset Number of media items skipped
-	Offset int `json:"offset"`
-
-	// Total Total number of media items
-	Total int `json:"total"`
+	// NextCursor Cursor for next page (base64 encoded)
+	NextCursor *string `json:"nextCursor"`
 }
 
 // ListSyncJobsResponse defines model for ListSyncJobsResponse.
@@ -298,8 +295,8 @@ type ListMediaParams struct {
 	// Limit Maximum number of media items to return
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 
-	// Offset Number of media items to skip
-	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+	// Cursor Cursor for pagination (base64 encoded)
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
 
 	// AlbumId Filter media by album ID
 	AlbumId *string `form:"album_id,omitempty" json:"album_id,omitempty"`

@@ -9,7 +9,7 @@ export const fetchMedia = createAsyncThunk(
   'media/fetchMedia',
   async (params: {
     limit?: number;
-    offset?: number;
+    cursor?: string;
     albumId?: string;
     type?: ListMediaTypeEnum;
     startDate?: string;
@@ -45,7 +45,7 @@ export const fetchMedia = createAsyncThunk(
     
     const response = await mediaApi.listMedia(
       params.limit,
-      params.offset,
+      params.cursor,
       params.albumId,
       params.type,
       params.startDate,
@@ -125,6 +125,8 @@ export const deleteMedia = createAsyncThunk(
   }
 );
 
+// Remove the complex loadNextPage thunk, just update the timeline to use fetchMedia with cursor
+
 // Media filters interface
 export interface MediaFilters {
   albumId?: string;
@@ -134,14 +136,13 @@ export interface MediaFilters {
   sortBy?: ListMediaSortByEnum;
   sortOrder?: ListMediaSortOrderEnum;
   limit: number;
-  offset: number;
+  cursor?: string;
 }
 
 // State interface
 interface MediaState {
   media: Media[];
   currentMedia: Media | null;
-  total: number;
   filters: MediaFilters;
   loading: boolean;
   loadingMore: boolean; // For infinite scroll loading indicator
@@ -149,6 +150,7 @@ interface MediaState {
   selectedMediaIds: string[];
   viewMode: 'grid' | 'list';
   hasMore: boolean; // Track if there are more items to load
+  nextCursor?: string | null; // Cursor for next page
   // Cache metadata for the media list
   cache: CacheMetadata | null;
   // Cache metadata for the current media item
@@ -159,10 +161,8 @@ interface MediaState {
 const initialState: MediaState = {
   media: [],
   currentMedia: null,
-  total: 0,
   filters: {
     limit: 50,
-    offset: 0,
     sortBy: ListMediaSortByEnum.CapturedAt,
     sortOrder: ListMediaSortOrderEnum.Desc,
   },
@@ -172,6 +172,7 @@ const initialState: MediaState = {
   selectedMediaIds: [],
   viewMode: 'grid',
   hasMore: true,
+  nextCursor: null,
   cache: null,
   currentMediaCache: null,
 };
@@ -196,17 +197,18 @@ const mediaSlice = createSlice({
           action.payload.endDate !== undefined ||
           action.payload.sortBy !== undefined ||
           action.payload.sortOrder !== undefined) {
-        state.filters.offset = 0;
+        state.filters.cursor = undefined;
+        state.nextCursor = null;
         state.hasMore = true;
       }
     },
     clearFilters: (state) => {
       state.filters = {
         limit: 50,
-        offset: 0,
         sortBy: ListMediaSortByEnum.CapturedAt,
         sortOrder: ListMediaSortOrderEnum.Desc,
       };
+      state.nextCursor = null;
       state.hasMore = true;
     },
     toggleMediaSelection: (state, action: PayloadAction<string>) => {
@@ -231,18 +233,14 @@ const mediaSlice = createSlice({
       state.cache = null;
       state.currentMediaCache = null;
     },
-    loadNextPage: (state) => {
-      if (!state.loadingMore && state.hasMore) {
-        state.filters.offset = state.media.length;
-      }
-    },
+    // Remove loadNextPage reducer - not needed
   },
   extraReducers: (builder) => {
     // Fetch media
     builder
       .addCase(fetchMedia.pending, (state, action) => {
-        // For offset > 0, this is loading more data (infinite scroll)
-        const isLoadingMore = action.meta.arg?.offset && action.meta.arg.offset > 0;
+        // For cursor present, this is loading more data (infinite scroll)
+        const isLoadingMore = !!action.meta.arg?.cursor;
         if (isLoadingMore) {
           state.loadingMore = true;
         } else {
@@ -257,15 +255,13 @@ const mediaSlice = createSlice({
         // Update cache metadata
         state.cache = action.payload.cache;
         
-        // Update basic response data first
-        state.total = action.payload.data.total;
+        // Update basic response data
         state.filters.limit = action.payload.data.limit;
-        state.filters.offset = action.payload.data.offset;
         
-        // Determine if this is a fresh load or infinite scroll based on the request offset
-        const requestOffset = action.meta.arg?.offset || 0;
+        // Determine if this is a fresh load or infinite scroll based on the request cursor
+        const requestCursor = action.meta.arg?.cursor;
         
-        if (requestOffset === 0) {
+        if (!requestCursor) {
           // Fresh load - replace the media array
           state.media = action.payload.data.media;
         } else {
@@ -275,7 +271,24 @@ const mediaSlice = createSlice({
           state.media.push(...newMedia);
         }
         
-        // If we got no items, we've reached the end
+        // Compute cursor from last media item (if any)
+        if (state.media.length > 0) {
+          const lastMedia = state.media[state.media.length - 1];
+          // Ensure capturedAt is in full timestamp format
+          let capturedAt = lastMedia.capturedAt;
+          if (capturedAt && !capturedAt.includes('T')) {
+            // If it's just a date, add time portion
+            capturedAt = capturedAt + 'T00:00:00Z';
+          }
+          state.nextCursor = btoa(JSON.stringify({
+            captured_at: capturedAt,
+            id: lastMedia.id
+          }));
+        } else {
+          state.nextCursor = null;
+        }
+        
+        // If we got no new items, we've reached the end
         state.hasMore = action.payload.data.media.length > 0;
         
         // Debug logging (dev only)
@@ -283,9 +296,8 @@ const mediaSlice = createSlice({
           console.log('📥 API Response:', {
             requestParams: action.meta.arg,
             receivedItems: action.payload.data.media.length,
-            total: action.payload.data.total,
             limit: action.payload.data.limit,
-            offset: action.payload.data.offset,
+            nextCursor: state.nextCursor,
             hasMore: state.hasMore,
           });
         }
@@ -365,7 +377,6 @@ const mediaSlice = createSlice({
       .addCase(deleteMedia.fulfilled, (state, action: PayloadAction<string>) => {
         state.loading = false;
         state.media = state.media.filter(media => media.id !== action.payload);
-        state.total -= 1;
         state.selectedMediaIds = state.selectedMediaIds.filter(id => id !== action.payload);
         if (state.currentMedia && state.currentMedia.id === action.payload) {
           state.currentMedia = null;
@@ -391,7 +402,6 @@ export const {
   clearSelection,
   setViewMode,
   invalidateCache,
-  loadNextPage,
 } = mediaSlice.actions;
 
 export default mediaSlice.reducer;

@@ -145,10 +145,9 @@ var _ = Describe("MediaService", Ordered, func() {
 				media3.ID, now, now, testAlbum.ID, media3.Filename, []byte("thumb3"), exifJSON, string(entity.Video))
 			Expect(err).To(BeNil())
 
-			// Test limit and offset
+			// Test limit only (no cursor for first page)
 			options := &services.MediaOptions{
-				MediaLimit:  2,
-				MediaOffset: 1,
+				MediaLimit: 2,
 			}
 			media, err := mediaService.GetMedia(context.TODO(), options)
 

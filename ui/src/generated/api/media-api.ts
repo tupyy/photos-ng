@@ -173,7 +173,7 @@ export const MediaApiAxiosParamCreator = function (configuration?: Configuration
          * Retrieve a list of all media items
          * @summary List all media
          * @param {number} [limit] Maximum number of media items to return
-         * @param {number} [offset] Number of media items to skip
+         * @param {string} [cursor] Cursor for pagination (base64 encoded)
          * @param {string} [albumId] Filter media by album ID
          * @param {ListMediaTypeEnum} [type] Filter media by type
          * @param {string} [startDate] Filter media captured on or after this date
@@ -183,7 +183,7 @@ export const MediaApiAxiosParamCreator = function (configuration?: Configuration
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listMedia: async (limit?: number, offset?: number, albumId?: string, type?: ListMediaTypeEnum, startDate?: string, endDate?: string, sortBy?: ListMediaSortByEnum, sortOrder?: ListMediaSortOrderEnum, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        listMedia: async (limit?: number, cursor?: string, albumId?: string, type?: ListMediaTypeEnum, startDate?: string, endDate?: string, sortBy?: ListMediaSortByEnum, sortOrder?: ListMediaSortOrderEnum, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/media`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -200,8 +200,8 @@ export const MediaApiAxiosParamCreator = function (configuration?: Configuration
                 localVarQueryParameter['limit'] = limit;
             }
 
-            if (offset !== undefined) {
-                localVarQueryParameter['offset'] = offset;
+            if (cursor !== undefined) {
+                localVarQueryParameter['cursor'] = cursor;
             }
 
             if (albumId !== undefined) {
@@ -404,7 +404,7 @@ export const MediaApiFp = function(configuration?: Configuration) {
          * Retrieve a list of all media items
          * @summary List all media
          * @param {number} [limit] Maximum number of media items to return
-         * @param {number} [offset] Number of media items to skip
+         * @param {string} [cursor] Cursor for pagination (base64 encoded)
          * @param {string} [albumId] Filter media by album ID
          * @param {ListMediaTypeEnum} [type] Filter media by type
          * @param {string} [startDate] Filter media captured on or after this date
@@ -414,8 +414,8 @@ export const MediaApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async listMedia(limit?: number, offset?: number, albumId?: string, type?: ListMediaTypeEnum, startDate?: string, endDate?: string, sortBy?: ListMediaSortByEnum, sortOrder?: ListMediaSortOrderEnum, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListMediaResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.listMedia(limit, offset, albumId, type, startDate, endDate, sortBy, sortOrder, options);
+        async listMedia(limit?: number, cursor?: string, albumId?: string, type?: ListMediaTypeEnum, startDate?: string, endDate?: string, sortBy?: ListMediaSortByEnum, sortOrder?: ListMediaSortOrderEnum, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListMediaResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listMedia(limit, cursor, albumId, type, startDate, endDate, sortBy, sortOrder, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['MediaApi.listMedia']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -503,7 +503,7 @@ export const MediaApiFactory = function (configuration?: Configuration, basePath
          * Retrieve a list of all media items
          * @summary List all media
          * @param {number} [limit] Maximum number of media items to return
-         * @param {number} [offset] Number of media items to skip
+         * @param {string} [cursor] Cursor for pagination (base64 encoded)
          * @param {string} [albumId] Filter media by album ID
          * @param {ListMediaTypeEnum} [type] Filter media by type
          * @param {string} [startDate] Filter media captured on or after this date
@@ -513,8 +513,8 @@ export const MediaApiFactory = function (configuration?: Configuration, basePath
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listMedia(limit?: number, offset?: number, albumId?: string, type?: ListMediaTypeEnum, startDate?: string, endDate?: string, sortBy?: ListMediaSortByEnum, sortOrder?: ListMediaSortOrderEnum, options?: RawAxiosRequestConfig): AxiosPromise<ListMediaResponse> {
-            return localVarFp.listMedia(limit, offset, albumId, type, startDate, endDate, sortBy, sortOrder, options).then((request) => request(axios, basePath));
+        listMedia(limit?: number, cursor?: string, albumId?: string, type?: ListMediaTypeEnum, startDate?: string, endDate?: string, sortBy?: ListMediaSortByEnum, sortOrder?: ListMediaSortOrderEnum, options?: RawAxiosRequestConfig): AxiosPromise<ListMediaResponse> {
+            return localVarFp.listMedia(limit, cursor, albumId, type, startDate, endDate, sortBy, sortOrder, options).then((request) => request(axios, basePath));
         },
         /**
          * Update a specific media item by its ID
@@ -592,7 +592,7 @@ export interface MediaApiInterface {
      * Retrieve a list of all media items
      * @summary List all media
      * @param {number} [limit] Maximum number of media items to return
-     * @param {number} [offset] Number of media items to skip
+     * @param {string} [cursor] Cursor for pagination (base64 encoded)
      * @param {string} [albumId] Filter media by album ID
      * @param {ListMediaTypeEnum} [type] Filter media by type
      * @param {string} [startDate] Filter media captured on or after this date
@@ -603,7 +603,7 @@ export interface MediaApiInterface {
      * @throws {RequiredError}
      * @memberof MediaApiInterface
      */
-    listMedia(limit?: number, offset?: number, albumId?: string, type?: ListMediaTypeEnum, startDate?: string, endDate?: string, sortBy?: ListMediaSortByEnum, sortOrder?: ListMediaSortOrderEnum, options?: RawAxiosRequestConfig): AxiosPromise<ListMediaResponse>;
+    listMedia(limit?: number, cursor?: string, albumId?: string, type?: ListMediaTypeEnum, startDate?: string, endDate?: string, sortBy?: ListMediaSortByEnum, sortOrder?: ListMediaSortOrderEnum, options?: RawAxiosRequestConfig): AxiosPromise<ListMediaResponse>;
 
     /**
      * Update a specific media item by its ID
@@ -689,7 +689,7 @@ export class MediaApi extends BaseAPI implements MediaApiInterface {
      * Retrieve a list of all media items
      * @summary List all media
      * @param {number} [limit] Maximum number of media items to return
-     * @param {number} [offset] Number of media items to skip
+     * @param {string} [cursor] Cursor for pagination (base64 encoded)
      * @param {string} [albumId] Filter media by album ID
      * @param {ListMediaTypeEnum} [type] Filter media by type
      * @param {string} [startDate] Filter media captured on or after this date
@@ -700,8 +700,8 @@ export class MediaApi extends BaseAPI implements MediaApiInterface {
      * @throws {RequiredError}
      * @memberof MediaApi
      */
-    public listMedia(limit?: number, offset?: number, albumId?: string, type?: ListMediaTypeEnum, startDate?: string, endDate?: string, sortBy?: ListMediaSortByEnum, sortOrder?: ListMediaSortOrderEnum, options?: RawAxiosRequestConfig) {
-        return MediaApiFp(this.configuration).listMedia(limit, offset, albumId, type, startDate, endDate, sortBy, sortOrder, options).then((request) => request(this.axios, this.basePath));
+    public listMedia(limit?: number, cursor?: string, albumId?: string, type?: ListMediaTypeEnum, startDate?: string, endDate?: string, sortBy?: ListMediaSortByEnum, sortOrder?: ListMediaSortOrderEnum, options?: RawAxiosRequestConfig) {
+        return MediaApiFp(this.configuration).listMedia(limit, cursor, albumId, type, startDate, endDate, sortBy, sortOrder, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

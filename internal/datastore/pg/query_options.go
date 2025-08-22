@@ -168,3 +168,26 @@ func FilterByMediaDate(start, end *time.Time) func(orig sq.SelectBuilder) sq.Sel
 		return orig
 	}
 }
+
+// FilterByCursor creates a filter for cursor-based pagination using captured_at and id.
+// This implements the WHERE condition: captured_at < cursor_time OR (captured_at = cursor_time AND id < cursor_id)
+// which allows for consistent pagination regardless of page depth.
+//
+// Parameters:
+//   - capturedAt: The captured_at timestamp from the cursor
+//   - id: The id from the cursor for tie-breaking when timestamps are equal
+//
+// Returns: A QueryOption function that can be applied to a SelectBuilder.
+func FilterByCursor(capturedAt time.Time, id string) QueryOption {
+	return func(orig sq.SelectBuilder) sq.SelectBuilder {
+		return orig.Where(
+			sq.Or{
+				sq.Lt{"media.captured_at": capturedAt},
+				sq.And{
+					sq.Eq{"media.captured_at": capturedAt},
+					sq.Lt{"media.id": id},
+				},
+			},
+		)
+	}
+}

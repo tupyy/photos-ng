@@ -1,6 +1,8 @@
 package services
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"time"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
@@ -10,16 +12,52 @@ const (
 	SortByCapturedAt string = "captured_at"
 )
 
+// PaginationCursor represents a cursor for pagination based on captured_at and id
+type PaginationCursor struct {
+	CapturedAt time.Time `json:"captured_at"`
+	ID         string    `json:"id"`
+}
+
+// Encode converts the cursor to a base64 encoded string for URL usage
+func (c *PaginationCursor) Encode() (string, error) {
+	if c == nil {
+		return "", nil
+	}
+	data, err := json.Marshal(c)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(data), nil
+}
+
+// DecodeCursor parses a base64 encoded cursor string
+func DecodeCursor(encoded string) (*PaginationCursor, error) {
+	if encoded == "" {
+		return nil, nil
+	}
+	
+	data, err := base64.URLEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, err
+	}
+	
+	var cursor PaginationCursor
+	if err := json.Unmarshal(data, &cursor); err != nil {
+		return nil, err
+	}
+	
+	return &cursor, nil
+}
+
 //go:generate go run github.com/ecordell/optgen -output zz_generated.media_options.go . MediaOptions
 type MediaOptions struct {
-	MediaLimit  int        `debugmap:"visible"`
-	MediaOffset int        `debugmap:"visible"`
-	SortBy      string     `debugmap:"visible"`
-	Descending  bool       `debugmap:"visible"`
-	AlbumID     *string    `debugmap:"visible"`
-	MediaType   *string    `debugmap:"visible"`
-	StartDate   *time.Time `debugmap:"visible"`
-	EndDate     *time.Time `debugmap:"visible"`
+	MediaLimit int               `debugmap:"visible"`
+	Cursor     *PaginationCursor `debugmap:"visible"`
+	SortBy     string            `debugmap:"visible"`
+	AlbumID    *string           `debugmap:"visible"`
+	MediaType  *string           `debugmap:"visible"`
+	StartDate  *time.Time        `debugmap:"visible"`
+	EndDate    *time.Time        `debugmap:"visible"`
 }
 
 // QueriesFn returns a slice of query options based on the media filter criteria
@@ -40,20 +78,18 @@ func (mf *MediaOptions) QueriesFn() []pg.QueryOption {
 	// TODO: Implement date range filtering in query options
 	// For now, we'll filter in the service layer after querying
 
-	// Add sorting
-	if mf.SortBy != "" {
-		qf = append(qf, pg.SortByColumn(mf.SortBy, mf.Descending))
-	} else {
-		// Default sort by captured_at descending
-		qf = append(qf, pg.SortByColumn("captured_at", true))
+	// Add cursor-based filtering
+	if mf.Cursor != nil {
+		qf = append(qf, pg.FilterByCursor(mf.Cursor.CapturedAt, mf.Cursor.ID))
 	}
 
-	// Add pagination
+	// Always sort by captured_at DESC, id DESC for cursor pagination
+	qf = append(qf, pg.SortByColumn("captured_at", true))
+	qf = append(qf, pg.SortByColumn("id", true))
+
+	// Add limit
 	if mf.MediaLimit > 0 {
 		qf = append(qf, pg.Limit(mf.MediaLimit))
-	}
-	if mf.MediaOffset > 0 {
-		qf = append(qf, pg.Offset(mf.MediaOffset))
 	}
 
 	return qf

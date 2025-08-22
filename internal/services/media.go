@@ -491,3 +491,16 @@ func (m *MediaService) GetContentFn(ctx context.Context, media entity.Media) ent
 	filepath := path.Join(media.Album.Path, media.Filename)
 	return m.fs.Read(ctx, filepath)
 }
+
+// GetNextCursor creates a cursor from the last media item for pagination
+func (m *MediaService) GetNextCursor(media []entity.Media) *PaginationCursor {
+	if len(media) == 0 {
+		return nil
+	}
+	
+	lastItem := media[len(media)-1]
+	return &PaginationCursor{
+		CapturedAt: lastItem.CapturedAt,
+		ID:         lastItem.ID,
+	}
+}

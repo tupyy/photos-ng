@@ -30,22 +30,16 @@ export interface ListMediaResponse {
      */
     'media': Array<Media>;
     /**
-     * Total number of media items
-     * @type {number}
-     * @memberof ListMediaResponse
-     */
-    'total': number;
-    /**
      * Number of media items returned
      * @type {number}
      * @memberof ListMediaResponse
      */
     'limit': number;
     /**
-     * Number of media items skipped
-     * @type {number}
+     * Cursor for next page (base64 encoded)
+     * @type {string}
      * @memberof ListMediaResponse
      */
-    'offset': number;
+    'nextCursor'?: string | null;
 }
 

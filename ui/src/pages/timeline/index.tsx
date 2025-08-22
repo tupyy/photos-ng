@@ -23,14 +23,13 @@ import { TIMELINE_PAGE_SIZE } from '@app/shared/config';
 
 const TimelinePage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { media, loading, loadingMore, error, total, hasMore, fetchMedia, loadNextPage } = useMediaApi();
+  const { media, loading, loadingMore, error, hasMore, nextCursor, fetchMedia } = useMediaApi();
   const { data: statsData, loading: statsLoading, fetchStats } = useStatsApi();
 
   // Debug logging (dev only)
   if (process.env.NODE_ENV === 'development') {
     console.log('📊 Timeline state:', {
       mediaCount: media?.length || 0,
-      total,
       hasMore,
       loading,
       loadingMore,
@@ -56,7 +55,6 @@ const TimelinePage: React.FC = () => {
     // Fetch initial media sorted by capture date descending
     fetchMedia({
       limit: pageSize,
-      offset: 0,
       sortBy: ListMediaSortByEnum.CapturedAt,
       sortOrder: ListMediaSortOrderEnum.Desc,
     });
@@ -74,19 +72,19 @@ const TimelinePage: React.FC = () => {
    * Handles loading more media for infinite scroll
    */
   const handleLoadMore = useCallback(() => {
-    if (!loadingMore && media) {
+    if (!loadingMore && hasMore) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Loading more - offset:', media.length);
+        console.log('🔄 Loading more with cursor:', nextCursor);
       }
       
       fetchMedia({
         limit: pageSize,
-        offset: media.length,
+        cursor: nextCursor,
         sortBy: ListMediaSortByEnum.CapturedAt,
         sortOrder: ListMediaSortOrderEnum.Desc,
       });
     }
-  }, [loadingMore, media, pageSize, fetchMedia]);
+  }, [loadingMore, hasMore, nextCursor, fetchMedia, pageSize]);
 
   /**
    * Handles year selection from navigation
@@ -99,7 +97,6 @@ const TimelinePage: React.FC = () => {
       // "All Years" selected - reload from the beginning
       fetchMedia({
         limit: pageSize,
-        offset: 0,
         sortBy: ListMediaSortByEnum.CapturedAt,
         sortOrder: ListMediaSortOrderEnum.Desc,
       });
@@ -132,7 +129,6 @@ const TimelinePage: React.FC = () => {
       // Test: Try fetching without date filters first to see if the issue is with date filtering
       const queryParams = {
         limit: pageSize,
-        offset: 0,
         // startDate,  // Temporarily disabled
         // endDate,    // Temporarily disabled
         sortBy: ListMediaSortByEnum.CapturedAt,
@@ -166,7 +162,6 @@ const TimelinePage: React.FC = () => {
     // Refresh media from the beginning
     fetchMedia({
       limit: pageSize,
-      offset: 0,
       sortBy: ListMediaSortByEnum.CapturedAt,
       sortOrder: ListMediaSortOrderEnum.Desc,
     });
@@ -192,7 +187,7 @@ const TimelinePage: React.FC = () => {
               loading={loading || statsLoading}
               loadingMore={loadingMore}
               error={error}
-              total={statsData?.countMedia || total}
+              total={statsData?.countMedia || 0}
               hasMore={hasMore}
               onLoadMore={handleLoadMore}
               onMediaRefresh={handleMediaRefresh}

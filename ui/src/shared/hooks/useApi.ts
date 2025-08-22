@@ -28,7 +28,6 @@ import {
   clearSelection,
   setViewMode,
   invalidateCache,
-  loadNextPage,
   MediaFilters,
 } from '@reducers/mediaSlice';
 import {
@@ -131,7 +130,7 @@ export const useMediaApi = () => {
       [dispatch]
     ),
     invalidateCache: useCallback(() => dispatch(invalidateCache()), [dispatch]),
-    loadNextPage: useCallback(() => dispatch(loadNextPage()), [dispatch]),
+    // loadNextPage removed - now handled directly in components
   };
 };
 

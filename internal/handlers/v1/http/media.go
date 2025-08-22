@@ -21,10 +21,21 @@ func (s *Handler) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 	limit := 20
 	if params.Limit != nil {
 		opt.MediaLimit = *params.Limit
+		limit = *params.Limit
+	} else {
+		opt.MediaLimit = limit
 	}
-	offset := 0
-	if params.Offset != nil {
-		opt.MediaOffset = *params.Offset
+
+	// Parse cursor if provided
+	if params.Cursor != nil {
+		cursor, err := services.DecodeCursor(*params.Cursor)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, v1.Error{
+				Message: "Invalid cursor format: " + err.Error(),
+			})
+			return
+		}
+		opt.Cursor = cursor
 	}
 
 	// Add album filter
@@ -46,18 +57,7 @@ func (s *Handler) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 		opt.EndDate = &params.EndDate.Time
 	}
 
-	// Add sorting
-	if params.SortBy != nil {
-		switch string(*params.SortBy) {
-		case "capturedAt":
-			opt.SortBy = services.SortByCapturedAt
-		default:
-			opt.SortBy = string(*params.SortBy)
-		}
-		if params.SortOrder != nil {
-			opt.Descending = *params.SortOrder == v1.Desc
-		}
-	}
+	// Note: Sorting is fixed to captured_at DESC, id DESC for cursor pagination
 
 	// Create media service and get media
 	mediaItems, err := s.mediaSrv.GetMedia(c.Request.Context(), opt)
@@ -75,14 +75,19 @@ func (s *Handler) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 		apiMedia = append(apiMedia, v1.NewMedia(media))
 	}
 
-	// TODO: Get total count from service for proper pagination
-	total := len(apiMedia)
+	// Generate next cursor from results
+	var nextCursorStr *string
+	if len(mediaItems) > 0 {
+		nextCursor := s.mediaSrv.GetNextCursor(mediaItems)
+		if encoded, err := nextCursor.Encode(); err == nil && encoded != "" {
+			nextCursorStr = &encoded
+		}
+	}
 
 	response := v1.ListMediaResponse{
-		Media:  apiMedia,
-		Total:  total,
-		Limit:  limit,
-		Offset: offset,
+		Media:      apiMedia,
+		Limit:      limit,
+		NextCursor: nextCursorStr,
 	}
 
 	c.JSON(http.StatusOK, response)

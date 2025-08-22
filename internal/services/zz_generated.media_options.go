@@ -35,9 +35,8 @@ func NewMediaOptionsWithOptionsAndDefaults(opts ...MediaOptionsOption) *MediaOpt
 func (m *MediaOptions) ToOption() MediaOptionsOption {
 	return func(to *MediaOptions) {
 		to.MediaLimit = m.MediaLimit
-		to.MediaOffset = m.MediaOffset
+		to.Cursor = m.Cursor
 		to.SortBy = m.SortBy
-		to.Descending = m.Descending
 		to.AlbumID = m.AlbumID
 		to.MediaType = m.MediaType
 		to.StartDate = m.StartDate
@@ -49,9 +48,8 @@ func (m *MediaOptions) ToOption() MediaOptionsOption {
 func (m *MediaOptions) DebugMap() map[string]any {
 	debugMap := map[string]any{}
 	debugMap["MediaLimit"] = helpers.DebugValue(m.MediaLimit, false)
-	debugMap["MediaOffset"] = helpers.DebugValue(m.MediaOffset, false)
+	debugMap["Cursor"] = helpers.DebugValue(m.Cursor, false)
 	debugMap["SortBy"] = helpers.DebugValue(m.SortBy, false)
-	debugMap["Descending"] = helpers.DebugValue(m.Descending, false)
 	debugMap["AlbumID"] = helpers.DebugValue(m.AlbumID, false)
 	debugMap["MediaType"] = helpers.DebugValue(m.MediaType, false)
 	debugMap["StartDate"] = helpers.DebugValue(m.StartDate, false)
@@ -82,10 +80,10 @@ func WithMediaLimit(mediaLimit int) MediaOptionsOption {
 	}
 }
 
-// WithMediaOffset returns an option that can set MediaOffset on a MediaOptions
-func WithMediaOffset(mediaOffset int) MediaOptionsOption {
+// WithCursor returns an option that can set Cursor on a MediaOptions
+func WithCursor(cursor *PaginationCursor) MediaOptionsOption {
 	return func(m *MediaOptions) {
-		m.MediaOffset = mediaOffset
+		m.Cursor = cursor
 	}
 }
 
@@ -93,13 +91,6 @@ func WithMediaOffset(mediaOffset int) MediaOptionsOption {
 func WithSortBy(sortBy string) MediaOptionsOption {
 	return func(m *MediaOptions) {
 		m.SortBy = sortBy
-	}
-}
-
-// WithDescending returns an option that can set Descending on a MediaOptions
-func WithDescending(descending bool) MediaOptionsOption {
-	return func(m *MediaOptions) {
-		m.Descending = descending
 	}
 }
 

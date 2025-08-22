@@ -164,15 +164,10 @@ func (s *Handler) ListMedia(req *v1grpc.ListMediaRequest, stream v1grpc.PhotosNG
 	if req.Pagination != nil && req.Pagination.Limit > 0 {
 		limit = int(req.Pagination.Limit)
 	}
-	offset := 0
-	if req.Pagination != nil && req.Pagination.Offset >= 0 {
-		offset = int(req.Pagination.Offset)
-	}
 
 	// Build service options with client-specified pagination
 	opts := services.NewMediaOptionsWithOptions(
 		services.WithMediaLimit(limit),
-		services.WithMediaOffset(offset),
 	)
 
 	// Add optional filters
@@ -191,38 +186,7 @@ func (s *Handler) ListMedia(req *v1grpc.ListMediaRequest, stream v1grpc.PhotosNG
 		opts = services.MediaOptionsWithOptions(opts, services.WithMediaType(&mediaType))
 	}
 
-	// Add sorting options
-	if req.SortBy != nil {
-		var sortBy string
-		switch *req.SortBy {
-		case v1grpc.MediaSortBy_MEDIA_SORT_BY_CAPTURED_AT:
-			sortBy = "captured_at"
-		case v1grpc.MediaSortBy_MEDIA_SORT_BY_FILENAME:
-			sortBy = "filename"
-		case v1grpc.MediaSortBy_MEDIA_SORT_BY_TYPE:
-			sortBy = "type"
-		default:
-			sortBy = "captured_at" // Default to captured_at
-		}
-		opts = services.MediaOptionsWithOptions(opts, services.WithSortBy(sortBy))
-	} else {
-		// Default sorting: captured_at DESC (newest first)
-		opts = services.MediaOptionsWithOptions(opts, services.WithSortBy("captured_at"))
-	}
-
-	if req.SortOrder != nil {
-		switch *req.SortOrder {
-		case v1grpc.SortOrder_SORT_ORDER_ASC:
-			opts = services.MediaOptionsWithOptions(opts, services.WithDescending(false))
-		case v1grpc.SortOrder_SORT_ORDER_DESC:
-			opts = services.MediaOptionsWithOptions(opts, services.WithDescending(true))
-		default:
-			opts = services.MediaOptionsWithOptions(opts, services.WithDescending(true)) // Default to DESC (newest first)
-		}
-	} else {
-		// Default sort order: DESC (newest first)
-		opts = services.MediaOptionsWithOptions(opts, services.WithDescending(true))
-	}
+	// Note: Sorting is fixed to captured_at DESC, id DESC for cursor pagination
 
 	// Fetch ONLY the requested batch from database
 	media, err := s.mediaSrv.GetMedia(stream.Context(), opts)

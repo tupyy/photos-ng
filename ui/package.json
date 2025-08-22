@@ -37,9 +37,9 @@
     "eject": "react-scripts eject",
     "serve": "serve -s dist -p 3001",
     "serve:dev": "serve -s dist -p 3002",
-    "generate:api": "openapi-generator-cli generate -i ../api/v1/openapi.yaml -g typescript-axios -o src/generated -c openapi-generator-config.json",
+    "generate:api": "openapi-generator-cli generate -i ../api/v1/http/openapi.yaml -g typescript-axios -o src/generated -c openapi-generator-config.json",
     "generate:api:clean": "rimraf src/generated && npm run generate:api",
-    "generate:api:watch": "nodemon --watch ../api/v1/openapi.yaml --exec \"npm run generate:api\"",
+    "generate:api:watch": "nodemon --watch ../api/v1/http/openapi.yaml --exec \"npm run generate:api\"",
     "postinstall": "npm run generate:api",
     "clean": "rimraf dist"
   },

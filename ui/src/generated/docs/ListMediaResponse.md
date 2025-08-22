@@ -6,9 +6,8 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **media** | [**Array&lt;Media&gt;**](Media.md) |  | [default to undefined]
-**total** | **number** | Total number of media items | [default to undefined]
 **limit** | **number** | Number of media items returned | [default to undefined]
-**offset** | **number** | Number of media items skipped | [default to undefined]
+**nextCursor** | **string** | Cursor for next page (base64 encoded) | [optional] [default to undefined]
 
 ## Example
 
@@ -17,9 +16,8 @@ import { ListMediaResponse } from 'photos-ng-api-client';
 
 const instance: ListMediaResponse = {
     media,
-    total,
     limit,
-    offset,
+    nextCursor,
 };
 ```
 
