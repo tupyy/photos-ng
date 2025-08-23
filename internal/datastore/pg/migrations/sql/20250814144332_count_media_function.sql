@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE IF NOT EXISTS FUNCTION count_media_in_album_with_children(album_id_param VARCHAR(255))
+CREATE OR REPLACE FUNCTION count_media_in_album_with_children(album_id_param VARCHAR(255))
 RETURNS INTEGER AS $$
 DECLARE
     total_count INTEGER := 0;
