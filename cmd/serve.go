@@ -64,7 +64,7 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 			defer dt.Close()
 
 			// Create v1 handlers for http and grpc
-			httpHandler := v1http.NewHandler(dt, config.DataRootFolder)
+			httpHandler := v1http.NewHandler(dt, fs.NewFsDatastore(config.DataRootFolder))
 			grpcHandler := v1grpc.NewHandler(dt, fs.NewFsDatastore(config.DataRootFolder))
 
 			var wg sync.WaitGroup

@@ -10,24 +10,22 @@ import (
 // It contains the business logic for handling HTTP requests and responses
 // for all V1 endpoints including albums and media.
 type Handler struct {
-	albumSrv   *services.AlbumService
-	mediaSrv   *services.MediaService
-	statsSrv   *services.StatsService
-	syncSrv    *services.SyncService
-	rootFolder string
+	albumSrv *services.AlbumService
+	mediaSrv *services.MediaService
+	statsSrv *services.StatsService
+	syncSrv  *services.SyncService
 }
 
-func NewHandler(dt *pg.Datastore, rootFolder string) *Handler {
-	fsDatastore := fs.NewFsDatastore(rootFolder)
-	albumSrv := services.NewAlbumService(dt, fsDatastore)
-	mediaSrv := services.NewMediaService(dt, fsDatastore)
-	syncSrv := services.NewSyncService(albumSrv, mediaSrv, fsDatastore)
+func NewHandler(dt *pg.Datastore, fs *fs.Datastore) *Handler {
+	albumSrv := services.NewAlbumService(dt, fs)
+	mediaSrv := services.NewMediaService(dt, fs)
+	syncSrv := services.NewSyncService(albumSrv, mediaSrv, fs)
+	statsSrv := services.NewStatsService(dt)
 
 	return &Handler{
-		albumSrv:   albumSrv,
-		mediaSrv:   mediaSrv,
-		statsSrv:   services.NewStatsService(dt),
-		syncSrv:    syncSrv,
-		rootFolder: rootFolder,
+		albumSrv: albumSrv,
+		mediaSrv: mediaSrv,
+		statsSrv: statsSrv,
+		syncSrv:  syncSrv,
 	}
 }

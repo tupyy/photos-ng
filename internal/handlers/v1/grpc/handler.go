@@ -17,11 +17,10 @@ import (
 // Handler implements the gRPC PhotosNGService
 type Handler struct {
 	v1grpc.UnimplementedPhotosNGServiceServer
-	albumSrv  *services.AlbumService
-	mediaSrv  *services.MediaService
-	statsSrv  *services.StatsService
-	syncSrv   *services.SyncService
-	datastore *pg.Datastore
+	albumSrv *services.AlbumService
+	mediaSrv *services.MediaService
+	statsSrv *services.StatsService
+	syncSrv  *services.SyncService
 }
 
 // NewHandler creates a new gRPC server implementation
@@ -31,11 +30,10 @@ func NewHandler(dt *pg.Datastore, fsDatastore *fs.Datastore) *Handler {
 	syncSrv := services.NewSyncService(albumSrv, mediaSrv, fsDatastore)
 
 	return &Handler{
-		albumSrv:  albumSrv,
-		mediaSrv:  mediaSrv,
-		statsSrv:  services.NewStatsService(dt),
-		syncSrv:   syncSrv,
-		datastore: dt,
+		albumSrv: albumSrv,
+		mediaSrv: mediaSrv,
+		statsSrv: services.NewStatsService(dt),
+		syncSrv:  syncSrv,
 	}
 }
 

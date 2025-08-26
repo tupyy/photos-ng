@@ -134,7 +134,7 @@ func (s *Handler) StopSyncJob(c *gin.Context, id string) {
 		return
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"message": "Sync job stopped successfully",
 		"jobId":   id,
 	}
@@ -155,7 +155,7 @@ func (s *Handler) StopAllSyncJobs(c *gin.Context) {
 		return
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"message":      "All sync jobs stopped",
 		"stoppedCount": stoppedCount,
 	}
