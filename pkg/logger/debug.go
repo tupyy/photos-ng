@@ -4,8 +4,10 @@ import (
 	"context"
 	"time"
 
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
 	"go.uber.org/zap"
 )
+
 
 // DebugLogger provides debug-only logging for business services
 // IMPORTANT: Never logs errors (that's handled by handlers)
@@ -25,7 +27,7 @@ func NewDebugLogger(service string) *DebugLogger {
 // WithContext returns a new DebugLogger with request context
 func (l *DebugLogger) WithContext(ctx context.Context) *DebugLogger {
 	// Extract request ID if available
-	if requestID, ok := ctx.Value("request_id").(string); ok {
+	if requestID := requestid.FromContext(ctx); requestID != "" {
 		return &DebugLogger{
 			logger:  l.logger.With(zap.String("request_id", requestID)),
 			service: l.service,

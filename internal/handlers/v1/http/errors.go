@@ -3,7 +3,10 @@ package v1
 import (
 	"net/http"
 
+	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
@@ -23,9 +26,29 @@ func getHTTPStatusFromError(err error) int {
 	}
 }
 
-// logErrorWithContext logs the error with structured context from ServiceError
-func logErrorWithContext(message string, err error, additionalFields ...any) {
+
+// errorResponse creates a standardized error response with requestId included in details
+func errorResponse(c *gin.Context, message string) v1.Error {
+	requestID := requestid.FromGin(c)
+
+	details := map[string]any{
+		"request_id": requestID,
+	}
+
+	return v1.Error{
+		Message: message,
+		Details: &details,
+	}
+}
+
+// logError logs the error with structured context from ServiceError and requestId
+func logError(requestID, message string, err error, additionalFields ...any) {
 	fields := []any{}
+
+	// Always add requestId
+	if requestID != "" {
+		fields = append(fields, "request_id", requestID)
+	}
 
 	// Extract structured context from ServiceError
 	if serviceErr, ok := err.(*services.ServiceError); ok {
@@ -37,9 +60,6 @@ func logErrorWithContext(message string, err error, additionalFields ...any) {
 		}
 		if serviceErr.Condition != "" {
 			fields = append(fields, "condition", serviceErr.Condition)
-		}
-		if serviceErr.RequestID != "" {
-			fields = append(fields, "request_id", serviceErr.RequestID)
 		}
 
 		// Add context fields
@@ -56,3 +76,5 @@ func logErrorWithContext(message string, err error, additionalFields ...any) {
 
 	zap.S().Errorw(message, fields...)
 }
+
+

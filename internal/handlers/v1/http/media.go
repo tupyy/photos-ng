@@ -6,6 +6,7 @@ import (
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -30,9 +31,7 @@ func (s *Handler) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 	if params.Cursor != nil {
 		cursor, err := services.DecodeCursor(*params.Cursor)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, v1.Error{
-				Message: "Invalid cursor format: " + err.Error(),
-			})
+			c.JSON(http.StatusBadRequest, errorResponse(c, "Invalid cursor format: "+err.Error()))
 			return
 		}
 		opt.Cursor = cursor
@@ -69,10 +68,8 @@ func (s *Handler) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 	// Create media service and get media
 	mediaItems, err := s.mediaSrv.GetMedia(c.Request.Context(), opt)
 	if err != nil {
-		logErrorWithContext("failed to get media", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "ListMedia", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 
@@ -107,10 +104,8 @@ func (s *Handler) GetMedia(c *gin.Context, id string) {
 	// Create media service and get the media
 	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
 	if err != nil {
-		logErrorWithContext("failed to get media", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "GetMedia", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 
@@ -123,19 +118,15 @@ func (s *Handler) GetMedia(c *gin.Context, id string) {
 func (s *Handler) UpdateMedia(c *gin.Context, id string) {
 	var request v1.UpdateMediaRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, v1.Error{
-			Message: "Invalid request body: " + err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Invalid request body: "+err.Error()))
 		return
 	}
 
 	// Get the existing media and apply updates
 	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
 	if err != nil {
-		logErrorWithContext("failed to get media for update", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "UpdateMedia", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 
@@ -145,14 +136,10 @@ func (s *Handler) UpdateMedia(c *gin.Context, id string) {
 	// Update the media
 	updatedMedia, err := s.mediaSrv.UpdateMedia(c.Request.Context(), *media)
 	if err != nil {
-		logErrorWithContext("failed to update media", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "GetMedia", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
-
-	zap.S().Infow("media updated", "media_id", id)
 	c.JSON(http.StatusOK, v1.NewMedia(*updatedMedia))
 }
 
@@ -163,14 +150,10 @@ func (s *Handler) DeleteMedia(c *gin.Context, id string) {
 	// Create media service and delete the media
 	err := s.mediaSrv.DeleteMedia(c.Request.Context(), id)
 	if err != nil {
-		logErrorWithContext("failed to delete media", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "DeleteMedia", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
-
-	zap.S().Infow("media deleted", "media_id", id)
 	c.Status(http.StatusNoContent)
 }
 
@@ -181,19 +164,15 @@ func (s *Handler) GetMediaContent(c *gin.Context, id string) {
 	// Get the media from service
 	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
 	if err != nil {
-		logErrorWithContext("failed to get media", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "GetMediaContent", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 
 	// Check if content function is available
 	if media.Content == nil {
 		zap.S().Errorw("media content function not available", "media_id", id)
-		c.JSON(http.StatusInternalServerError, v1.Error{
-			Message: "Media content not available",
-		})
+		c.JSON(http.StatusInternalServerError, errorResponse(c, "Media content not available"))
 		return
 	}
 
@@ -201,9 +180,7 @@ func (s *Handler) GetMediaContent(c *gin.Context, id string) {
 	contentReader, err := media.Content()
 	if err != nil {
 		zap.S().Errorw("failed to read media content", "error", err, "media_id", id, "filepath", media.Filepath())
-		c.JSON(http.StatusInternalServerError, v1.Error{
-			Message: "Failed to read media content: " + err.Error(),
-		})
+		c.JSON(http.StatusInternalServerError, errorResponse(c, "Failed to read media content: "+err.Error()))
 		return
 	}
 
@@ -222,18 +199,14 @@ func (s *Handler) GetMediaThumbnail(c *gin.Context, id string) {
 	// Get the media from service
 	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
 	if err != nil {
-		logErrorWithContext("failed to get media", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "GetMediaThumbnail", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 
 	// Check if media has thumbnail
 	if !media.HasThumbnail() {
-		c.JSON(http.StatusNotFound, v1.Error{
-			Message: "Thumbnail not available for media: " + id,
-		})
+		c.JSON(http.StatusNotFound, errorResponse(c, "Thumbnail not available for media: "+id))
 		return
 	}
 
@@ -254,9 +227,7 @@ func (s *Handler) UploadMedia(c *gin.Context) {
 	err := c.Request.ParseMultipartForm(32 << 20) // 32 MB max
 	if err != nil {
 		zap.S().Errorw("failed to parse multipart form", "error", err)
-		c.JSON(http.StatusBadRequest, v1.Error{
-			Message: "Failed to parse multipart form: " + err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Failed to parse multipart form: "+err.Error()))
 		return
 	}
 
@@ -265,16 +236,12 @@ func (s *Handler) UploadMedia(c *gin.Context) {
 	albumId := c.Request.FormValue("albumId")
 
 	if filename == "" {
-		c.JSON(http.StatusBadRequest, v1.Error{
-			Message: "filename is required",
-		})
+		c.JSON(http.StatusBadRequest, errorResponse(c, "filename is required"))
 		return
 	}
 
 	if albumId == "" {
-		c.JSON(http.StatusBadRequest, v1.Error{
-			Message: "albumId is required",
-		})
+		c.JSON(http.StatusBadRequest, errorResponse(c, "albumId is required"))
 		return
 	}
 
@@ -282,9 +249,7 @@ func (s *Handler) UploadMedia(c *gin.Context) {
 	file, _, err := c.Request.FormFile("file")
 	if err != nil {
 		zap.S().Errorw("failed to get uploaded file", "error", err)
-		c.JSON(http.StatusBadRequest, v1.Error{
-			Message: "Failed to get uploaded file: " + err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Failed to get uploaded file: "+err.Error()))
 		return
 	}
 	defer file.Close()
@@ -292,10 +257,8 @@ func (s *Handler) UploadMedia(c *gin.Context) {
 	// Get the album to ensure it exists
 	album, err := s.albumSrv.GetAlbum(c.Request.Context(), albumId)
 	if err != nil {
-		logErrorWithContext("failed to get album", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "UploadMedia", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 
@@ -305,13 +268,9 @@ func (s *Handler) UploadMedia(c *gin.Context) {
 	// Write the media using the service
 	createdMedia, err := s.mediaSrv.WriteMedia(c.Request.Context(), media)
 	if err != nil {
-		logErrorWithContext("failed to write media", err, zap.String("filename", filename), zap.String("album_id", albumId))
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "UploadMedia", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
-
-	zap.S().Infow("media uploaded successfully", "media_id", createdMedia.ID, "filename", filename, "album_id", albumId)
 	c.JSON(http.StatusCreated, v1.NewMedia(*createdMedia))
 }

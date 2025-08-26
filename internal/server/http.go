@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/server/middlewares"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -49,7 +50,11 @@ func NewHttpServer(cfg *HttpServerConfig) *HttpServer {
 		engine.NoRoute(func(c *gin.Context) {
 			// Don't serve index.html for API routes
 			if c.Request.URL.Path[:4] == "/api" {
-				c.JSON(404, gin.H{"error": "API endpoint not found"})
+				requestID := requestid.FromGin(c)
+				c.JSON(404, gin.H{
+					"error": "API endpoint not found",
+					"request_id": requestID,
+				})
 				return
 			}
 			c.File(path.Join(cfg.StaticsFolder, "index.html"))
@@ -61,6 +66,7 @@ func NewHttpServer(cfg *HttpServerConfig) *HttpServer {
 		router := engine.Group(apiVersion)
 		router.Use(
 			middlewares.Headers(),
+			middlewares.RequestID(),
 			middlewares.Logger(),
 			ginzap.RecoveryWithZap(zap.S().Desugar(), true),
 		)

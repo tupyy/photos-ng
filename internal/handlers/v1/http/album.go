@@ -5,8 +5,8 @@ import (
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 // ListAlbums handles GET /api/v1/albums requests to retrieve a list of albums.
@@ -37,10 +37,8 @@ func (s *Handler) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 
 	albums, err := s.albumSrv.GetAlbums(c.Request.Context(), opts)
 	if err != nil {
-		logErrorWithContext("failed to get albums", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "ListAlbums", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 
@@ -51,10 +49,8 @@ func (s *Handler) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 	)
 	allAlbums, err := s.albumSrv.GetAlbums(c.Request.Context(), totalOpts)
 	if err != nil {
-		logErrorWithContext("failed to get total albums count", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "ListAlbums", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 	total := len(allAlbums)
@@ -82,23 +78,17 @@ func (s *Handler) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 func (s *Handler) CreateAlbum(c *gin.Context) {
 	var request v1.CreateAlbumRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, v1.Error{
-			Message: "Invalid request body: " + err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Invalid request body: "+err.Error()))
 		return
 	}
 
 	// Convert request to entity and create the album
 	createdAlbum, err := s.albumSrv.CreateAlbum(c.Request.Context(), request.Entity())
 	if err != nil {
-		logErrorWithContext("failed to create album", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "CreateAlbum", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
-
-	zap.S().Infow("album created", "album_id", createdAlbum.ID, "name", request.Name)
 	c.JSON(http.StatusCreated, v1.NewAlbum(*createdAlbum))
 }
 
@@ -109,10 +99,8 @@ func (s *Handler) GetAlbum(c *gin.Context, id string) {
 	// Create album service and get the album
 	album, err := s.albumSrv.GetAlbum(c.Request.Context(), id)
 	if err != nil {
-		logErrorWithContext("failed to get album", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "GetAlbum", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 
@@ -125,19 +113,15 @@ func (s *Handler) GetAlbum(c *gin.Context, id string) {
 func (s *Handler) UpdateAlbum(c *gin.Context, id string) {
 	var request v1.UpdateAlbumRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, v1.Error{
-			Message: "Invalid request body: " + err.Error(),
-		})
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Invalid request body: "+err.Error()))
 		return
 	}
 
 	// Get the existing album and apply updates
 	album, err := s.albumSrv.GetAlbum(c.Request.Context(), id)
 	if err != nil {
-		logErrorWithContext("failed to get album for update", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "UpdateAlbum", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 
@@ -147,14 +131,10 @@ func (s *Handler) UpdateAlbum(c *gin.Context, id string) {
 	// Update the album
 	updatedAlbum, err := s.albumSrv.UpdateAlbum(c.Request.Context(), *album)
 	if err != nil {
-		logErrorWithContext("failed to update album", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "UpdateAlbum", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
-
-	zap.S().Infow("album updated", "album_id", id)
 	c.JSON(http.StatusOK, v1.NewAlbum(*updatedAlbum))
 }
 
@@ -165,14 +145,10 @@ func (s *Handler) DeleteAlbum(c *gin.Context, id string) {
 	// Create album service and delete the album
 	err := s.albumSrv.DeleteAlbum(c.Request.Context(), id)
 	if err != nil {
-		logErrorWithContext("failed to delete album", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "DeleteAlbum", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
-
-	zap.S().Infow("album deleted", "album_id", id)
 	c.Status(http.StatusNoContent)
 }
 

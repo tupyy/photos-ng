@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,10 +14,8 @@ func (s *Handler) GetStats(c *gin.Context) {
 	// Get stats from the service
 	stats, err := s.statsSrv.GetStats(c.Request.Context())
 	if err != nil {
-		logErrorWithContext("failed to get stats", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "GetStats", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 

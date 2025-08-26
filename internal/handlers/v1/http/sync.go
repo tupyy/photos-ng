@@ -5,6 +5,7 @@ import (
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -17,23 +18,17 @@ func (s *Handler) StartSyncJob(c *gin.Context) {
 	var request v1.StartSyncRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		zap.S().Errorw("invalid request body", "error", err)
-		c.JSON(http.StatusBadRequest, v1.Error{
-			Message: "Invalid request body",
-		})
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Invalid request body"))
 		return
 	}
 
 	// Start sync job using the SyncService
 	jobID, err := s.syncSrv.StartSync(c.Request.Context(), request.Path)
 	if err != nil {
-		logErrorWithContext("failed to start sync job", err, zap.String("path", request.Path))
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "StartSyncJob", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
-
-	zap.S().Infow("sync job started", "jobId", jobID, "path", request.Path)
 
 	// Return job ID
 	response := v1.StartSyncResponse{
@@ -95,10 +90,8 @@ func (s *Handler) GetSyncJob(c *gin.Context, id string) {
 	// Get job status from SyncService
 	status, err := s.syncSrv.GetSyncJobStatus(id)
 	if err != nil {
-		logErrorWithContext("sync job not found", err, zap.String("jobId", id))
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "GetSyncJob", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 
@@ -136,10 +129,8 @@ func (s *Handler) StopSyncJob(c *gin.Context, id string) {
 	// Stop the job using SyncService
 	err := s.syncSrv.StopSyncJob(id)
 	if err != nil {
-		logErrorWithContext("failed to stop sync job", err, zap.String("jobId", id))
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "StopSyncJob", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 
@@ -159,10 +150,8 @@ func (s *Handler) StopAllSyncJobs(c *gin.Context) {
 	// Stop all jobs using SyncService
 	err := s.syncSrv.StopAllSyncJobs()
 	if err != nil {
-		logErrorWithContext("failed to stop all sync jobs", err)
-		c.JSON(getHTTPStatusFromError(err), v1.Error{
-			Message: err.Error(),
-		})
+		logError(requestid.FromGin(c), "StopAllSyncJobs", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 
