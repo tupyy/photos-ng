@@ -7,24 +7,27 @@ import "google/protobuf/empty.proto";
 
 option go_package = "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/grpc";
 
+// Java options for Android
+option java_package = "ro.tupangiu.tls.photosng.grpc";
+option java_outer_classname = "AlbumsProto";
+
 // Album child reference
 message AlbumChild {
-  string href = 1;  // Reference to child album
+  string id = 1;  // Reference to child album
   string name = 2;  // Name of the child album
 }
 
 // Album message representing an album entity
 message Album {
   string id = 1;                        // Unique identifier for the album
-  string href = 2;                      // API reference to this album
-  string name = 3;                      // Display name of the album
-  string path = 4;                      // File system path of the album
-  optional string parent_href = 5;      // Reference to parent album (if any)
-  optional string thumbnail = 6;        // Reference to thumbnail image
-  optional string description = 7;      // Album description
-  repeated AlbumChild children = 8;     // List of child album references
-  int32 media_count = 9;               // Total media count including children
-  repeated string media = 10;          // List of media references in this album
+  string name = 2;                      // Display name of the album
+  string path = 3;                      // File system path of the album
+  optional string parent_id = 4;        // Reference to parent album (if any)
+  optional string thumbnail = 5;        // Reference to thumbnail image
+  optional string description = 6;      // Album description
+  repeated AlbumChild children = 7;     // List of child album references
+  int32 media_count = 8;               // Total media count including children
+  repeated string media_ids = 9;      // List of media IDs in this album
 }
 
 // Request to create a new album

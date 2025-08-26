@@ -4,6 +4,10 @@ package photos_ng.api.v1.grpc;
 
 option go_package = "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/grpc";
 
+// Java options for Android
+option java_package = "ro.tupangiu.tls.photosng.grpc";
+option java_outer_classname = "StatsProto";
+
 // Application statistics
 message StatsResponse {
   repeated int32 years = 1;                // List of years that contain media

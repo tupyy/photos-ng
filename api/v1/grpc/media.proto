@@ -8,17 +8,18 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/grpc";
 
+// Java options for Android
+option java_package = "ro.tupangiu.tls.photosng.grpc";
+option java_outer_classname = "MediaProto";
+
 // Media message representing a media entity
 message Media {
   string id = 1;                           // Unique identifier for the media
-  string href = 2;                         // API reference to this media
-  string album_href = 3;                   // Reference to the containing album
-  google.protobuf.Timestamp captured_at = 4; // When the media was captured
-  MediaType type = 5;                      // Type of media (photo/video)
-  string filename = 6;                     // Full path of the media file on disk
-  string thumbnail = 7;                    // Reference to thumbnail endpoint
-  string content = 8;                      // Reference to content endpoint
-  repeated ExifHeader exif = 9;            // EXIF metadata
+  string album_id = 2;                   // Reference to the containing album
+  google.protobuf.Timestamp captured_at = 3; // When the media was captured
+  MediaType type = 4;                      // Type of media (photo/video)
+  string filename = 5;                     // Full path of the media file on disk
+  repeated ExifHeader exif = 6;            // EXIF metadata
 }
 
 // Request to list media with filtering and pagination

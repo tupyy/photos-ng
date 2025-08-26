@@ -25,7 +25,7 @@ const (
 // Album child reference
 type AlbumChild struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Href          string                 `protobuf:"bytes,1,opt,name=href,proto3" json:"href,omitempty"` // Reference to child album
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`     // Reference to child album
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"` // Name of the child album
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -61,9 +61,9 @@ func (*AlbumChild) Descriptor() ([]byte, []int) {
 	return file_albums_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *AlbumChild) GetHref() string {
+func (x *AlbumChild) GetId() string {
 	if x != nil {
-		return x.Href
+		return x.Id
 	}
 	return ""
 }
@@ -78,16 +78,15 @@ func (x *AlbumChild) GetName() string {
 // Album message representing an album entity
 type Album struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                         // Unique identifier for the album
-	Href          string                 `protobuf:"bytes,2,opt,name=href,proto3" json:"href,omitempty"`                                     // API reference to this album
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`                                     // Display name of the album
-	Path          string                 `protobuf:"bytes,4,opt,name=path,proto3" json:"path,omitempty"`                                     // File system path of the album
-	ParentHref    *string                `protobuf:"bytes,5,opt,name=parent_href,json=parentHref,proto3,oneof" json:"parent_href,omitempty"` // Reference to parent album (if any)
-	Thumbnail     *string                `protobuf:"bytes,6,opt,name=thumbnail,proto3,oneof" json:"thumbnail,omitempty"`                     // Reference to thumbnail image
-	Description   *string                `protobuf:"bytes,7,opt,name=description,proto3,oneof" json:"description,omitempty"`                 // Album description
-	Children      []*AlbumChild          `protobuf:"bytes,8,rep,name=children,proto3" json:"children,omitempty"`                             // List of child album references
-	MediaCount    int32                  `protobuf:"varint,9,opt,name=media_count,json=mediaCount,proto3" json:"media_count,omitempty"`      // Total media count including children
-	Media         []string               `protobuf:"bytes,10,rep,name=media,proto3" json:"media,omitempty"`                                  // List of media references in this album
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                    // Unique identifier for the album
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`                                // Display name of the album
+	Path          string                 `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`                                // File system path of the album
+	ParentId      *string                `protobuf:"bytes,4,opt,name=parent_id,json=parentId,proto3,oneof" json:"parent_id,omitempty"`  // Reference to parent album (if any)
+	Thumbnail     *string                `protobuf:"bytes,5,opt,name=thumbnail,proto3,oneof" json:"thumbnail,omitempty"`                // Reference to thumbnail image
+	Description   *string                `protobuf:"bytes,6,opt,name=description,proto3,oneof" json:"description,omitempty"`            // Album description
+	Children      []*AlbumChild          `protobuf:"bytes,7,rep,name=children,proto3" json:"children,omitempty"`                        // List of child album references
+	MediaCount    int32                  `protobuf:"varint,8,opt,name=media_count,json=mediaCount,proto3" json:"media_count,omitempty"` // Total media count including children
+	MediaIds      []string               `protobuf:"bytes,9,rep,name=media_ids,json=mediaIds,proto3" json:"media_ids,omitempty"`        // List of media IDs in this album
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -129,13 +128,6 @@ func (x *Album) GetId() string {
 	return ""
 }
 
-func (x *Album) GetHref() string {
-	if x != nil {
-		return x.Href
-	}
-	return ""
-}
-
 func (x *Album) GetName() string {
 	if x != nil {
 		return x.Name
@@ -150,9 +142,9 @@ func (x *Album) GetPath() string {
 	return ""
 }
 
-func (x *Album) GetParentHref() string {
-	if x != nil && x.ParentHref != nil {
-		return *x.ParentHref
+func (x *Album) GetParentId() string {
+	if x != nil && x.ParentId != nil {
+		return *x.ParentId
 	}
 	return ""
 }
@@ -185,9 +177,9 @@ func (x *Album) GetMediaCount() int32 {
 	return 0
 }
 
-func (x *Album) GetMedia() []string {
+func (x *Album) GetMediaIds() []string {
 	if x != nil {
-		return x.Media
+		return x.MediaIds
 	}
 	return nil
 }
@@ -657,26 +649,24 @@ var File_albums_proto protoreflect.FileDescriptor
 
 const file_albums_proto_rawDesc = "" +
 	"\n" +
-	"\falbums.proto\x12\x15photos_ng.api.v1.grpc\x1a\fcommon.proto\x1a\x1bgoogle/protobuf/empty.proto\"4\n" +
+	"\falbums.proto\x12\x15photos_ng.api.v1.grpc\x1a\fcommon.proto\x1a\x1bgoogle/protobuf/empty.proto\"0\n" +
 	"\n" +
-	"AlbumChild\x12\x12\n" +
-	"\x04href\x18\x01 \x01(\tR\x04href\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\xe7\x02\n" +
+	"AlbumChild\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\xd4\x02\n" +
 	"\x05Album\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04href\x18\x02 \x01(\tR\x04href\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
-	"\x04path\x18\x04 \x01(\tR\x04path\x12$\n" +
-	"\vparent_href\x18\x05 \x01(\tH\x00R\n" +
-	"parentHref\x88\x01\x01\x12!\n" +
-	"\tthumbnail\x18\x06 \x01(\tH\x01R\tthumbnail\x88\x01\x01\x12%\n" +
-	"\vdescription\x18\a \x01(\tH\x02R\vdescription\x88\x01\x01\x12=\n" +
-	"\bchildren\x18\b \x03(\v2!.photos_ng.api.v1.grpc.AlbumChildR\bchildren\x12\x1f\n" +
-	"\vmedia_count\x18\t \x01(\x05R\n" +
-	"mediaCount\x12\x14\n" +
-	"\x05media\x18\n" +
-	" \x03(\tR\x05mediaB\x0e\n" +
-	"\f_parent_hrefB\f\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04path\x18\x03 \x01(\tR\x04path\x12 \n" +
+	"\tparent_id\x18\x04 \x01(\tH\x00R\bparentId\x88\x01\x01\x12!\n" +
+	"\tthumbnail\x18\x05 \x01(\tH\x01R\tthumbnail\x88\x01\x01\x12%\n" +
+	"\vdescription\x18\x06 \x01(\tH\x02R\vdescription\x88\x01\x01\x12=\n" +
+	"\bchildren\x18\a \x03(\v2!.photos_ng.api.v1.grpc.AlbumChildR\bchildren\x12\x1f\n" +
+	"\vmedia_count\x18\b \x01(\x05R\n" +
+	"mediaCount\x12\x1b\n" +
+	"\tmedia_ids\x18\t \x03(\tR\bmediaIdsB\f\n" +
+	"\n" +
+	"_parent_idB\f\n" +
 	"\n" +
 	"_thumbnailB\x0e\n" +
 	"\f_description\"\x8f\x01\n" +

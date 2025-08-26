@@ -1,7 +1,6 @@
 package grpc
 
 import (
-	"fmt"
 	"io"
 	"path"
 	"strings"
@@ -20,9 +19,10 @@ func NewAlbum(album entity.Album) *Album {
 		Id:          album.ID,
 		Path:        album.Path,
 		Description: album.Description,
-		Href:        "/api/v1/albums/" + album.ID,
 		MediaCount:  int32(album.MediaCount),
 		Name:        name,
+		ParentId:    album.ParentId,
+		Thumbnail:   album.Thumbnail,
 	}
 
 	// Convert children
@@ -30,7 +30,7 @@ func NewAlbum(album entity.Album) *Album {
 		children := make([]*AlbumChild, 0, len(album.Children))
 		for _, childID := range album.Children {
 			children = append(children, &AlbumChild{
-				Href: "/api/v1/albums/" + childID.ID,
+				Id:   childID.ID,
 				Name: childID.ID, // Using ID as name for now
 			})
 		}
@@ -39,22 +39,11 @@ func NewAlbum(album entity.Album) *Album {
 
 	// Convert media references
 	if len(album.Media) > 0 {
-		mediaHrefs := make([]string, 0, len(album.Media))
+		mediaIds := make([]string, 0, len(album.Media))
 		for _, media := range album.Media {
-			mediaHrefs = append(mediaHrefs, "/api/v1/media/"+media.ID)
+			mediaIds = append(mediaIds, media.ID)
 		}
-		grpcAlbum.Media = mediaHrefs
-	}
-
-	// Set parent href if parent exists
-	if album.ParentId != nil {
-		parentHref := "/api/v1/albums/" + *album.ParentId
-		grpcAlbum.ParentHref = &parentHref
-	}
-
-	if album.Thumbnail != nil {
-		thumbnail := fmt.Sprintf("/api/v1/media/%s/thumbnail", *album.Thumbnail)
-		grpcAlbum.Thumbnail = &thumbnail
+		grpcAlbum.MediaIds = mediaIds
 	}
 
 	return grpcAlbum
@@ -88,12 +77,9 @@ func NewMedia(media entity.Media) *Media {
 	return &Media{
 		Id:         media.ID,
 		Filename:   media.Filename,
-		AlbumHref:  "/api/v1/albums/" + media.Album.ID,
+		AlbumId:    media.Album.ID,
 		CapturedAt: capturedAt,
 		Type:       mediaType,
-		Content:    "/api/v1/media/" + media.ID + "/content",
-		Thumbnail:  "/api/v1/media/" + media.ID + "/thumbnail",
-		Href:       "/api/v1/media/" + media.ID,
 		Exif:       exifHeaders,
 	}
 }

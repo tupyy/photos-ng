@@ -27,14 +27,11 @@ const (
 type Media struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                           // Unique identifier for the media
-	Href          string                 `protobuf:"bytes,2,opt,name=href,proto3" json:"href,omitempty"`                                       // API reference to this media
-	AlbumHref     string                 `protobuf:"bytes,3,opt,name=album_href,json=albumHref,proto3" json:"album_href,omitempty"`            // Reference to the containing album
-	CapturedAt    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=captured_at,json=capturedAt,proto3" json:"captured_at,omitempty"`         // When the media was captured
-	Type          MediaType              `protobuf:"varint,5,opt,name=type,proto3,enum=photos_ng.api.v1.grpc.MediaType" json:"type,omitempty"` // Type of media (photo/video)
-	Filename      string                 `protobuf:"bytes,6,opt,name=filename,proto3" json:"filename,omitempty"`                               // Full path of the media file on disk
-	Thumbnail     string                 `protobuf:"bytes,7,opt,name=thumbnail,proto3" json:"thumbnail,omitempty"`                             // Reference to thumbnail endpoint
-	Content       string                 `protobuf:"bytes,8,opt,name=content,proto3" json:"content,omitempty"`                                 // Reference to content endpoint
-	Exif          []*ExifHeader          `protobuf:"bytes,9,rep,name=exif,proto3" json:"exif,omitempty"`                                       // EXIF metadata
+	AlbumId       string                 `protobuf:"bytes,2,opt,name=album_id,json=albumId,proto3" json:"album_id,omitempty"`                  // Reference to the containing album
+	CapturedAt    *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=captured_at,json=capturedAt,proto3" json:"captured_at,omitempty"`         // When the media was captured
+	Type          MediaType              `protobuf:"varint,4,opt,name=type,proto3,enum=photos_ng.api.v1.grpc.MediaType" json:"type,omitempty"` // Type of media (photo/video)
+	Filename      string                 `protobuf:"bytes,5,opt,name=filename,proto3" json:"filename,omitempty"`                               // Full path of the media file on disk
+	Exif          []*ExifHeader          `protobuf:"bytes,6,rep,name=exif,proto3" json:"exif,omitempty"`                                       // EXIF metadata
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -76,16 +73,9 @@ func (x *Media) GetId() string {
 	return ""
 }
 
-func (x *Media) GetHref() string {
+func (x *Media) GetAlbumId() string {
 	if x != nil {
-		return x.Href
-	}
-	return ""
-}
-
-func (x *Media) GetAlbumHref() string {
-	if x != nil {
-		return x.AlbumHref
+		return x.AlbumId
 	}
 	return ""
 }
@@ -111,20 +101,6 @@ func (x *Media) GetFilename() string {
 	return ""
 }
 
-func (x *Media) GetThumbnail() string {
-	if x != nil {
-		return x.Thumbnail
-	}
-	return ""
-}
-
-func (x *Media) GetContent() string {
-	if x != nil {
-		return x.Content
-	}
-	return ""
-}
-
 func (x *Media) GetExif() []*ExifHeader {
 	if x != nil {
 		return x.Exif
@@ -135,7 +111,7 @@ func (x *Media) GetExif() []*ExifHeader {
 // Request to list media with filtering and pagination
 type ListMediaRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Pagination    *PaginationRequest     `protobuf:"bytes,1,opt,name=pagination,proto3" json:"pagination,omitempty"`                                                            // Pagination parameters (for streaming, limit controls max items streamed)
+	Pagination    *PaginationRequest     `protobuf:"bytes,1,opt,name=pagination,proto3" json:"pagination,omitempty"`                                                            // Pagination parameters (limit = batch size, offset = where to start)
 	AlbumId       *string                `protobuf:"bytes,2,opt,name=album_id,json=albumId,proto3,oneof" json:"album_id,omitempty"`                                             // Filter by album ID
 	Type          *MediaType             `protobuf:"varint,3,opt,name=type,proto3,enum=photos_ng.api.v1.grpc.MediaType,oneof" json:"type,omitempty"`                            // Filter by media type
 	StartDate     *string                `protobuf:"bytes,4,opt,name=start_date,json=startDate,proto3,oneof" json:"start_date,omitempty"`                                       // Filter media captured on/after this date (YYYY-MM-DD)
@@ -783,19 +759,15 @@ var File_media_proto protoreflect.FileDescriptor
 
 const file_media_proto_rawDesc = "" +
 	"\n" +
-	"\vmedia.proto\x12\x15photos_ng.api.v1.grpc\x1a\fcommon.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc8\x02\n" +
+	"\vmedia.proto\x12\x15photos_ng.api.v1.grpc\x1a\fcommon.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf8\x01\n" +
 	"\x05Media\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04href\x18\x02 \x01(\tR\x04href\x12\x1d\n" +
-	"\n" +
-	"album_href\x18\x03 \x01(\tR\talbumHref\x12;\n" +
-	"\vcaptured_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
+	"\balbum_id\x18\x02 \x01(\tR\aalbumId\x12;\n" +
+	"\vcaptured_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"capturedAt\x124\n" +
-	"\x04type\x18\x05 \x01(\x0e2 .photos_ng.api.v1.grpc.MediaTypeR\x04type\x12\x1a\n" +
-	"\bfilename\x18\x06 \x01(\tR\bfilename\x12\x1c\n" +
-	"\tthumbnail\x18\a \x01(\tR\tthumbnail\x12\x18\n" +
-	"\acontent\x18\b \x01(\tR\acontent\x125\n" +
-	"\x04exif\x18\t \x03(\v2!.photos_ng.api.v1.grpc.ExifHeaderR\x04exif\"\xd0\x03\n" +
+	"\x04type\x18\x04 \x01(\x0e2 .photos_ng.api.v1.grpc.MediaTypeR\x04type\x12\x1a\n" +
+	"\bfilename\x18\x05 \x01(\tR\bfilename\x125\n" +
+	"\x04exif\x18\x06 \x03(\v2!.photos_ng.api.v1.grpc.ExifHeaderR\x04exif\"\xd0\x03\n" +
 	"\x10ListMediaRequest\x12H\n" +
 	"\n" +
 	"pagination\x18\x01 \x01(\v2(.photos_ng.api.v1.grpc.PaginationRequestR\n" +

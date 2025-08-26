@@ -10,6 +10,10 @@ import "google/protobuf/empty.proto";
 
 option go_package = "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/grpc";
 
+// Java options for Android
+option java_package = "ro.tupangiu.tls.photosng.grpc";
+option java_outer_classname = "PhotosNGProto";
+
 // Main Photos NG service that aggregates all functionality
 service PhotosNGService {
   // Album operations

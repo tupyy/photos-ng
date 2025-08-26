@@ -6,6 +6,10 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/grpc";
 
+// Java options for Android
+option java_package = "ro.tupangiu.tls.photosng.grpc";
+option java_outer_classname = "CommonProto";
+
 // Common error message structure
 message Error {
   string message = 1;

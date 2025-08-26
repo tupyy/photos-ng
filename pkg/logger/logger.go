@@ -22,7 +22,6 @@ func SetupLogger(cfg *config.Config) *zap.Logger {
 			TimeKey:        "time",
 			LevelKey:       "severity",
 			NameKey:        "logger",
-			CallerKey:      "caller",
 			MessageKey:     "message",
 			StacktraceKey:  "stacktrace",
 			LineEnding:     zapcore.DefaultLineEnding,
