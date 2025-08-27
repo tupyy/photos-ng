@@ -42,18 +42,15 @@ func (s *Handler) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 		return
 	}
 
-	// Get total count for pagination (without limit/offset)
-	totalOpts := services.NewAlbumOptionsWithOptions(
+	countOpt := services.NewAlbumOptionsWithOptions(
 		services.WithHasParent(hasParent),
-		// No limit/offset for total count
 	)
-	allAlbums, err := s.albumSrv.GetAlbums(c.Request.Context(), totalOpts)
+	count, err := s.albumSrv.CountAlbums(c.Request.Context(), countOpt)
 	if err != nil {
 		logError(requestid.FromGin(c), "ListAlbums", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
-	total := len(allAlbums)
 
 	// Convert entity albums to API albums
 	apiAlbums := make([]v1.Album, 0, len(albums))
@@ -63,7 +60,7 @@ func (s *Handler) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 
 	response := v1.ListAlbumsResponse{
 		Albums: apiAlbums,
-		Total:  total,
+		Total:  count,
 		Limit:  limit,
 		Offset: offset,
 	}

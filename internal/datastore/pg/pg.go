@@ -213,6 +213,30 @@ func (d *Datastore) QueryMedia(ctx context.Context, opts ...QueryOption) ([]enti
 	return mediaList.Entity(), nil
 }
 
+func (d *Datastore) CountAlbums(ctx context.Context, opts ...QueryOption) (int, error) {
+	// Start with base count query
+	query := psql.Select("COUNT(*)").From(albumsTable)
+	
+	// Apply query options (filters)
+	for _, opt := range opts {
+		query = opt(query)
+	}
+	
+	// Build and execute the query
+	sql, args, err := query.ToSql()
+	if err != nil {
+		return 0, err
+	}
+	
+	var count int
+	err = d.pool.QueryRow(ctx, sql, args...).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	
+	return count, nil
+}
+
 func (d *Datastore) Stats(ctx context.Context) (entity.Stats, error) {
 	var stats entity.Stats
 

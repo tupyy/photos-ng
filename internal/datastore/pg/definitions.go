@@ -114,33 +114,9 @@ var (
 		From(mediaTable).
 		InnerJoin("albums on albums.id = media.album_id")
 
-	insertAlbumStmt = psql.Insert(albumsTable).
-			Columns(
-			albumID,
-			albumPath,
-			albumDescription,
-			albumParentID,
-		)
-
-	insertMediaStmt = psql.Insert(mediaTable).
-			Columns(
-			mediaID,
-			mediaCapturedAt,
-			mediaAlbumID,
-			mediaFileName,
-			mediaExif,
-			mediaMediaType,
-		)
-
-	deleteAlbumStmt = psql.Delete(albumsTable)
-
-	deleteMediaStmt = psql.Delete(mediaTable)
-
-	updateAlbumStmt = psql.Update(albumsTable)
-
-	updateMediaStmt = psql.Update(mediaTable)
-
 	statAlbumMediaStmt = `select (select count(*) from albums) as total_albums, (select count(*) from media) as total_media;`
+
+	countAlbumsStmt = `SELECT COUNT(*) FROM albums WHERE parent_id IS NULL;`
 
 	statYearsStmt = `SELECT DISTINCT EXTRACT(YEAR FROM captured_at)::INTEGER AS year FROM media WHERE captured_at IS NOT NULL ORDER BY year DESC;`
 )

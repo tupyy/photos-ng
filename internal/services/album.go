@@ -62,7 +62,7 @@ func (a *AlbumService) GetAlbums(ctx context.Context, opts *AlbumOptions) ([]ent
 	tracer.Step("pagination").
 		WithInt("total_albums", len(allAlbums)).
 		WithInt("start", opts.Offset).
-		WithInt("end", opts.Offset + opts.Limit).
+		WithInt("end", opts.Offset+opts.Limit).
 		Log()
 
 	start_idx := opts.Offset
@@ -83,7 +83,7 @@ func (a *AlbumService) GetAlbums(ctx context.Context, opts *AlbumOptions) ([]ent
 	if end_idx > len(allAlbums) || opts.Limit <= 0 {
 		end_idx = len(allAlbums)
 		debug.BusinessLogic("pagination end adjusted to total albums").
-			WithInt("original_end", opts.Offset + opts.Limit).
+			WithInt("original_end", opts.Offset+opts.Limit).
 			WithInt("adjusted_end", end_idx).
 			WithInt("total_albums", len(allAlbums)).
 			Log()
@@ -100,6 +100,33 @@ func (a *AlbumService) GetAlbums(ctx context.Context, opts *AlbumOptions) ([]ent
 		Log()
 
 	return paginatedAlbums, nil
+}
+
+// CountAlbums returns the total count of albums matching the provided filter criteria
+func (a *AlbumService) CountAlbums(ctx context.Context, opts *AlbumOptions) (int, error) {
+	debug := a.debug.WithContext(ctx)
+	tracer := debug.StartOperation("count_albums").
+		WithBool("has_parent", opts.HasParent).
+		WithInt("filter_count", len(opts.QueriesFn())).
+		Build()
+
+	// Database count query with debug timing
+	tracer.Step("database_count").
+		WithString("query_type", "count_albums").
+		WithInt("filters", len(opts.QueriesFn())).
+		Log()
+
+	count, err := a.dt.CountAlbums(ctx, opts.QueriesFn()...)
+	if err != nil {
+		return 0, NewDatabaseWriteError(ctx, "count_albums", err).
+			AtStep("count_albums")
+	}
+
+	tracer.Success().
+		WithInt("total_albums", count).
+		Log()
+
+	return count, nil
 }
 
 // GetAlbum retrieves a specific album by its ID
