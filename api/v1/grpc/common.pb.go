@@ -512,6 +512,120 @@ func (x *PaginationResponse) GetOffset() int32 {
 	return 0
 }
 
+// Cursor-based pagination parameters for media endpoints
+type CursorPaginationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`              // Maximum number of items to return (default: 20, max: 100)
+	Cursor        *string                `protobuf:"bytes,2,opt,name=cursor,proto3,oneof" json:"cursor,omitempty"`       // Cursor for pagination (base64 encoded)
+	Direction     *string                `protobuf:"bytes,3,opt,name=direction,proto3,oneof" json:"direction,omitempty"` // Direction: "forward" or "backward" (default: "forward")
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CursorPaginationRequest) Reset() {
+	*x = CursorPaginationRequest{}
+	mi := &file_common_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CursorPaginationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CursorPaginationRequest) ProtoMessage() {}
+
+func (x *CursorPaginationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_common_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CursorPaginationRequest.ProtoReflect.Descriptor instead.
+func (*CursorPaginationRequest) Descriptor() ([]byte, []int) {
+	return file_common_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *CursorPaginationRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *CursorPaginationRequest) GetCursor() string {
+	if x != nil && x.Cursor != nil {
+		return *x.Cursor
+	}
+	return ""
+}
+
+func (x *CursorPaginationRequest) GetDirection() string {
+	if x != nil && x.Direction != nil {
+		return *x.Direction
+	}
+	return ""
+}
+
+// Cursor-based pagination response metadata for media endpoints
+type CursorPaginationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`                                  // Number of items returned in this response
+	NextCursor    *string                `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3,oneof" json:"next_cursor,omitempty"` // Cursor for the next page (if available)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CursorPaginationResponse) Reset() {
+	*x = CursorPaginationResponse{}
+	mi := &file_common_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CursorPaginationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CursorPaginationResponse) ProtoMessage() {}
+
+func (x *CursorPaginationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_common_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CursorPaginationResponse.ProtoReflect.Descriptor instead.
+func (*CursorPaginationResponse) Descriptor() ([]byte, []int) {
+	return file_common_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CursorPaginationResponse) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *CursorPaginationResponse) GetNextCursor() string {
+	if x != nil && x.NextCursor != nil {
+		return *x.NextCursor
+	}
+	return ""
+}
+
 // Task result status
 type TaskResultStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -526,7 +640,7 @@ type TaskResultStatus struct {
 
 func (x *TaskResultStatus) Reset() {
 	*x = TaskResultStatus{}
-	mi := &file_common_proto_msgTypes[4]
+	mi := &file_common_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -538,7 +652,7 @@ func (x *TaskResultStatus) String() string {
 func (*TaskResultStatus) ProtoMessage() {}
 
 func (x *TaskResultStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_common_proto_msgTypes[4]
+	mi := &file_common_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -551,7 +665,7 @@ func (x *TaskResultStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskResultStatus.ProtoReflect.Descriptor instead.
 func (*TaskResultStatus) Descriptor() ([]byte, []int) {
-	return file_common_proto_rawDescGZIP(), []int{4}
+	return file_common_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *TaskResultStatus) GetResult() isTaskResultStatus_Result {
@@ -617,7 +731,19 @@ const file_common_proto_rawDesc = "" +
 	"\x12PaginationResponse\x12\x14\n" +
 	"\x05total\x18\x01 \x01(\x05R\x05total\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"P\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\"\x88\x01\n" +
+	"\x17CursorPaginationRequest\x12\x14\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x1b\n" +
+	"\x06cursor\x18\x02 \x01(\tH\x00R\x06cursor\x88\x01\x01\x12!\n" +
+	"\tdirection\x18\x03 \x01(\tH\x01R\tdirection\x88\x01\x01B\t\n" +
+	"\a_cursorB\f\n" +
+	"\n" +
+	"_direction\"f\n" +
+	"\x18CursorPaginationResponse\x12\x14\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12$\n" +
+	"\vnext_cursor\x18\x02 \x01(\tH\x00R\n" +
+	"nextCursor\x88\x01\x01B\x0e\n" +
+	"\f_next_cursor\"P\n" +
 	"\x10TaskResultStatus\x12\x1a\n" +
 	"\asuccess\x18\x01 \x01(\tH\x00R\asuccess\x12\x16\n" +
 	"\x05error\x18\x02 \x01(\tH\x00R\x05errorB\b\n" +
@@ -661,22 +787,24 @@ func file_common_proto_rawDescGZIP() []byte {
 }
 
 var file_common_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_common_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_common_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_common_proto_goTypes = []any{
-	(MediaType)(0),             // 0: photos_ng.api.v1.grpc.MediaType
-	(SortOrder)(0),             // 1: photos_ng.api.v1.grpc.SortOrder
-	(MediaSortBy)(0),           // 2: photos_ng.api.v1.grpc.MediaSortBy
-	(SyncJobStatus)(0),         // 3: photos_ng.api.v1.grpc.SyncJobStatus
-	(TaskResultItemType)(0),    // 4: photos_ng.api.v1.grpc.TaskResultItemType
-	(*Error)(nil),              // 5: photos_ng.api.v1.grpc.Error
-	(*ExifHeader)(nil),         // 6: photos_ng.api.v1.grpc.ExifHeader
-	(*PaginationRequest)(nil),  // 7: photos_ng.api.v1.grpc.PaginationRequest
-	(*PaginationResponse)(nil), // 8: photos_ng.api.v1.grpc.PaginationResponse
-	(*TaskResultStatus)(nil),   // 9: photos_ng.api.v1.grpc.TaskResultStatus
-	nil,                        // 10: photos_ng.api.v1.grpc.Error.DetailsEntry
+	(MediaType)(0),                   // 0: photos_ng.api.v1.grpc.MediaType
+	(SortOrder)(0),                   // 1: photos_ng.api.v1.grpc.SortOrder
+	(MediaSortBy)(0),                 // 2: photos_ng.api.v1.grpc.MediaSortBy
+	(SyncJobStatus)(0),               // 3: photos_ng.api.v1.grpc.SyncJobStatus
+	(TaskResultItemType)(0),          // 4: photos_ng.api.v1.grpc.TaskResultItemType
+	(*Error)(nil),                    // 5: photos_ng.api.v1.grpc.Error
+	(*ExifHeader)(nil),               // 6: photos_ng.api.v1.grpc.ExifHeader
+	(*PaginationRequest)(nil),        // 7: photos_ng.api.v1.grpc.PaginationRequest
+	(*PaginationResponse)(nil),       // 8: photos_ng.api.v1.grpc.PaginationResponse
+	(*CursorPaginationRequest)(nil),  // 9: photos_ng.api.v1.grpc.CursorPaginationRequest
+	(*CursorPaginationResponse)(nil), // 10: photos_ng.api.v1.grpc.CursorPaginationResponse
+	(*TaskResultStatus)(nil),         // 11: photos_ng.api.v1.grpc.TaskResultStatus
+	nil,                              // 12: photos_ng.api.v1.grpc.Error.DetailsEntry
 }
 var file_common_proto_depIdxs = []int32{
-	10, // 0: photos_ng.api.v1.grpc.Error.details:type_name -> photos_ng.api.v1.grpc.Error.DetailsEntry
+	12, // 0: photos_ng.api.v1.grpc.Error.details:type_name -> photos_ng.api.v1.grpc.Error.DetailsEntry
 	1,  // [1:1] is the sub-list for method output_type
 	1,  // [1:1] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
@@ -689,7 +817,9 @@ func file_common_proto_init() {
 	if File_common_proto != nil {
 		return
 	}
-	file_common_proto_msgTypes[4].OneofWrappers = []any{
+	file_common_proto_msgTypes[4].OneofWrappers = []any{}
+	file_common_proto_msgTypes[5].OneofWrappers = []any{}
+	file_common_proto_msgTypes[6].OneofWrappers = []any{
 		(*TaskResultStatus_Success)(nil),
 		(*TaskResultStatus_Error)(nil),
 	}
@@ -699,7 +829,7 @@ func file_common_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_common_proto_rawDesc), len(file_common_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

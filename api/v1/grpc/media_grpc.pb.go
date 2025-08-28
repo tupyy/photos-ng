@@ -35,8 +35,8 @@ const (
 //
 // Media service definition
 type MediaServiceClient interface {
-	// List media with optional filtering, sorting, and pagination (streaming)
-	ListMedia(ctx context.Context, in *ListMediaRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Media], error)
+	// List media with optional filtering, sorting, and pagination
+	ListMedia(ctx context.Context, in *ListMediaRequest, opts ...grpc.CallOption) (*ListMediaResponse, error)
 	// Upload new media to an album
 	UploadMedia(ctx context.Context, in *UploadMediaRequest, opts ...grpc.CallOption) (*Media, error)
 	// Get a specific media item by ID
@@ -59,24 +59,15 @@ func NewMediaServiceClient(cc grpc.ClientConnInterface) MediaServiceClient {
 	return &mediaServiceClient{cc}
 }
 
-func (c *mediaServiceClient) ListMedia(ctx context.Context, in *ListMediaRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Media], error) {
+func (c *mediaServiceClient) ListMedia(ctx context.Context, in *ListMediaRequest, opts ...grpc.CallOption) (*ListMediaResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &MediaService_ServiceDesc.Streams[0], MediaService_ListMedia_FullMethodName, cOpts...)
+	out := new(ListMediaResponse)
+	err := c.cc.Invoke(ctx, MediaService_ListMedia_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[ListMediaRequest, Media]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
+	return out, nil
 }
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type MediaService_ListMediaClient = grpc.ServerStreamingClient[Media]
 
 func (c *mediaServiceClient) UploadMedia(ctx context.Context, in *UploadMediaRequest, opts ...grpc.CallOption) (*Media, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -130,7 +121,7 @@ func (c *mediaServiceClient) GetMediaThumbnail(ctx context.Context, in *GetMedia
 
 func (c *mediaServiceClient) GetMediaContent(ctx context.Context, in *GetMediaContentRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[BinaryDataChunk], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &MediaService_ServiceDesc.Streams[1], MediaService_GetMediaContent_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &MediaService_ServiceDesc.Streams[0], MediaService_GetMediaContent_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -153,8 +144,8 @@ type MediaService_GetMediaContentClient = grpc.ServerStreamingClient[BinaryDataC
 //
 // Media service definition
 type MediaServiceServer interface {
-	// List media with optional filtering, sorting, and pagination (streaming)
-	ListMedia(*ListMediaRequest, grpc.ServerStreamingServer[Media]) error
+	// List media with optional filtering, sorting, and pagination
+	ListMedia(context.Context, *ListMediaRequest) (*ListMediaResponse, error)
 	// Upload new media to an album
 	UploadMedia(context.Context, *UploadMediaRequest) (*Media, error)
 	// Get a specific media item by ID
@@ -177,8 +168,8 @@ type MediaServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedMediaServiceServer struct{}
 
-func (UnimplementedMediaServiceServer) ListMedia(*ListMediaRequest, grpc.ServerStreamingServer[Media]) error {
-	return status.Errorf(codes.Unimplemented, "method ListMedia not implemented")
+func (UnimplementedMediaServiceServer) ListMedia(context.Context, *ListMediaRequest) (*ListMediaResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListMedia not implemented")
 }
 func (UnimplementedMediaServiceServer) UploadMedia(context.Context, *UploadMediaRequest) (*Media, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UploadMedia not implemented")
@@ -219,16 +210,23 @@ func RegisterMediaServiceServer(s grpc.ServiceRegistrar, srv MediaServiceServer)
 	s.RegisterService(&MediaService_ServiceDesc, srv)
 }
 
-func _MediaService_ListMedia_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(ListMediaRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
+func _MediaService_ListMedia_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMediaRequest)
+	if err := dec(in); err != nil {
+		return nil, err
 	}
-	return srv.(MediaServiceServer).ListMedia(m, &grpc.GenericServerStream[ListMediaRequest, Media]{ServerStream: stream})
+	if interceptor == nil {
+		return srv.(MediaServiceServer).ListMedia(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_ListMedia_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).ListMedia(ctx, req.(*ListMediaRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type MediaService_ListMediaServer = grpc.ServerStreamingServer[Media]
 
 func _MediaService_UploadMedia_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UploadMediaRequest)
@@ -339,6 +337,10 @@ var MediaService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*MediaServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "ListMedia",
+			Handler:    _MediaService_ListMedia_Handler,
+		},
+		{
 			MethodName: "UploadMedia",
 			Handler:    _MediaService_UploadMedia_Handler,
 		},
@@ -360,11 +362,6 @@ var MediaService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "ListMedia",
-			Handler:       _MediaService_ListMedia_Handler,
-			ServerStreams: true,
-		},
 		{
 			StreamName:    "GetMediaContent",
 			Handler:       _MediaService_GetMediaContent_Handler,

@@ -75,12 +75,13 @@ func NewMedia(media entity.Media) *Media {
 	}
 
 	return &Media{
-		Id:         media.ID,
-		Filename:   media.Filename,
-		AlbumId:    media.Album.ID,
-		CapturedAt: capturedAt,
-		Type:       mediaType,
-		Exif:       exifHeaders,
+		Id:            media.ID,
+		Filename:      media.Filename,
+		AlbumId:       media.Album.ID,
+		CapturedAt:    capturedAt,
+		Type:          mediaType,
+		Exif:          exifHeaders,
+		ThumbnailData: media.Thumbnail,
 	}
 }
 

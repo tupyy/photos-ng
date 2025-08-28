@@ -32,6 +32,7 @@ type Media struct {
 	Type          MediaType              `protobuf:"varint,4,opt,name=type,proto3,enum=photos_ng.api.v1.grpc.MediaType" json:"type,omitempty"` // Type of media (photo/video)
 	Filename      string                 `protobuf:"bytes,5,opt,name=filename,proto3" json:"filename,omitempty"`                               // Full path of the media file on disk
 	Exif          []*ExifHeader          `protobuf:"bytes,6,rep,name=exif,proto3" json:"exif,omitempty"`                                       // EXIF metadata
+	ThumbnailData []byte                 `protobuf:"bytes,10,opt,name=thumbnail_data,json=thumbnailData,proto3" json:"thumbnail_data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -108,16 +109,21 @@ func (x *Media) GetExif() []*ExifHeader {
 	return nil
 }
 
-// Request to list media with filtering and pagination
+func (x *Media) GetThumbnailData() []byte {
+	if x != nil {
+		return x.ThumbnailData
+	}
+	return nil
+}
+
+// Request to list media with filtering and cursor-based pagination
 type ListMediaRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Pagination    *PaginationRequest     `protobuf:"bytes,1,opt,name=pagination,proto3" json:"pagination,omitempty"`                                                            // Pagination parameters (limit = batch size, offset = where to start)
-	AlbumId       *string                `protobuf:"bytes,2,opt,name=album_id,json=albumId,proto3,oneof" json:"album_id,omitempty"`                                             // Filter by album ID
-	Type          *MediaType             `protobuf:"varint,3,opt,name=type,proto3,enum=photos_ng.api.v1.grpc.MediaType,oneof" json:"type,omitempty"`                            // Filter by media type
-	StartDate     *string                `protobuf:"bytes,4,opt,name=start_date,json=startDate,proto3,oneof" json:"start_date,omitempty"`                                       // Filter media captured on/after this date (YYYY-MM-DD)
-	EndDate       *string                `protobuf:"bytes,5,opt,name=end_date,json=endDate,proto3,oneof" json:"end_date,omitempty"`                                             // Filter media captured on/before this date (YYYY-MM-DD)
-	SortBy        *MediaSortBy           `protobuf:"varint,6,opt,name=sort_by,json=sortBy,proto3,enum=photos_ng.api.v1.grpc.MediaSortBy,oneof" json:"sort_by,omitempty"`        // Sort field (default: captured_at)
-	SortOrder     *SortOrder             `protobuf:"varint,7,opt,name=sort_order,json=sortOrder,proto3,enum=photos_ng.api.v1.grpc.SortOrder,oneof" json:"sort_order,omitempty"` // Sort order (default: desc)
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	Pagination    *CursorPaginationRequest `protobuf:"bytes,1,opt,name=pagination,proto3" json:"pagination,omitempty"`                                                            // Cursor-based pagination parameters
+	AlbumId       *string                  `protobuf:"bytes,2,opt,name=album_id,json=albumId,proto3,oneof" json:"album_id,omitempty"`                                             // Filter by album ID
+	Type          *MediaType               `protobuf:"varint,3,opt,name=type,proto3,enum=photos_ng.api.v1.grpc.MediaType,oneof" json:"type,omitempty"`                            // Filter by media type
+	SortBy        *MediaSortBy             `protobuf:"varint,4,opt,name=sort_by,json=sortBy,proto3,enum=photos_ng.api.v1.grpc.MediaSortBy,oneof" json:"sort_by,omitempty"`        // Sort field (default: captured_at)
+	SortOrder     *SortOrder               `protobuf:"varint,5,opt,name=sort_order,json=sortOrder,proto3,enum=photos_ng.api.v1.grpc.SortOrder,oneof" json:"sort_order,omitempty"` // Sort order (default: desc)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -152,7 +158,7 @@ func (*ListMediaRequest) Descriptor() ([]byte, []int) {
 	return file_media_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ListMediaRequest) GetPagination() *PaginationRequest {
+func (x *ListMediaRequest) GetPagination() *CursorPaginationRequest {
 	if x != nil {
 		return x.Pagination
 	}
@@ -173,20 +179,6 @@ func (x *ListMediaRequest) GetType() MediaType {
 	return MediaType_MEDIA_TYPE_UNSPECIFIED
 }
 
-func (x *ListMediaRequest) GetStartDate() string {
-	if x != nil && x.StartDate != nil {
-		return *x.StartDate
-	}
-	return ""
-}
-
-func (x *ListMediaRequest) GetEndDate() string {
-	if x != nil && x.EndDate != nil {
-		return *x.EndDate
-	}
-	return ""
-}
-
 func (x *ListMediaRequest) GetSortBy() MediaSortBy {
 	if x != nil && x.SortBy != nil {
 		return *x.SortBy
@@ -203,9 +195,9 @@ func (x *ListMediaRequest) GetSortOrder() SortOrder {
 
 // Response containing list of media
 type ListMediaResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Media         []*Media               `protobuf:"bytes,1,rep,name=media,proto3" json:"media,omitempty"`           // List of media items
-	Pagination    *PaginationResponse    `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"` // Pagination metadata
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	Media         []*Media                  `protobuf:"bytes,1,rep,name=media,proto3" json:"media,omitempty"`           // List of media items
+	Pagination    *CursorPaginationResponse `protobuf:"bytes,2,opt,name=pagination,proto3" json:"pagination,omitempty"` // Cursor-based pagination metadata
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -247,7 +239,7 @@ func (x *ListMediaResponse) GetMedia() []*Media {
 	return nil
 }
 
-func (x *ListMediaResponse) GetPagination() *PaginationResponse {
+func (x *ListMediaResponse) GetPagination() *CursorPaginationResponse {
 	if x != nil {
 		return x.Pagination
 	}
@@ -759,7 +751,7 @@ var File_media_proto protoreflect.FileDescriptor
 
 const file_media_proto_rawDesc = "" +
 	"\n" +
-	"\vmedia.proto\x12\x15photos_ng.api.v1.grpc\x1a\fcommon.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf8\x01\n" +
+	"\vmedia.proto\x12\x15photos_ng.api.v1.grpc\x1a\fcommon.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9f\x02\n" +
 	"\x05Media\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\balbum_id\x18\x02 \x01(\tR\aalbumId\x12;\n" +
@@ -767,30 +759,27 @@ const file_media_proto_rawDesc = "" +
 	"capturedAt\x124\n" +
 	"\x04type\x18\x04 \x01(\x0e2 .photos_ng.api.v1.grpc.MediaTypeR\x04type\x12\x1a\n" +
 	"\bfilename\x18\x05 \x01(\tR\bfilename\x125\n" +
-	"\x04exif\x18\x06 \x03(\v2!.photos_ng.api.v1.grpc.ExifHeaderR\x04exif\"\xd0\x03\n" +
-	"\x10ListMediaRequest\x12H\n" +
+	"\x04exif\x18\x06 \x03(\v2!.photos_ng.api.v1.grpc.ExifHeaderR\x04exif\x12%\n" +
+	"\x0ethumbnail_data\x18\n" +
+	" \x01(\fR\rthumbnailData\"\xf6\x02\n" +
+	"\x10ListMediaRequest\x12N\n" +
 	"\n" +
-	"pagination\x18\x01 \x01(\v2(.photos_ng.api.v1.grpc.PaginationRequestR\n" +
+	"pagination\x18\x01 \x01(\v2..photos_ng.api.v1.grpc.CursorPaginationRequestR\n" +
 	"pagination\x12\x1e\n" +
 	"\balbum_id\x18\x02 \x01(\tH\x00R\aalbumId\x88\x01\x01\x129\n" +
-	"\x04type\x18\x03 \x01(\x0e2 .photos_ng.api.v1.grpc.MediaTypeH\x01R\x04type\x88\x01\x01\x12\"\n" +
+	"\x04type\x18\x03 \x01(\x0e2 .photos_ng.api.v1.grpc.MediaTypeH\x01R\x04type\x88\x01\x01\x12@\n" +
+	"\asort_by\x18\x04 \x01(\x0e2\".photos_ng.api.v1.grpc.MediaSortByH\x02R\x06sortBy\x88\x01\x01\x12D\n" +
 	"\n" +
-	"start_date\x18\x04 \x01(\tH\x02R\tstartDate\x88\x01\x01\x12\x1e\n" +
-	"\bend_date\x18\x05 \x01(\tH\x03R\aendDate\x88\x01\x01\x12@\n" +
-	"\asort_by\x18\x06 \x01(\x0e2\".photos_ng.api.v1.grpc.MediaSortByH\x04R\x06sortBy\x88\x01\x01\x12D\n" +
-	"\n" +
-	"sort_order\x18\a \x01(\x0e2 .photos_ng.api.v1.grpc.SortOrderH\x05R\tsortOrder\x88\x01\x01B\v\n" +
+	"sort_order\x18\x05 \x01(\x0e2 .photos_ng.api.v1.grpc.SortOrderH\x03R\tsortOrder\x88\x01\x01B\v\n" +
 	"\t_album_idB\a\n" +
-	"\x05_typeB\r\n" +
-	"\v_start_dateB\v\n" +
-	"\t_end_dateB\n" +
+	"\x05_typeB\n" +
 	"\n" +
 	"\b_sort_byB\r\n" +
-	"\v_sort_order\"\x92\x01\n" +
+	"\v_sort_order\"\x98\x01\n" +
 	"\x11ListMediaResponse\x122\n" +
-	"\x05media\x18\x01 \x03(\v2\x1c.photos_ng.api.v1.grpc.MediaR\x05media\x12I\n" +
+	"\x05media\x18\x01 \x03(\v2\x1c.photos_ng.api.v1.grpc.MediaR\x05media\x12O\n" +
 	"\n" +
-	"pagination\x18\x02 \x01(\v2).photos_ng.api.v1.grpc.PaginationResponseR\n" +
+	"pagination\x18\x02 \x01(\v2/.photos_ng.api.v1.grpc.CursorPaginationResponseR\n" +
 	"pagination\"\x91\x01\n" +
 	"\x12UploadMediaRequest\x12\x1a\n" +
 	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x19\n" +
@@ -825,9 +814,9 @@ const file_media_proto_rawDesc = "" +
 	"total_size\x18\x04 \x01(\x03R\ttotalSize\x12\x1f\n" +
 	"\vchunk_index\x18\x05 \x01(\x03R\n" +
 	"chunkIndex\x12\"\n" +
-	"\ris_last_chunk\x18\x06 \x01(\bR\visLastChunk2\x99\x05\n" +
-	"\fMediaService\x12T\n" +
-	"\tListMedia\x12'.photos_ng.api.v1.grpc.ListMediaRequest\x1a\x1c.photos_ng.api.v1.grpc.Media0\x01\x12V\n" +
+	"\ris_last_chunk\x18\x06 \x01(\bR\visLastChunk2\xa3\x05\n" +
+	"\fMediaService\x12^\n" +
+	"\tListMedia\x12'.photos_ng.api.v1.grpc.ListMediaRequest\x1a(.photos_ng.api.v1.grpc.ListMediaResponse\x12V\n" +
 	"\vUploadMedia\x12).photos_ng.api.v1.grpc.UploadMediaRequest\x1a\x1c.photos_ng.api.v1.grpc.Media\x12P\n" +
 	"\bGetMedia\x12&.photos_ng.api.v1.grpc.GetMediaRequest\x1a\x1c.photos_ng.api.v1.grpc.Media\x12Z\n" +
 	"\vUpdateMedia\x12-.photos_ng.api.v1.grpc.UpdateMediaByIdRequest\x1a\x1c.photos_ng.api.v1.grpc.Media\x12P\n" +
@@ -866,22 +855,22 @@ var file_media_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil),    // 12: google.protobuf.Timestamp
 	(MediaType)(0),                   // 13: photos_ng.api.v1.grpc.MediaType
 	(*ExifHeader)(nil),               // 14: photos_ng.api.v1.grpc.ExifHeader
-	(*PaginationRequest)(nil),        // 15: photos_ng.api.v1.grpc.PaginationRequest
+	(*CursorPaginationRequest)(nil),  // 15: photos_ng.api.v1.grpc.CursorPaginationRequest
 	(MediaSortBy)(0),                 // 16: photos_ng.api.v1.grpc.MediaSortBy
 	(SortOrder)(0),                   // 17: photos_ng.api.v1.grpc.SortOrder
-	(*PaginationResponse)(nil),       // 18: photos_ng.api.v1.grpc.PaginationResponse
+	(*CursorPaginationResponse)(nil), // 18: photos_ng.api.v1.grpc.CursorPaginationResponse
 	(*emptypb.Empty)(nil),            // 19: google.protobuf.Empty
 }
 var file_media_proto_depIdxs = []int32{
 	12, // 0: photos_ng.api.v1.grpc.Media.captured_at:type_name -> google.protobuf.Timestamp
 	13, // 1: photos_ng.api.v1.grpc.Media.type:type_name -> photos_ng.api.v1.grpc.MediaType
 	14, // 2: photos_ng.api.v1.grpc.Media.exif:type_name -> photos_ng.api.v1.grpc.ExifHeader
-	15, // 3: photos_ng.api.v1.grpc.ListMediaRequest.pagination:type_name -> photos_ng.api.v1.grpc.PaginationRequest
+	15, // 3: photos_ng.api.v1.grpc.ListMediaRequest.pagination:type_name -> photos_ng.api.v1.grpc.CursorPaginationRequest
 	13, // 4: photos_ng.api.v1.grpc.ListMediaRequest.type:type_name -> photos_ng.api.v1.grpc.MediaType
 	16, // 5: photos_ng.api.v1.grpc.ListMediaRequest.sort_by:type_name -> photos_ng.api.v1.grpc.MediaSortBy
 	17, // 6: photos_ng.api.v1.grpc.ListMediaRequest.sort_order:type_name -> photos_ng.api.v1.grpc.SortOrder
 	0,  // 7: photos_ng.api.v1.grpc.ListMediaResponse.media:type_name -> photos_ng.api.v1.grpc.Media
-	18, // 8: photos_ng.api.v1.grpc.ListMediaResponse.pagination:type_name -> photos_ng.api.v1.grpc.PaginationResponse
+	18, // 8: photos_ng.api.v1.grpc.ListMediaResponse.pagination:type_name -> photos_ng.api.v1.grpc.CursorPaginationResponse
 	12, // 9: photos_ng.api.v1.grpc.UpdateMediaRequest.captured_at:type_name -> google.protobuf.Timestamp
 	14, // 10: photos_ng.api.v1.grpc.UpdateMediaRequest.exif:type_name -> photos_ng.api.v1.grpc.ExifHeader
 	5,  // 11: photos_ng.api.v1.grpc.UpdateMediaByIdRequest.update:type_name -> photos_ng.api.v1.grpc.UpdateMediaRequest
@@ -892,7 +881,7 @@ var file_media_proto_depIdxs = []int32{
 	7,  // 16: photos_ng.api.v1.grpc.MediaService.DeleteMedia:input_type -> photos_ng.api.v1.grpc.DeleteMediaRequest
 	8,  // 17: photos_ng.api.v1.grpc.MediaService.GetMediaThumbnail:input_type -> photos_ng.api.v1.grpc.GetMediaThumbnailRequest
 	9,  // 18: photos_ng.api.v1.grpc.MediaService.GetMediaContent:input_type -> photos_ng.api.v1.grpc.GetMediaContentRequest
-	0,  // 19: photos_ng.api.v1.grpc.MediaService.ListMedia:output_type -> photos_ng.api.v1.grpc.Media
+	2,  // 19: photos_ng.api.v1.grpc.MediaService.ListMedia:output_type -> photos_ng.api.v1.grpc.ListMediaResponse
 	0,  // 20: photos_ng.api.v1.grpc.MediaService.UploadMedia:output_type -> photos_ng.api.v1.grpc.Media
 	0,  // 21: photos_ng.api.v1.grpc.MediaService.GetMedia:output_type -> photos_ng.api.v1.grpc.Media
 	0,  // 22: photos_ng.api.v1.grpc.MediaService.UpdateMedia:output_type -> photos_ng.api.v1.grpc.Media

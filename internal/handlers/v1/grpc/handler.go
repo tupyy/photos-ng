@@ -1,5 +1,3 @@
-package grpc
-
 import (
 	"bytes"
 	"context"
@@ -11,6 +9,7 @@ import (
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -157,22 +156,40 @@ func (s *Handler) SyncAlbum(ctx context.Context, req *v1grpc.SyncAlbumRequest) (
 
 // Media operations implementation
 func (s *Handler) ListMedia(req *v1grpc.ListMediaRequest, stream v1grpc.PhotosNGService_ListMediaServer) error {
-	// Get pagination parameters from client
-	limit := 50 // Default batch size
+	// Build media options from parameters
+	opt := &services.MediaOptions{}
+
+	// Set default values for pagination
+	limit := 50 // Default batch size for streaming
 	if req.Pagination != nil && req.Pagination.Limit > 0 {
+		opt.MediaLimit = int(req.Pagination.Limit)
 		limit = int(req.Pagination.Limit)
+	} else {
+		opt.MediaLimit = limit
 	}
 
-	// Build service options with client-specified pagination
-	opts := services.NewMediaOptionsWithOptions(
-		services.WithMediaLimit(limit),
-	)
+	// Parse cursor if provided
+	if req.Pagination != nil && req.Pagination.Cursor != nil {
+		cursor, err := services.DecodeCursor(*req.Pagination.Cursor)
+		if err != nil {
+			return err
+		}
+		opt.Cursor = cursor
+	}
 
-	// Add optional filters
+	// Parse direction parameter (default to "forward")
+	if req.Pagination != nil && req.Pagination.Direction != nil {
+		opt.Direction = *req.Pagination.Direction
+	} else {
+		opt.Direction = "forward"
+	}
+
+	// Add album filter
 	if req.AlbumId != nil {
-		opts = services.MediaOptionsWithOptions(opts, services.WithAlbumID(req.AlbumId))
+		opt.AlbumID = req.AlbumId
 	}
 
+	// Add media type filter
 	if req.Type != nil && *req.Type != v1grpc.MediaType_MEDIA_TYPE_UNSPECIFIED {
 		var mediaType string
 		switch *req.Type {
@@ -181,22 +198,57 @@ func (s *Handler) ListMedia(req *v1grpc.ListMediaRequest, stream v1grpc.PhotosNG
 		case v1grpc.MediaType_MEDIA_TYPE_VIDEO:
 			mediaType = "video"
 		}
-		opts = services.MediaOptionsWithOptions(opts, services.WithMediaType(&mediaType))
+		opt.MediaType = &mediaType
 	}
 
 	// Note: Sorting is fixed to captured_at DESC, id DESC for cursor pagination
 
-	// Fetch ONLY the requested batch from database
-	media, err := s.mediaSrv.GetMedia(stream.Context(), opts)
+	// Fetch media using the service
+	mediaItems, err := s.mediaSrv.GetMedia(stream.Context(), opt)
 	if err != nil {
 		return err
 	}
 
-	// Stream the batch (typically 50-100 items, not 10,000+)
-	for _, mediaItem := range media {
+	// Stream the media items
+	for _, mediaItem := range mediaItems {
 		grpcMedia := v1grpc.NewMedia(mediaItem)
 		if err := stream.Send(grpcMedia); err != nil {
 			return err
+		}
+	}
+
+	// Get next cursor for pagination and send in trailer
+	if len(mediaItems) == limit {
+		// Check if there's a next page by requesting one more item
+		nextOpt := &services.MediaOptions{
+			MediaLimit: 1,
+			Direction:  opt.Direction,
+			AlbumID:    opt.AlbumID,
+			MediaType:  opt.MediaType,
+		}
+
+		// Set cursor based on last item
+		if len(mediaItems) > 0 {
+			lastItem := mediaItems[len(mediaItems)-1]
+			nextOpt.Cursor = &services.PaginationCursor{
+				CapturedAt: lastItem.CapturedAt,
+				ID:         lastItem.ID,
+			}
+		}
+
+		nextItems, err := s.mediaSrv.GetMedia(stream.Context(), nextOpt)
+		if err == nil && len(nextItems) > 0 {
+			// There are more items, encode cursor for next page
+			lastItem := mediaItems[len(mediaItems)-1]
+			nextCursor := &services.PaginationCursor{
+				CapturedAt: lastItem.CapturedAt,
+				ID:         lastItem.ID,
+			}
+			encodedCursor, err := nextCursor.Encode()
+			if err == nil {
+				// Send cursor in trailer metadata
+				stream.SetTrailer(metadata.Pairs("next-cursor", encodedCursor))
+			}
 		}
 	}
 

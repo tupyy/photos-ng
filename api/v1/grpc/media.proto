@@ -20,23 +20,22 @@ message Media {
   MediaType type = 4;                      // Type of media (photo/video)
   string filename = 5;                     // Full path of the media file on disk
   repeated ExifHeader exif = 6;            // EXIF metadata
+  bytes thumbnail_data = 10;
 }
 
-// Request to list media with filtering and pagination
+// Request to list media with filtering and cursor-based pagination
 message ListMediaRequest {
-  PaginationRequest pagination = 1;        // Pagination parameters (limit = batch size, offset = where to start)
+  CursorPaginationRequest pagination = 1;  // Cursor-based pagination parameters
   optional string album_id = 2;            // Filter by album ID
   optional MediaType type = 3;             // Filter by media type
-  optional string start_date = 4;          // Filter media captured on/after this date (YYYY-MM-DD)
-  optional string end_date = 5;            // Filter media captured on/before this date (YYYY-MM-DD)
-  optional MediaSortBy sort_by = 6;        // Sort field (default: captured_at)
-  optional SortOrder sort_order = 7;       // Sort order (default: desc)
+  optional MediaSortBy sort_by = 4;        // Sort field (default: captured_at)
+  optional SortOrder sort_order = 5;       // Sort order (default: desc)
 }
 
 // Response containing list of media
 message ListMediaResponse {
   repeated Media media = 1;                // List of media items
-  PaginationResponse pagination = 2;       // Pagination metadata
+  CursorPaginationResponse pagination = 2; // Cursor-based pagination metadata
 }
 
 // Request to upload new media
@@ -98,8 +97,8 @@ message BinaryDataChunk {
 
 // Media service definition
 service MediaService {
-  // List media with optional filtering, sorting, and pagination (streaming)
-  rpc ListMedia(ListMediaRequest) returns (stream Media);
+  // List media with optional filtering, sorting, and pagination
+  rpc ListMedia(ListMediaRequest) returns (ListMediaResponse);
   
   // Upload new media to an album
   rpc UploadMedia(UploadMediaRequest) returns (Media);

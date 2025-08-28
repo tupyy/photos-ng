@@ -36,6 +36,19 @@ message PaginationResponse {
   int32 offset = 3;  // Number of items skipped
 }
 
+// Cursor-based pagination parameters for media endpoints
+message CursorPaginationRequest {
+  int32 limit = 1;                    // Maximum number of items to return (default: 20, max: 100)
+  optional string cursor = 2;         // Cursor for pagination (base64 encoded)
+  optional string direction = 3;      // Direction: "forward" or "backward" (default: "forward")
+}
+
+// Cursor-based pagination response metadata for media endpoints
+message CursorPaginationResponse {
+  int32 limit = 1;                    // Number of items returned in this response
+  optional string next_cursor = 2;    // Cursor for the next page (if available)
+}
+
 // Media type enumeration
 enum MediaType {
   MEDIA_TYPE_UNSPECIFIED = 0;
