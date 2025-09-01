@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAlbumsApi } from '@shared/hooks/useApi';
 
 interface ThumbnailContextType {
@@ -18,14 +18,17 @@ interface ThumbnailProviderProps {
 
 export const ThumbnailProvider: React.FC<ThumbnailProviderProps> = ({ children }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { updateAlbum, fetchAlbums } = useAlbumsApi();
   
   const [isThumbnailMode, setIsThumbnailMode] = useState(false);
   const [thumbnailModeAlbumId, setThumbnailModeAlbumId] = useState<string | null>(null);
+  const [startingLocation, setStartingLocation] = useState<string | null>(null);
 
   const startThumbnailSelection = (albumId: string) => {
     setThumbnailModeAlbumId(albumId);
     setIsThumbnailMode(true);
+    setStartingLocation(location.pathname); // Store where the user started
     // Navigate to the album to start thumbnail selection
     navigate(`/albums/${albumId}`);
   };
@@ -33,21 +36,26 @@ export const ThumbnailProvider: React.FC<ThumbnailProviderProps> = ({ children }
   const exitThumbnailMode = () => {
     setIsThumbnailMode(false);
     setThumbnailModeAlbumId(null);
-    // Navigate back to albums list (where the user started)
-    navigate('/albums');
+    // Navigate back to where the user started, or albums list as fallback
+    navigate(startingLocation || '/albums');
+    setStartingLocation(null);
   };
 
   const selectThumbnail = async (mediaId: string) => {
     if (!thumbnailModeAlbumId) return;
     
+    const albumId = thumbnailModeAlbumId;
+    const returnLocation = startingLocation;
+    
     try {
       // Update album thumbnail
-      await updateAlbum(thumbnailModeAlbumId, { thumbnail: mediaId });
+      await updateAlbum(albumId, { thumbnail: mediaId });
       
-      // Exit thumbnail mode and navigate back to albums list
+      // Exit thumbnail mode and navigate back to where the user started
       setIsThumbnailMode(false);
       setThumbnailModeAlbumId(null);
-      navigate('/albums');
+      setStartingLocation(null);
+      navigate(returnLocation || '/albums');
       
       // Refresh albums to show new thumbnail
       fetchAlbums({ limit: 1000, offset: 0 });

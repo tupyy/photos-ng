@@ -152,14 +152,14 @@ const Album: React.FC<AlbumProps> = ({
           </div>
 
           {/* Set/Change Thumbnail button - positioned at bottom right */}
-          {(album.mediaCount || 0) > 0 && !isSelectionMode && (
+          {((album.mediaCount || 0) > 0 || (album.children?.length || 0) > 0) && !isSelectionMode && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleSetThumbnail();
               }}
               className="p-1.5 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 dark:hover:border-blue-600 transition-colors flex-shrink-0"
-              title={album.thumbnail ? "Change thumbnail" : "Set thumbnail from photos in this album"}
+              title={album.thumbnail ? "Change thumbnail" : (album.mediaCount || 0) > 0 ? "Set thumbnail from photos in this album" : "Set thumbnail by navigating through sub-albums"}
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
