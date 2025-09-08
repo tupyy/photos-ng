@@ -30,14 +30,9 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
 
   const currentMedia = media[currentIndex];
 
-  // Reset loading state when media changes and cancel previous loads
+  // Reset loading state when media changes
   useEffect(() => {
     if (currentMedia) {
-      // Stop previous image from loading by removing its src
-      if (imageRef.current && imageRef.current.src !== currentMedia.content) {
-        imageRef.current.removeAttribute('src');
-      }
-
       setIsImageLoaded(false);
       setIsLoading(true);
     }
