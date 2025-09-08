@@ -26,12 +26,18 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   const currentMedia = media[currentIndex];
 
-  // Reset loading state when media changes
+  // Reset loading state when media changes and cancel previous loads
   useEffect(() => {
     if (currentMedia) {
+      // Stop previous image from loading by clearing its src
+      if (imageRef.current && imageRef.current.src !== currentMedia.content) {
+        imageRef.current.src = '';
+      }
+
       setIsImageLoaded(false);
       setIsLoading(true);
     }
@@ -120,11 +126,8 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
   };
 
   const handleImageLoad = () => {
-    // Add artificial delay to simulate network latency
-    setTimeout(() => {
-      setIsImageLoaded(true);
-      setIsLoading(false);
-    }, 1500); // 1.5 second delay
+    setIsImageLoaded(true);
+    setIsLoading(false);
   };
 
   const handleImageError = () => {
@@ -199,6 +202,7 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
 
           {/* Full Resolution Image - Overlays thumbnail when loaded */}
           <img
+            ref={imageRef}
             src={currentMedia.content}
             alt={currentMedia.filename}
             className="absolute inset-0 w-full h-full object-contain"
