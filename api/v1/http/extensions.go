@@ -70,7 +70,7 @@ func NewAlbum(album entity.Album) Album {
 
 // NewMedia converts an entity.Media to a v1.Media for API responses
 func NewMedia(media entity.Media) Media {
-	// Convert captured date
+	// Convert captured date to full timestamp for cursor pagination
 	capturedAt := types.Date{Time: media.CapturedAt}
 
 	// Convert EXIF data

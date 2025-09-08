@@ -15,21 +15,28 @@ import {
   clearAlbumSelection,
 } from '@reducers/albumsSlice';
 import {
-  fetchMedia,
-  fetchMediaById,
-  updateMedia,
-  deleteMedia,
-  clearCurrentMedia,
-  clearError as clearMediaError,
-  setFilters as setMediaFilters,
-  clearFilters as clearMediaFilters,
-  toggleMediaSelection,
-  selectAllMedia,
-  clearSelection,
-  setViewMode,
-  invalidateCache,
-  MediaFilters,
-} from '@reducers/mediaSlice';
+  fetchTimelineMedia,
+  clearError as clearTimelineError,
+  setFilters as setTimelineFilters,
+  clearFilters as clearTimelineFilters,
+  toggleMediaSelection as toggleTimelineMediaSelection,
+  selectAllMedia as selectAllTimelineMedia,
+  clearSelection as clearTimelineSelection,
+  invalidateCache as invalidateTimelineCache,
+  TimelineFilters,
+} from '@reducers/timelineSlice';
+import {
+  fetchAlbumsMedia,
+  clearError as clearAlbumsMediaError,
+  setCurrentAlbum,
+  setFilters as setAlbumsMediaFilters,
+  clearFilters as clearAlbumsMediaFilters,
+  toggleMediaSelection as toggleAlbumsMediaSelection,
+  selectAllMedia as selectAllAlbumsMedia,
+  clearSelection as clearAlbumsMediaSelection,
+  invalidateCache as invalidateAlbumsMediaCache,
+  AlbumsMediaFilters,
+} from '@reducers/albumsMediaSlice';
 import {
   fetchStats,
   clearError as clearStatsError,
@@ -86,53 +93,77 @@ export const useAlbumsApi = () => {
   };
 };
 
-// Custom hook for Media API
-export const useMediaApi = () => {
+// Custom hook for Timeline Media API
+export const useTimelineApi = () => {
   const dispatch = useAppDispatch();
-  const mediaState = useAppSelector((state) => state.media);
+  const timelineState = useAppSelector((state) => state.timeline);
 
   return {
     // State
-    ...mediaState,
+    ...timelineState,
     
     // Actions
     fetchMedia: useCallback(
-      (params?: Partial<MediaFilters> & { forceRefresh?: boolean }) => dispatch(fetchMedia(params || {})),
+      (params?: Partial<TimelineFilters> & { forceRefresh?: boolean }) => dispatch(fetchTimelineMedia(params || {})),
       [dispatch]
     ),
-    fetchMediaById: useCallback(
-      (id: string, forceRefresh?: boolean) => dispatch(fetchMediaById({ id, forceRefresh })),
-      [dispatch]
-    ),
-    updateMedia: useCallback(
-      (id: string, mediaData: UpdateMediaRequest) => dispatch(updateMedia({ id, mediaData })),
-      [dispatch]
-    ),
-    deleteMedia: useCallback(
-      (id: string) => dispatch(deleteMedia(id)),
-      [dispatch]
-    ),
-    clearCurrentMedia: useCallback(() => dispatch(clearCurrentMedia()), [dispatch]),
-    clearError: useCallback(() => dispatch(clearMediaError()), [dispatch]),
+    clearError: useCallback(() => dispatch(clearTimelineError()), [dispatch]),
     setFilters: useCallback(
-      (filters: Partial<MediaFilters>) => dispatch(setMediaFilters(filters)),
+      (filters: Partial<TimelineFilters>) => dispatch(setTimelineFilters(filters)),
       [dispatch]
     ),
-    clearFilters: useCallback(() => dispatch(clearMediaFilters()), [dispatch]),
+    clearFilters: useCallback(() => dispatch(clearTimelineFilters()), [dispatch]),
     toggleMediaSelection: useCallback(
-      (mediaId: string) => dispatch(toggleMediaSelection(mediaId)),
+      (mediaId: string) => dispatch(toggleTimelineMediaSelection(mediaId)),
       [dispatch]
     ),
-    selectAllMedia: useCallback(() => dispatch(selectAllMedia()), [dispatch]),
-    clearSelection: useCallback(() => dispatch(clearSelection()), [dispatch]),
-    setViewMode: useCallback(
-      (mode: 'grid' | 'list') => dispatch(setViewMode(mode)),
-      [dispatch]
-    ),
-    invalidateCache: useCallback(() => dispatch(invalidateCache()), [dispatch]),
-    // loadNextPage removed - now handled directly in components
+    selectAllMedia: useCallback(() => dispatch(selectAllTimelineMedia()), [dispatch]),
+    clearSelection: useCallback(() => dispatch(clearTimelineSelection()), [dispatch]),
+    invalidateCache: useCallback(() => dispatch(invalidateTimelineCache()), [dispatch]),
   };
 };
+
+// Custom hook for Albums Media API
+export const useAlbumsMediaApi = () => {
+  const dispatch = useAppDispatch();
+  const albumsMediaState = useAppSelector((state) => state.albumsMedia);
+
+  return {
+    // State
+    ...albumsMediaState,
+    
+    // Actions
+    fetchMedia: useCallback(
+      (params: Partial<AlbumsMediaFilters> & { forceRefresh?: boolean }) => {
+        if (!params.albumId) {
+          throw new Error('albumId is required for albums media');
+        }
+        return dispatch(fetchAlbumsMedia(params as AlbumsMediaFilters & { forceRefresh?: boolean }));
+      },
+      [dispatch]
+    ),
+    setCurrentAlbum: useCallback(
+      (albumId: string | null) => dispatch(setCurrentAlbum(albumId)),
+      [dispatch]
+    ),
+    clearError: useCallback(() => dispatch(clearAlbumsMediaError()), [dispatch]),
+    setFilters: useCallback(
+      (filters: Partial<AlbumsMediaFilters>) => dispatch(setAlbumsMediaFilters(filters)),
+      [dispatch]
+    ),
+    clearFilters: useCallback(() => dispatch(clearAlbumsMediaFilters()), [dispatch]),
+    toggleMediaSelection: useCallback(
+      (mediaId: string) => dispatch(toggleAlbumsMediaSelection(mediaId)),
+      [dispatch]
+    ),
+    selectAllMedia: useCallback(() => dispatch(selectAllAlbumsMedia()), [dispatch]),
+    clearSelection: useCallback(() => dispatch(clearAlbumsMediaSelection()), [dispatch]),
+    invalidateCache: useCallback(() => dispatch(invalidateAlbumsMediaCache()), [dispatch]),
+  };
+};
+
+// Legacy hook for backward compatibility - use useTimelineApi or useAlbumsMediaApi instead
+export const useMediaApi = useTimelineApi;
 
 // Custom hook for Stats API
 export const useStatsApi = () => {

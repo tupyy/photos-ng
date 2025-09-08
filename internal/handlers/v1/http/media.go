@@ -66,7 +66,7 @@ func (s *Handler) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 	// Note: Sorting is fixed to captured_at DESC, id DESC for cursor pagination
 
 	// Create media service and get media
-	mediaItems, err := s.mediaSrv.GetMedia(c.Request.Context(), opt)
+	mediaItems, nextCursor, err := s.mediaSrv.GetMedia(c.Request.Context(), opt)
 	if err != nil {
 		logError(requestid.FromGin(c), "ListMedia", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -79,10 +79,9 @@ func (s *Handler) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 		apiMedia = append(apiMedia, v1.NewMedia(media))
 	}
 
-	// Generate next cursor from results
+	// Encode next cursor if available
 	var nextCursorStr *string
-	if len(mediaItems) > 0 {
-		nextCursor := s.mediaSrv.GetNextCursor(mediaItems)
+	if nextCursor != nil {
 		if encoded, err := nextCursor.Encode(); err == nil && encoded != "" {
 			nextCursorStr = &encoded
 		}

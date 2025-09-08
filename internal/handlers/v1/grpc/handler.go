@@ -206,7 +206,7 @@ func (s *Handler) ListMedia(req *v1grpc.ListMediaRequest, stream v1grpc.PhotosNG
 	// Note: Sorting is fixed to captured_at DESC, id DESC for cursor pagination
 
 	// Fetch media using the service
-	mediaItems, err := s.mediaSrv.GetMedia(stream.Context(), opt)
+	mediaItems, nextCursor, err := s.mediaSrv.GetMedia(stream.Context(), opt)
 	if err != nil {
 		return err
 	}
@@ -219,38 +219,11 @@ func (s *Handler) ListMedia(req *v1grpc.ListMediaRequest, stream v1grpc.PhotosNG
 		}
 	}
 
-	// Get next cursor for pagination and send in trailer
-	if len(mediaItems) == limit {
-		// Check if there's a next page by requesting one more item
-		nextOpt := &services.MediaOptions{
-			MediaLimit: 1,
-			Direction:  opt.Direction,
-			AlbumID:    opt.AlbumID,
-			MediaType:  opt.MediaType,
-		}
-
-		// Set cursor based on last item
-		if len(mediaItems) > 0 {
-			lastItem := mediaItems[len(mediaItems)-1]
-			nextOpt.Cursor = &services.PaginationCursor{
-				CapturedAt: lastItem.CapturedAt,
-				ID:         lastItem.ID,
-			}
-		}
-
-		nextItems, err := s.mediaSrv.GetMedia(stream.Context(), nextOpt)
-		if err == nil && len(nextItems) > 0 {
-			// There are more items, encode cursor for next page
-			lastItem := mediaItems[len(mediaItems)-1]
-			nextCursor := &services.PaginationCursor{
-				CapturedAt: lastItem.CapturedAt,
-				ID:         lastItem.ID,
-			}
-			encodedCursor, err := nextCursor.Encode()
-			if err == nil {
-				// Send cursor in trailer metadata
-				stream.SetTrailer(metadata.Pairs("next-cursor", encodedCursor))
-			}
+	// Send next cursor in trailer if available
+	if nextCursor != nil {
+		encodedCursor, err := nextCursor.Encode()
+		if err == nil {
+			stream.SetTrailer(metadata.Pairs("next-cursor", encodedCursor))
 		}
 	}
 

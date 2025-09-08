@@ -294,14 +294,10 @@ const mediaSlice = createSlice({
             ? state.media[0] 
             : state.media[state.media.length - 1];
             
-          // Ensure capturedAt is in full timestamp format
-          let capturedAt = referenceMedia.capturedAt;
-          if (capturedAt && !capturedAt.includes('T')) {
-            // If it's just a date, add time portion
-            capturedAt = capturedAt + 'T00:00:00Z';
-          }
+          // Use the capturedAt as-is from the API response for cursor generation
+          // The backend will handle the proper timestamp parsing and comparison
           state.nextCursor = btoa(JSON.stringify({
-            captured_at: capturedAt,
+            captured_at: referenceMedia.capturedAt,
             id: referenceMedia.id
           }));
         } else {

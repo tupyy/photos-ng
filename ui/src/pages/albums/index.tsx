@@ -17,7 +17,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector, selectAlbumsCreateFormOpen, selectCurrentAlbum } from '@shared/store';
 import { setPageActive, setCreateFormOpen, fetchAlbumById, setCurrentAlbum } from '@shared/reducers/albumsSlice';
-import { useAlbumsApi, useMediaApi } from '@shared/hooks/useApi';
+import { useAlbumsApi, useAlbumsMediaApi } from '@shared/hooks/useApi';
 import { useThumbnail } from '@shared/contexts';
 import { Album } from '@shared/types/Album';
 import { ListMediaSortByEnum, ListMediaSortOrderEnum, ListMediaDirectionEnum } from '@generated/api/media-api';
@@ -37,7 +37,7 @@ const AlbumsPage: React.FC = () => {
 
   // API hooks for data fetching and operations
   const { albums, loading, error, fetchAlbums, fetchAlbumById: fetchAlbumByIdApi, updateAlbum } = useAlbumsApi();
-  const { media, loading: mediaLoading, loadingMore: mediaLoadingMore, error: mediaError, hasMore, nextCursor, fetchMedia } = useMediaApi();
+  const { media, loading: mediaLoading, loadingMore: mediaLoadingMore, error: mediaError, hasMore, nextCursor, fetchMedia, setCurrentAlbum: setCurrentAlbumMedia } = useAlbumsMediaApi();
 
   // Thumbnail context
   const { isThumbnailMode, startThumbnailSelection, exitThumbnailMode } = useThumbnail();
@@ -56,9 +56,18 @@ const AlbumsPage: React.FC = () => {
    * Main effect for page initialization and data fetching
    * Runs when component mounts or when album ID changes
    */
+  // Track previous album ID to detect actual changes
+  const [prevAlbumId, setPrevAlbumId] = useState<string | undefined>(undefined);
+
   useEffect(() => {
     // Set page as active when component mounts
     dispatch(setPageActive(true));
+
+    // Set current album in media state when album ID changes
+    if (prevAlbumId !== id) {
+      setCurrentAlbumMedia(id || null);
+      setPrevAlbumId(id);
+    }
 
     if (id) {
       // Viewing a specific album - fetch album details (which includes all media)
@@ -74,7 +83,7 @@ const AlbumsPage: React.FC = () => {
     return () => {
       dispatch(setPageActive(false));
     };
-  }, [dispatch, id, fetchAlbums, fetchAlbumByIdApi]);
+  }, [dispatch, id, fetchAlbums, fetchAlbumByIdApi, prevAlbumId]);
 
   /**
    * Initialize edited description when currentAlbum changes
@@ -181,7 +190,7 @@ const AlbumsPage: React.FC = () => {
         forceRefresh: true,
       });
     }
-  }, [id, currentAlbum, fetchMedia]);
+  }, [id, currentAlbum]);
 
   // Sync hasMoreMedia with Redux state
   useEffect(() => {

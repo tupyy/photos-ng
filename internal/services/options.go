@@ -41,12 +41,28 @@ func DecodeCursor(encoded string) (*PaginationCursor, error) {
 		return nil, err
 	}
 	
-	var cursor PaginationCursor
-	if err := json.Unmarshal(data, &cursor); err != nil {
+	// Parse into temporary struct with string fields to handle date-only formats
+	var temp struct {
+		CapturedAt string `json:"captured_at"`
+		ID         string `json:"id"`
+	}
+	if err := json.Unmarshal(data, &temp); err != nil {
 		return nil, err
 	}
 	
-	return &cursor, nil
+	// Parse the timestamp - try RFC3339 first, then date-only
+	var capturedAt time.Time
+	if capturedAt, err = time.Parse(time.RFC3339, temp.CapturedAt); err != nil {
+		// Try date-only format as fallback
+		if capturedAt, err = time.Parse("2006-01-02", temp.CapturedAt); err != nil {
+			return nil, err
+		}
+	}
+	
+	return &PaginationCursor{
+		CapturedAt: capturedAt,
+		ID:         temp.ID,
+	}, nil
 }
 
 //go:generate go run github.com/ecordell/optgen -output zz_generated.media_options.go . MediaOptions
@@ -67,7 +83,7 @@ func (mf *MediaOptions) QueriesFn() []pg.QueryOption {
 
 	// Add album filter
 	if mf.AlbumID != nil {
-		qf = append(qf, pg.FilterByColumnName("album_id", *mf.AlbumID))
+		qf = append(qf, pg.FilterByColumnName("media.album_id", *mf.AlbumID))
 	}
 
 	// Add media type filter

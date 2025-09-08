@@ -33,7 +33,7 @@ func NewMediaService(dt *pg.Datastore, fsDatastore *fs.Datastore) *MediaService 
 }
 
 // GetMedia retrieves a list of media items based on the provided filter criteria
-func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]entity.Media, error) {
+func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]entity.Media, *PaginationCursor, error) {
 	debug := m.debug.WithContext(ctx)
 	tracer := debug.StartOperation("get_media").
 		WithStringPtr("album_id", filter.AlbumID).
@@ -41,6 +41,29 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 		WithParam("end_date", filter.EndDate).
 		WithInt("filter_count", len(filter.QueriesFn())).
 		Build()
+
+	// Store original limit and request one extra for cursor generation
+	originalLimit := filter.MediaLimit
+	filter.MediaLimit = originalLimit + 1
+
+	// If cursor is provided, look up the actual timestamp for accurate pagination
+	if filter.Cursor != nil {
+		actualMedia, err := m.dt.QueryMedia(ctx, pg.FilterByMediaId(filter.Cursor.ID), pg.Limit(1))
+		if err == nil && len(actualMedia) > 0 {
+			// Update cursor with actual timestamp from database
+			originalTime := filter.Cursor.CapturedAt
+			filter.Cursor.CapturedAt = actualMedia[0].CapturedAt
+			debug.BusinessLogic("cursor timestamp corrected").
+				WithString("cursor_id", filter.Cursor.ID).
+				WithParam("original_time", originalTime).
+				WithParam("corrected_time", filter.Cursor.CapturedAt).
+				Log()
+		} else {
+			debug.BusinessLogic("cursor media not found").
+				WithString("cursor_id", filter.Cursor.ID).
+				Log()
+		}
+	}
 
 	// Database query with debug timing
 	tracer.Step("database_query").
@@ -57,7 +80,7 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 
 	if err != nil {
 		// Return ServiceError (handlers will log the error)
-		return nil, NewDatabaseWriteError(ctx, "get_media", err).
+		return nil, nil, NewDatabaseWriteError(ctx, "get_media", err).
 			AtStep("query_media")
 	}
 
@@ -67,10 +90,10 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 			WithInt("total_items", len(media)).
 			WithString("direction", "backward").
 			Log()
-		
+
 		// Reverse the slice to maintain chronological order (newest first)
 		slices.Reverse(media)
-		
+
 		debug.BusinessLogic("reversed results for backward navigation").
 			WithInt("total_items", len(media)).
 			Log()
@@ -99,18 +122,31 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 		debug.BusinessLogic("applied date filtering").
 			WithInt("total_before", len(media)).
 			WithInt("total_after", len(filteredMedia)).
-			WithInt("filtered_out", len(media) - len(filteredMedia)).
+			WithInt("filtered_out", len(media)-len(filteredMedia)).
 			Log()
 
 		media = filteredMedia
 	}
 
+	// Generate next cursor if we have more items than requested
+	var nextCursor *PaginationCursor
+	if len(media) > originalLimit {
+		extraItem := media[originalLimit]
+		nextCursor = &PaginationCursor{
+			CapturedAt: extraItem.CapturedAt,
+			ID:         extraItem.ID,
+		}
+		// Trim results to original limit for return
+		media = media[:originalLimit]
+	}
+
 	tracer.Success().
 		WithInt(MediaReturned, len(media)).
 		WithBool(DateFiltered, filter.StartDate != nil || filter.EndDate != nil).
+		WithBool("has_next_cursor", nextCursor != nil).
 		Log()
 
-	return media, nil
+	return media, nextCursor, nil
 }
 
 // GetMediaByID retrieves a specific media item by its ID
@@ -506,17 +542,4 @@ func (m *MediaService) GetContentFn(ctx context.Context, media entity.Media) ent
 	// Construct the full file path from media filename and album path
 	filepath := path.Join(media.Album.Path, media.Filename)
 	return m.fs.Read(ctx, filepath)
-}
-
-// GetNextCursor creates a cursor from the last media item for pagination
-func (m *MediaService) GetNextCursor(media []entity.Media) *PaginationCursor {
-	if len(media) == 0 {
-		return nil
-	}
-	
-	lastItem := media[len(media)-1]
-	return &PaginationCursor{
-		CapturedAt: lastItem.CapturedAt,
-		ID:         lastItem.ID,
-	}
 }

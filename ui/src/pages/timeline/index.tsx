@@ -14,7 +14,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '@shared/store';
-import { useMediaApi, useStatsApi } from '@shared/hooks/useApi';
+import { useTimelineApi, useStatsApi } from '@shared/hooks/useApi';
 import { ListMediaSortByEnum, ListMediaSortOrderEnum, ListMediaDirectionEnum } from '@generated/api/media-api';
 import TimelineMediaGallery from './components/TimelineMediaGallery';
 import YearNavigation from './components/YearNavigation';
@@ -23,7 +23,7 @@ import { TIMELINE_PAGE_SIZE } from '@app/shared/config';
 
 const TimelinePage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { media, loading, loadingMore, error, hasMore, nextCursor, fetchMedia } = useMediaApi();
+  const { media, loading, loadingMore, error, hasMore, nextCursor, fetchMedia } = useTimelineApi();
   const { data: statsData, loading: statsLoading, fetchStats } = useStatsApi();
 
   // Debug logging (dev only)
@@ -54,7 +54,7 @@ const TimelinePage: React.FC = () => {
     // Fetch stats to get total media count and available years
     fetchStats();
 
-    // Fetch initial media sorted by capture date descending
+    // Fetch initial media sorted by capture date descending (all media, no album filter)
     fetchMedia({
       limit: pageSize,
       sortBy: ListMediaSortByEnum.CapturedAt,

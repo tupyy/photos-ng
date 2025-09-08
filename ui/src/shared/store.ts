@@ -23,7 +23,8 @@ export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 
 // Export store selectors
 export const selectAlbums = (state: RootState) => state.albums;
-export const selectMedia = (state: RootState) => state.media;
+export const selectTimeline = (state: RootState) => state.timeline;
+export const selectAlbumsMedia = (state: RootState) => state.albumsMedia;
 export const selectSync = (state: RootState) => state.sync;
 export const selectStats = (state: RootState) => state.stats;
 
@@ -45,14 +46,22 @@ export const selectCurrentAlbum = (state: RootState) => state.albums.currentAlbu
 export const selectAlbumById = (state: RootState, albumId: string) =>
   state.albums.albums.find(album => album.id === albumId);
 
-export const selectMediaById = (state: RootState, mediaId: string) =>
-  state.media.media.find(media => media.id === mediaId);
+// Timeline selectors
+export const selectTimelineMediaById = (state: RootState, mediaId: string) =>
+  state.timeline.media.find(media => media.id === mediaId);
 
-export const selectMediaByAlbum = (state: RootState, albumId: string) =>
-  state.media.media.filter(media => media.albumHref.includes(albumId));
+export const selectTimelineSelectedMedia = (state: RootState) =>
+  state.timeline.media.filter(media => state.timeline.selectedMediaIds.includes(media.id));
 
-export const selectSelectedMedia = (state: RootState) =>
-  state.media.media.filter(media => state.media.selectedMediaIds.includes(media.id));
+// Albums media selectors
+export const selectAlbumsMediaById = (state: RootState, mediaId: string) =>
+  state.albumsMedia.media.find(media => media.id === mediaId);
+
+export const selectAlbumsMediaByAlbum = (state: RootState, albumId: string) =>
+  state.albumsMedia.currentAlbumId === albumId ? state.albumsMedia.media : [];
+
+export const selectAlbumsSelectedMedia = (state: RootState) =>
+  state.albumsMedia.media.filter(media => state.albumsMedia.selectedMediaIds.includes(media.id));
 
 // Upload selectors
 export const selectUpload = (state: RootState) => state.upload;
