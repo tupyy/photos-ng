@@ -156,8 +156,8 @@ type ListSyncJobsResponse struct {
 
 // Media defines model for Media.
 type Media struct {
-	AlbumHref  string             `json:"albumHref"`
-	CapturedAt openapi_types.Date `json:"capturedAt"`
+	AlbumHref  string    `json:"albumHref"`
+	CapturedAt time.Time `json:"capturedAt"`
 
 	// Content href of the endpoint serving the content of the media
 	Content string       `json:"content"`

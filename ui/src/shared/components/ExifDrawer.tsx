@@ -6,6 +6,7 @@ interface ExifDrawerProps {
   media: Media | null;
   onClose: () => void;
   onNavigateToAlbum?: (albumId: string) => void;
+  isInAlbumContext?: boolean;
 }
 
 const ExifDrawer: React.FC<ExifDrawerProps> = ({ isOpen, media, onClose, onNavigateToAlbum }) => {
@@ -38,6 +39,27 @@ const ExifDrawer: React.FC<ExifDrawerProps> = ({ isOpen, media, onClose, onNavig
   };
 
   const albumId = getAlbumId();
+
+  // Format date for display
+  const formatCapturedAt = (dateString: string | undefined) => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString; // Return original if invalid
+      
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return dateString; // Return original if parsing fails
+    }
+  };
 
   // Format EXIF data for display
   const formatExifData = () => {
@@ -122,7 +144,7 @@ const ExifDrawer: React.FC<ExifDrawerProps> = ({ isOpen, media, onClose, onNavig
                   </tr>
                   <tr>
                     <td className="py-2 text-gray-500 dark:text-gray-400">Captured At</td>
-                    <td className="py-2 text-gray-900 dark:text-white font-medium">{media.capturedAt}</td>
+                    <td className="py-2 text-gray-900 dark:text-white font-medium">{formatCapturedAt(media.capturedAt)}</td>
                   </tr>
                 </tbody>
               </table>

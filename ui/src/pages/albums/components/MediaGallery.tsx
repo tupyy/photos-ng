@@ -518,7 +518,6 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
         isOpen={isDrawerOpen} 
         media={selectedMedia} 
         onClose={handleCloseDrawer}
-        onNavigateToAlbum={handleNavigateToAlbum}
       />
 
       {/* Media Viewer Modal */}

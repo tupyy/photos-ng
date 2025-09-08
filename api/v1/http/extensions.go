@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"io"
 	"path"
-	"time"
-
 	"strings"
+	"time"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
-	"github.com/oapi-codegen/runtime/types"
 )
 
 // NewAlbum converts an entity.Album to a v1.Album for API responses
@@ -70,9 +68,6 @@ func NewAlbum(album entity.Album) Album {
 
 // NewMedia converts an entity.Media to a v1.Media for API responses
 func NewMedia(media entity.Media) Media {
-	// Convert captured date to full timestamp for cursor pagination
-	capturedAt := types.Date{Time: media.CapturedAt}
-
 	// Convert EXIF data
 	exifHeaders := make([]ExifHeader, 0, len(media.Exif))
 	for key, value := range media.Exif {
@@ -86,7 +81,7 @@ func NewMedia(media entity.Media) Media {
 		Id:         media.ID,
 		Filename:   media.Filename,
 		AlbumHref:  "/api/v1/albums/" + media.Album.ID,
-		CapturedAt: capturedAt,
+		CapturedAt: media.CapturedAt,
 		Type:       string(media.MediaType),
 		Content:    "/api/v1/media/" + media.ID + "/content",
 		Thumbnail:  "/api/v1/media/" + media.ID + "/thumbnail",
