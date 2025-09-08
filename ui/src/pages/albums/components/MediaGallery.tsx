@@ -43,6 +43,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   // Media viewer modal state
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [thumbnailRect, setThumbnailRect] = useState<DOMRect | undefined>(undefined);
 
   // Multi-select state
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -219,7 +220,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   };
 
   // Media viewer modal handlers
-  const handleMediaClick = (mediaItem: Media) => {
+  const handleMediaClick = (mediaItem: Media, rect?: DOMRect) => {
     if (isThumbnailMode) {
       // In thumbnail selection mode, select this media as thumbnail
       selectThumbnail(mediaItem.id);
@@ -227,6 +228,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
       // Normal mode, open media viewer
       const index = allMedia.findIndex((m) => m.id === mediaItem.id);
       setCurrentMediaIndex(index);
+      setThumbnailRect(rect);
       setIsViewerOpen(true);
     }
   };
@@ -526,6 +528,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
         currentIndex={currentMediaIndex}
         onClose={handleViewerClose}
         onIndexChange={handleIndexChange}
+        thumbnailRect={thumbnailRect}
       />
 
       {/* Delete Confirmation Modal */}

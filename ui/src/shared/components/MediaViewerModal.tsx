@@ -7,6 +7,7 @@ interface MediaViewerModalProps {
   currentIndex: number;
   onClose: (currentMedia?: Media) => void;
   onIndexChange: (index: number) => void;
+  thumbnailRect?: DOMRect;
 }
 
 const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
@@ -15,9 +16,11 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
   currentIndex,
   onClose,
   onIndexChange,
+  thumbnailRect,
 }) => {
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   // Touch/swipe state
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -33,6 +36,19 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
       setIsLoading(true);
     }
   }, [currentMedia]);
+
+
+  // Handle modal opening animation
+  useEffect(() => {
+    if (isOpen && thumbnailRect) {
+      setIsAnimating(false);
+      // Small delay to ensure modal is rendered, then start animation
+      const timer = setTimeout(() => {
+        setIsAnimating(true);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, thumbnailRect]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -104,8 +120,11 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
   };
 
   const handleImageLoad = () => {
-    setIsImageLoaded(true);
-    setIsLoading(false);
+    // Add artificial delay to simulate network latency
+    setTimeout(() => {
+      setIsImageLoaded(true);
+      setIsLoading(false);
+    }, 1500); // 1.5 second delay
   };
 
   const handleImageError = () => {
@@ -168,31 +187,22 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
 
         {/* Image Container */}
         <div className="relative flex-1 w-full flex items-center justify-center min-h-0">
-          {/* Loading State - Show thumbnail while loading */}
-          {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <img
-                src={currentMedia.thumbnail}
-                alt={`Loading ${currentMedia.filename}`}
-                className="max-w-full max-h-full object-contain blur-sm opacity-50"
-                onError={(e) => {
-                  // Hide loading state if thumbnail also fails
-                  console.error('Failed to load thumbnail:', currentMedia.thumbnail);
-                }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-              </div>
-            </div>
-          )}
+          {/* Thumbnail - Always visible, same positioning as full image */}
+          <img
+            src={currentMedia.thumbnail}
+            alt={currentMedia.filename}
+            className="absolute inset-0 w-full h-full object-contain"
+            onError={(e) => {
+              console.error('Failed to load thumbnail:', currentMedia.thumbnail);
+            }}
+          />
 
-          {/* Full Resolution Image */}
+          {/* Full Resolution Image - Overlays thumbnail when loaded */}
           <img
             src={currentMedia.content}
             alt={currentMedia.filename}
-            className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${
-              isImageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
+            className="absolute inset-0 w-full h-full object-contain"
+            style={{ display: isImageLoaded ? 'initial' : 'none' }}
             onLoad={handleImageLoad}
             onError={handleImageError}
           />

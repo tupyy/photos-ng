@@ -53,6 +53,7 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
   // Media viewer modal state
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [thumbnailRect, setThumbnailRect] = useState<DOMRect | undefined>(undefined);
 
   // Scroll to top state (mobile only)
   const [showScrollToTop, setShowScrollToTop] = useState(false);
@@ -327,10 +328,11 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
   /**
    * Handles media click for full-screen viewing
    */
-  const handleMediaClick = (media: Media) => {
+  const handleMediaClick = (media: Media, rect?: DOMRect) => {
     const index = allMedia.findIndex((m) => m.id === media.id);
     if (index !== -1) {
       setCurrentMediaIndex(index);
+      setThumbnailRect(rect);
       setIsViewerOpen(true);
     }
   };
@@ -492,6 +494,7 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
         currentIndex={currentMediaIndex}
         onClose={handleViewerClose}
         onIndexChange={handleIndexChange}
+        thumbnailRect={thumbnailRect}
       />
 
       {/* Floating Scroll to Top Button - Mobile only, hidden when modal is open */}

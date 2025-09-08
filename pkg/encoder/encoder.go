@@ -9,22 +9,14 @@ import (
 	"github.com/disintegration/imaging"
 )
 
-var (
-	defaultThumbnailMethod = imaging.NearestNeighbor
-)
-
 func EncodeThumbnail(inputPhoto io.Reader) (io.Reader, error) {
 	inputImage, err := imaging.Decode(inputPhoto, imaging.AutoOrientation(true))
 	if err != nil {
 		return nil, err
 	}
 
-	dimensions := PhotoDimensionsFromRect(inputImage.Bounds())
-	dimensions = dimensions.ThumbnailScale()
-
 	buff := new(bytes.Buffer)
-	thumbImage := imaging.Resize(inputImage, dimensions.Width, dimensions.Height, defaultThumbnailMethod)
-	if err = encodeImageJPEG(thumbImage, buff, 60); err != nil {
+	if err = encodeImageJPEG(inputImage, buff, 20); err != nil {
 		return nil, err
 	}
 

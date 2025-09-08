@@ -4,7 +4,7 @@ import { Media } from '@generated/models';
 interface MediaThumbnailProps {
   media: Media;
   onInfoClick: (media: Media) => void;
-  onClick?: (media: Media) => void;
+  onClick?: (media: Media, thumbnailRect?: DOMRect) => void;
   isSelectionMode?: boolean;
   isSelected?: boolean;
 }
@@ -15,6 +15,7 @@ const MediaThumbnail: React.FC<MediaThumbnailProps> = ({ media, onInfoClick, onC
   const touchHandled = useRef<boolean>(false);
   const touchStartPos = useRef<{ x: number; y: number } | null>(null);
   const isSwiping = useRef<boolean>(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleClick = (e: React.MouseEvent) => {
     // Prevent click if it was already handled by touch
@@ -23,8 +24,9 @@ const MediaThumbnail: React.FC<MediaThumbnailProps> = ({ media, onInfoClick, onC
       return;
     }
     
-    if (onClick) {
-      onClick(media);
+    if (onClick && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      onClick(media, rect);
     }
   };
 
@@ -99,8 +101,9 @@ const MediaThumbnail: React.FC<MediaThumbnailProps> = ({ media, onInfoClick, onC
       lastTapTime.current = now;
       tapTimer.current = setTimeout(() => {
         // Single tap - trigger normal click (only if not swiping)
-        if (onClick && !isSwiping.current) {
-          onClick(media);
+        if (onClick && !isSwiping.current && containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          onClick(media, rect);
         }
         tapTimer.current = null;
       }, 300);
@@ -118,6 +121,7 @@ const MediaThumbnail: React.FC<MediaThumbnailProps> = ({ media, onInfoClick, onC
 
   return (
     <div
+      ref={containerRef}
       className={`relative aspect-square bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden cursor-pointer transition-all duration-200 group ${
         isSelectionMode 
           ? isSelected 
