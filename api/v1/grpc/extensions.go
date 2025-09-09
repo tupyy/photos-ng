@@ -176,8 +176,8 @@ func ConvertJobResultsToTaskResults(jobResults []services.JobResult) []*TaskResu
 
 // ConvertJobResultToTaskResult converts a single JobResult to gRPC TaskResult
 func ConvertJobResultToTaskResult(jobResult services.JobResult) *TaskResult {
-	// Calculate duration in seconds
-	duration := int32(jobResult.CompletedAt.Sub(jobResult.StartedAt).Seconds())
+	// Calculate duration in milliseconds
+	duration := int32(jobResult.CompletedAt.Sub(jobResult.StartedAt).Milliseconds())
 
 	// Extract item name and determine type from the result string
 	item, itemType := extractItemAndType(jobResult.Result)
@@ -243,6 +243,7 @@ func NewSyncJob(job services.JobProgress) *SyncJob {
 		TotalTasks:     int32(job.Total),
 		CompletedTasks: ConvertJobResultsToTaskResults(job.Results),
 		CreatedAt:      timestamppb.New(job.CreatedAt),
+		Path:           job.Path,
 	}
 
 	if job.StartedAt != nil {
@@ -251,6 +252,25 @@ func NewSyncJob(job services.JobProgress) *SyncJob {
 
 	if job.CompletedAt != nil {
 		grpcJob.FinishedAt = timestamppb.New(*job.CompletedAt)
+	}
+
+	// Calculate duration in seconds
+	if job.StartedAt != nil {
+		var durationSeconds int32
+		if job.CompletedAt != nil {
+			// Job completed - calculate total duration
+			durationSeconds = int32(job.CompletedAt.Sub(*job.StartedAt).Seconds())
+		} else {
+			// Job still running - calculate elapsed time
+			durationSeconds = int32(time.Now().Sub(*job.StartedAt).Seconds())
+		}
+		grpcJob.Duration = &durationSeconds
+	}
+
+	// Set error message if job failed
+	if job.Err != nil {
+		errorMessage := job.Err.Error()
+		grpcJob.Error = &errorMessage
 	}
 
 	// Note: RemainingTime calculation would need to be added to JobProgress struct

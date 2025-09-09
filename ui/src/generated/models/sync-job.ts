@@ -30,6 +30,12 @@ export interface SyncJob {
      */
     'id': string;
     /**
+     * The folder path being synchronized
+     * @type {string}
+     * @memberof SyncJob
+     */
+    'path': string;
+    /**
      * 
      * @type {string}
      * @memberof SyncJob
@@ -53,6 +59,12 @@ export interface SyncJob {
      * @memberof SyncJob
      */
     'remainingTime'?: number;
+    /**
+     * Duration of the sync job in seconds
+     * @type {number}
+     * @memberof SyncJob
+     */
+    'duration'?: number;
     /**
      * Current status of the sync job
      * @type {string}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector, selectSyncStarting, selectSyncError } from '@shared/store';
 import { startSyncJob, clearError } from '@shared/reducers/syncSlice';
 
@@ -19,11 +19,23 @@ export const StartSyncModal: React.FC<StartSyncModalProps> = ({
   const [path, setPath] = useState(initialPath);
   const isSubmitting = useAppSelector(selectSyncStarting);
   const error = useAppSelector(selectSyncError);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Update path when initialPath changes
   useEffect(() => {
     setPath(initialPath);
   }, [initialPath]);
+
+  // Focus input when modal opens
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      // Small delay to ensure modal is fully rendered
+      const timeoutId = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isOpen]);
 
   // Auto-submit if initialPath is provided (for autoStart functionality)
   useEffect(() => {
@@ -98,6 +110,7 @@ export const StartSyncModal: React.FC<StartSyncModalProps> = ({
               <input
                 type="text"
                 id="path"
+                ref={inputRef}
                 value={path}
                 onChange={(e) => setPath(e.target.value)}
                 placeholder="/subfolder or leave empty for root"

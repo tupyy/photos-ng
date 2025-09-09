@@ -11,7 +11,7 @@ import (
 
 const (
 	DEFAULT_KEEP_PERIOD          = 3600 // seconds
-	MAX_NUMBER_RUNNING_PIPELINES = 2
+	MAX_NUMBER_RUNNING_PIPELINES = 1
 )
 
 var (
@@ -78,9 +78,17 @@ func (s *Scheduler) GetAll() []Job {
 	return s.find(func(j Job) bool { return true })
 }
 
+func (s *Scheduler) StopJob(id string) error {
+	job := s.Get(id)
+	if job == nil {
+		return nil
+	}
+	return job.Stop()
+}
+
 func (s *Scheduler) Stop() {
-	runningJobs := s.GetByStatus(StatusRunning)
-	for _, j := range runningJobs {
+	jobs := s.GetAll()
+	for _, j := range jobs {
 		j.Stop()
 	}
 
@@ -117,7 +125,7 @@ start:
 		j := e.Value.(Job)
 		switch j.Status().Status {
 		case StatusPending:
-			if s.countByStatus(StatusPending) < MAX_NUMBER_RUNNING_PIPELINES {
+			if s.countByStatus(StatusRunning) < MAX_NUMBER_RUNNING_PIPELINES {
 				go func(job Job) {
 					ctx := context.Background()
 					job.Start(ctx)

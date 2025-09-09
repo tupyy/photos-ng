@@ -6,10 +6,12 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **string** | Unique identifier for the sync job | [default to undefined]
+**path** | **string** | The folder path being synchronized | [default to undefined]
 **createdAt** | **string** |  | [default to undefined]
 **startedAt** | **string** |  | [optional] [default to undefined]
 **finishedAt** | **string** |  | [optional] [default to undefined]
 **remainingTime** | **number** | aproximative ramaining running tile in seconds | [optional] [default to undefined]
+**duration** | **number** | Duration of the sync job in seconds | [optional] [default to undefined]
 **status** | **string** | Current status of the sync job | [default to undefined]
 **remainingTasks** | **number** | Number of files still to be processed | [default to undefined]
 **totalTasks** | **number** | Total number of files to process | [default to undefined]
@@ -22,10 +24,12 @@ import { SyncJob } from 'photos-ng-api-client';
 
 const instance: SyncJob = {
     id,
+    path,
     createdAt,
     startedAt,
     finishedAt,
     remainingTime,
+    duration,
     status,
     remainingTasks,
     totalTasks,

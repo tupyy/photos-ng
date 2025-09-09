@@ -36,7 +36,7 @@ export interface TaskResult {
      */
     'itemType': TaskResultItemTypeEnum;
     /**
-     * time of running in seconds
+     * time of running in milliseconds
      * @type {number}
      * @memberof TaskResult
      */

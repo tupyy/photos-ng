@@ -27,7 +27,7 @@ type TaskResult struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Item          string                 `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`                                                                        // Name of the processed file/folder
 	ItemType      TaskResultItemType     `protobuf:"varint,2,opt,name=item_type,json=itemType,proto3,enum=photos_ng.api.v1.grpc.TaskResultItemType" json:"item_type,omitempty"` // Type of item (file or folder)
-	Duration      int32                  `protobuf:"varint,3,opt,name=duration,proto3" json:"duration,omitempty"`                                                               // Processing time in seconds
+	Duration      int32                  `protobuf:"varint,3,opt,name=duration,proto3" json:"duration,omitempty"`                                                               // Processing time in milliseconds
 	Result        *TaskResultStatus      `protobuf:"bytes,4,opt,name=result,proto3" json:"result,omitempty"`                                                                    // Result status (success or error)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -103,6 +103,9 @@ type SyncJob struct {
 	StartedAt      *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3,oneof" json:"started_at,omitempty"`              // When the job started processing
 	FinishedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=finished_at,json=finishedAt,proto3,oneof" json:"finished_at,omitempty"`           // When the job finished
 	RemainingTime  *int32                 `protobuf:"varint,9,opt,name=remaining_time,json=remainingTime,proto3,oneof" json:"remaining_time,omitempty"` // Approximate remaining time in seconds
+	Path           string                 `protobuf:"bytes,10,opt,name=path,proto3" json:"path,omitempty"`                                              // The folder path being synchronized
+	Duration       *int32                 `protobuf:"varint,11,opt,name=duration,proto3,oneof" json:"duration,omitempty"`                               // Duration of the sync job in seconds
+	Error          *string                `protobuf:"bytes,12,opt,name=error,proto3,oneof" json:"error,omitempty"`                                      // Error message if the job failed
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -198,6 +201,27 @@ func (x *SyncJob) GetRemainingTime() int32 {
 		return *x.RemainingTime
 	}
 	return 0
+}
+
+func (x *SyncJob) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *SyncJob) GetDuration() int32 {
+	if x != nil && x.Duration != nil {
+		return *x.Duration
+	}
+	return 0
+}
+
+func (x *SyncJob) GetError() string {
+	if x != nil && x.Error != nil {
+		return *x.Error
+	}
+	return ""
 }
 
 // Request to start a new sync job
@@ -616,7 +640,7 @@ const file_sync_proto_rawDesc = "" +
 	"\x04item\x18\x01 \x01(\tR\x04item\x12F\n" +
 	"\titem_type\x18\x02 \x01(\x0e2).photos_ng.api.v1.grpc.TaskResultItemTypeR\bitemType\x12\x1a\n" +
 	"\bduration\x18\x03 \x01(\x05R\bduration\x12?\n" +
-	"\x06result\x18\x04 \x01(\v2'.photos_ng.api.v1.grpc.TaskResultStatusR\x06result\"\x88\x04\n" +
+	"\x06result\x18\x04 \x01(\v2'.photos_ng.api.v1.grpc.TaskResultStatusR\x06result\"\xef\x04\n" +
 	"\aSyncJob\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12<\n" +
 	"\x06status\x18\x02 \x01(\x0e2$.photos_ng.api.v1.grpc.SyncJobStatusR\x06status\x12'\n" +
@@ -630,10 +654,16 @@ const file_sync_proto_rawDesc = "" +
 	"started_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampH\x00R\tstartedAt\x88\x01\x01\x12@\n" +
 	"\vfinished_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampH\x01R\n" +
 	"finishedAt\x88\x01\x01\x12*\n" +
-	"\x0eremaining_time\x18\t \x01(\x05H\x02R\rremainingTime\x88\x01\x01B\r\n" +
+	"\x0eremaining_time\x18\t \x01(\x05H\x02R\rremainingTime\x88\x01\x01\x12\x12\n" +
+	"\x04path\x18\n" +
+	" \x01(\tR\x04path\x12\x1f\n" +
+	"\bduration\x18\v \x01(\x05H\x03R\bduration\x88\x01\x01\x12\x19\n" +
+	"\x05error\x18\f \x01(\tH\x04R\x05error\x88\x01\x01B\r\n" +
 	"\v_started_atB\x0e\n" +
 	"\f_finished_atB\x11\n" +
-	"\x0f_remaining_time\"&\n" +
+	"\x0f_remaining_timeB\v\n" +
+	"\t_durationB\b\n" +
+	"\x06_error\"&\n" +
 	"\x10StartSyncRequest\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\"#\n" +
 	"\x11StartSyncResponse\x12\x0e\n" +

@@ -7,7 +7,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **item** | **string** | Name of the processed file/folder | [default to undefined]
 **itemType** | **string** |  | [default to undefined]
-**duration** | **number** | time of running in seconds | [default to undefined]
+**duration** | **number** | time of running in milliseconds | [default to undefined]
 **result** | [**TaskResultResult**](TaskResultResult.md) |  | [default to undefined]
 
 ## Example

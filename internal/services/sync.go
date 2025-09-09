@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
@@ -43,20 +44,20 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 		WithString("album_path", albumPath).
 		Log()
 
-	rootAlbum := entity.NewAlbum(albumPath)
+	album := entity.NewAlbum(strings.TrimSuffix(albumPath, "/"))
 
-	debug.BusinessLogic("root album entity created for sync").
-		WithString("album_id", rootAlbum.ID).
-		WithString("album_path", rootAlbum.Path).
+	debug.BusinessLogic("album entity created for sync").
+		WithString("album_id", album.ID).
+		WithString("album_path", album.Path).
 		Log()
 
 	// Create the sync job - it will handle album creation during execution
 	tracer.Step("create_sync_job").
-		WithString("album_id", rootAlbum.ID).
+		WithString("album_id", album.ID).
 		Log()
 
 	start := time.Now()
-	syncJob, err := NewSyncJob(rootAlbum, s.albumService, s.mediaService, s.fsDatastore)
+	syncJob, err := NewSyncJob(album, s.albumService, s.mediaService, s.fsDatastore)
 	jobCreationDuration := time.Since(start)
 	if err != nil {
 		// Return ServiceError (handlers will log the error)
@@ -83,7 +84,7 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 	debug.BusinessLogic("sync job created and scheduled successfully").
 		WithString("job_id", jobID).
 		WithString("album_path", albumPath).
-		WithString("album_id", rootAlbum.ID).
+		WithString("album_id", album.ID).
 		Log()
 
 	tracer.Success().
@@ -180,32 +181,12 @@ func (s *SyncService) StopSyncJob(jobID string) error {
 		WithString("job_id", jobID).
 		Log()
 
-	syncJob := s.scheduler.Get(jobID)
-	if syncJob == nil {
-		return NewNotFoundError(ctx, "stop_sync_job", "job_not_found").
-			WithContext("job_id", jobID)
+	if err := s.scheduler.StopJob(jobID); err != nil {
+		return NewSyncJobError(ctx, "stop_sync_job", jobID, err)
 	}
-
-	debug.BusinessLogic("job found, attempting to stop").
-		WithString("job_id", jobID).
-		WithParam("current_status", syncJob.Status().Status).
-		Log()
-
-	// Stop the job
-	tracer.Step("stop_job").
-		WithString("job_id", jobID).
-		Log()
-
-	start := time.Now()
-	if err := syncJob.Stop(); err != nil {
-		// Return ServiceError (handlers will log the error)
-		return NewSyncJobError(ctx, "stop_job", jobID, err)
-	}
-	stopDuration := time.Since(start)
 
 	debug.BusinessLogic("sync job stopped successfully").
 		WithString("job_id", jobID).
-		WithParam("duration", stopDuration).
 		Log()
 
 	tracer.Success().

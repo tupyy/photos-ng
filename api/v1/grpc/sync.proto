@@ -15,7 +15,7 @@ option java_outer_classname = "SyncProto";
 message TaskResult {
   string item = 1;                         // Name of the processed file/folder
   TaskResultItemType item_type = 2;        // Type of item (file or folder)
-  int32 duration = 3;                      // Processing time in seconds
+  int32 duration = 3;                      // Processing time in milliseconds
   TaskResultStatus result = 4;             // Result status (success or error)
 }
 
@@ -30,6 +30,9 @@ message SyncJob {
   optional google.protobuf.Timestamp started_at = 7; // When the job started processing
   optional google.protobuf.Timestamp finished_at = 8; // When the job finished
   optional int32 remaining_time = 9;                  // Approximate remaining time in seconds
+  string path = 10;                                   // The folder path being synchronized
+  optional int32 duration = 11;                       // Duration of the sync job in seconds
+  optional string error = 12;                         // Error message if the job failed
 }
 
 // Request to start a new sync job

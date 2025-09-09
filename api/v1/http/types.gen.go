@@ -211,10 +211,19 @@ type SyncJob struct {
 	// CompletedTasks List of processed files with their results
 	CompletedTasks []TaskResult `json:"completedTasks"`
 	CreatedAt      time.Time    `json:"createdAt"`
-	FinishedAt     *time.Time   `json:"finishedAt,omitempty"`
+
+	// Duration Duration of the sync job in seconds
+	Duration *int `json:"duration,omitempty"`
+
+	// Error Error message if the job failed
+	Error      *string    `json:"error,omitempty"`
+	FinishedAt *time.Time `json:"finishedAt,omitempty"`
 
 	// Id Unique identifier for the sync job
 	Id string `json:"id"`
+
+	// Path The folder path being synchronized
+	Path string `json:"path"`
 
 	// RemainingTasks Number of files still to be processed
 	RemainingTasks int `json:"remainingTasks"`
@@ -235,7 +244,7 @@ type SyncJobStatus string
 
 // TaskResult defines model for TaskResult.
 type TaskResult struct {
-	// Duration time of running in seconds
+	// Duration time of running in milliseconds
 	Duration int `json:"duration"`
 
 	// Item Name of the processed file/folder

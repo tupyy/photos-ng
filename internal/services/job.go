@@ -19,7 +19,7 @@ type Task[R any] func(ctx context.Context) entity.Result[R]
 // SyncAlbumJob represents a sync job that processes files in a directory
 type SyncAlbumJob struct {
 	ID            uuid.UUID
-	rootAlbum     entity.Album
+	album         entity.Album
 	mediaSrv      *MediaService
 	albumSrv      *AlbumService
 	fs            *fs.Datastore
@@ -28,13 +28,13 @@ type SyncAlbumJob struct {
 }
 
 // NewJob creates a new sync job
-func NewSyncJob(rootAlbum entity.Album, albumService *AlbumService, mediaService *MediaService, fsDatastore *fs.Datastore) (*SyncAlbumJob, error) {
+func NewSyncJob(album entity.Album, albumService *AlbumService, mediaService *MediaService, fsDatastore *fs.Datastore) (*SyncAlbumJob, error) {
 	job := &SyncAlbumJob{
 		ID:            uuid.New(),
 		mediaSrv:      mediaService,
 		albumSrv:      albumService,
 		fs:            fsDatastore,
-		rootAlbum:     rootAlbum,
+		album:         album,
 		progressMeter: newJobProgressMeter(),
 	}
 
@@ -52,7 +52,7 @@ func (j *SyncAlbumJob) Start(ctx context.Context) error {
 
 	result := discoveryTask(ctx)
 	if result.Err != nil {
-		j.progressMeter.Failed()
+		j.progressMeter.Failed(result.Err)
 		return result.Err
 	}
 
@@ -126,13 +126,15 @@ func (j *SyncAlbumJob) GetID() uuid.UUID {
 
 // Stop cancels the job execution
 func (j *SyncAlbumJob) Stop() error {
+	defer func() {
+		j.progressMeter.Stop()
+	}()
 	if j.doneCh == nil {
 		return nil
 	}
+
 	j.doneCh <- true
 	<-j.doneCh
-
-	j.progressMeter.Stop()
 
 	zap.S().Infow("Job stopped", "id", j.ID)
 	return nil
@@ -143,7 +145,7 @@ func (j *SyncAlbumJob) Stop() error {
 func (j *SyncAlbumJob) createFolderStructureDiscoveryTask() Task[*entity.FolderNode] {
 	return func(ctx context.Context) entity.Result[*entity.FolderNode] {
 		// Use the new WalkTree method to get the complete structure as a tree
-		tree, err := j.fs.WalkTree(ctx, j.rootAlbum.Path)
+		tree, err := j.fs.WalkTree(ctx, j.album.Path)
 		if err != nil {
 			return entity.NewResultWithError[*entity.FolderNode](err)
 		}
@@ -159,7 +161,7 @@ func (j *SyncAlbumJob) createTasks(tree *entity.FolderNode) ([]Task[entity.Album
 
 	// Create a map to track created albums by path for parent lookup
 	albumMap := make(map[string]*entity.Album)
-	albumMap[j.rootAlbum.Path] = &j.rootAlbum
+	albumMap[j.album.Path] = &j.album
 
 	// Process the tree recursively to maintain parent-child relationships
 	j.processNodeForTasks(tree, albumMap, &albumTasks, &mediaTasks)
@@ -170,12 +172,12 @@ func (j *SyncAlbumJob) createTasks(tree *entity.FolderNode) ([]Task[entity.Album
 // processNodeForTasks recursively processes a folder node and its children
 func (j *SyncAlbumJob) processNodeForTasks(node *entity.FolderNode, albumMap map[string]*entity.Album, albumTasks *[]Task[entity.Album], mediaTasks *[]Task[entity.Media]) {
 	// Handle root node logic
-	if node.Path == j.rootAlbum.Path {
+	if node.Path == j.album.Path {
 		// Root data folder never has media files - only process if root path is not empty
-		if j.rootAlbum.Path != "" {
+		if j.album.Path != "" {
 			// Non-empty root album - process media files
 			for _, mediaFilePath := range node.MediaFiles {
-				*mediaTasks = append(*mediaTasks, j.createMediaTask(mediaFilePath, j.rootAlbum))
+				*mediaTasks = append(*mediaTasks, j.createMediaTask(mediaFilePath, j.album))
 			}
 		}
 		// Empty root path (data folder itself) - no media files to process by design
@@ -254,6 +256,7 @@ func (j *SyncAlbumJob) createMediaTask(mediaFilePath string, album entity.Album)
 func (j *SyncAlbumJob) Status() JobProgress {
 	p := j.progressMeter.Status()
 	p.Id = j.ID
+	p.Path = j.album.Path
 	return p
 }
 
@@ -272,12 +275,14 @@ const (
 type JobProgress struct {
 	Id          uuid.UUID
 	Status      JobStatus
+	Err         error
 	CreatedAt   time.Time
 	StartedAt   *time.Time
 	CompletedAt *time.Time
 	Total       int
 	Remaining   int
 	Results     []JobResult
+	Path        string // The folder path being synchronized
 }
 
 type JobResult struct {
@@ -295,6 +300,7 @@ type jobProgressMeter struct {
 	total       int
 	remaining   int
 	results     []JobResult
+	err         error
 	mu          sync.Mutex
 }
 
@@ -322,9 +328,10 @@ func (j *jobProgressMeter) Stop() {
 	j.status = StatusStopped
 }
 
-func (j *jobProgressMeter) Failed() {
+func (j *jobProgressMeter) Failed(err error) {
 	now := time.Now()
 	j.completedAt = &now
+	j.err = err
 	j.status = StatusFailed
 }
 
@@ -345,6 +352,7 @@ func (j *jobProgressMeter) Status() JobProgress {
 		StartedAt:   j.startedAt,
 		CompletedAt: j.completedAt,
 		Results:     j.results,
+		Err:         j.err,
 	}
 
 	return p

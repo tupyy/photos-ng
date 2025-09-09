@@ -233,3 +233,52 @@ func extractItemAndType(resultStr string) (string, TaskResultItemType) {
 	// Default to folder
 	return resultStr, Folder
 }
+
+// NewSyncJob converts a services.JobProgress to a v1.SyncJob for API responses
+func NewSyncJob(jobProgress services.JobProgress) SyncJob {
+	// Convert job results to API task results
+	taskResults := ConvertJobResultsToTaskResults(jobProgress.Results)
+
+	apiJob := SyncJob{
+		Id:             jobProgress.Id.String(),
+		Status:         ConvertJobStatusToAPI(jobProgress.Status),
+		RemainingTasks: jobProgress.Remaining,
+		TotalTasks:     jobProgress.Total,
+		CompletedTasks: taskResults,
+		CreatedAt:      jobProgress.CreatedAt,
+		Path:           jobProgress.Path,
+	}
+
+	// Set timing fields based on job status
+	if jobProgress.StartedAt != nil {
+		apiJob.StartedAt = jobProgress.StartedAt
+	} else {
+		apiJob.StartedAt = &jobProgress.CreatedAt // Use created time if not started yet
+	}
+
+	if jobProgress.CompletedAt != nil {
+		apiJob.FinishedAt = jobProgress.CompletedAt
+	}
+	// Don't set FinishedAt if job hasn't completed - let it be omitted
+
+	// Calculate duration in seconds
+	if jobProgress.StartedAt != nil {
+		var durationSeconds int
+		if jobProgress.CompletedAt != nil {
+			// Job completed - calculate total duration
+			durationSeconds = int(jobProgress.CompletedAt.Sub(*jobProgress.StartedAt).Seconds())
+		} else {
+			// Job still running - calculate elapsed time
+			durationSeconds = int(time.Now().Sub(*jobProgress.StartedAt).Seconds())
+		}
+		apiJob.Duration = &durationSeconds
+	}
+
+	// Set error message if job failed
+	if jobProgress.Err != nil {
+		errorMessage := jobProgress.Err.Error()
+		apiJob.Error = &errorMessage
+	}
+
+	return apiJob
+}

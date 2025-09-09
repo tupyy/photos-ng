@@ -864,11 +864,16 @@ components:
         - totalTasks
         - completedTasks
         - createdAt
+        - path
       properties:
         id:
           type: string
           description: Unique identifier for the sync job
           example: "sync-123e4567-e89b-12d3-a456-426614174000"
+        path:
+          type: string
+          description: The folder path being synchronized
+          example: "photos/2023"
         createdAt:
           type: string
           format: date-time
@@ -882,6 +887,12 @@ components:
           type: string
           format: integer
           description: aproximative ramaining running tile in seconds
+        duration:
+          type: integer
+          description: Duration of the sync job in seconds
+        error:
+          type: string
+          description: Error message if the job failed
         status:
           type: string
           description: Current status of the sync job
@@ -918,7 +929,7 @@ components:
           enum: ["file", "folder"]
         duration:
           type: integer
-          description: time of running in seconds
+          description: time of running in milliseconds
         result:
           oneOf:
             - type: string

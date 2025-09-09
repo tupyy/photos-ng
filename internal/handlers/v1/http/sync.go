@@ -3,11 +3,12 @@ package v1
 import (
 	"net/http"
 
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 // Note: Sync jobs are now managed by the SyncService which uses the job scheduler
@@ -47,34 +48,7 @@ func (s *Handler) ListSyncJobs(c *gin.Context) {
 	// Convert to API response format
 	var apiJobs []v1.SyncJob
 	for _, status := range statuses {
-
-		// Convert job progress to API format
-		remaining := status.Remaining
-		total := status.Total
-		taskResults := v1.ConvertJobResultsToTaskResults(status.Results)
-
-		apiJob := v1.SyncJob{
-			Id:             status.Id.String(),
-			Status:         v1.ConvertJobStatusToAPI(status.Status),
-			RemainingTasks: remaining,
-			TotalTasks:     total,
-			CompletedTasks: taskResults,
-			CreatedAt:      status.CreatedAt,
-		}
-
-		// Set timing fields based on job status
-		if status.StartedAt != nil {
-			apiJob.StartedAt = status.StartedAt
-		} else {
-			apiJob.StartedAt = &status.CreatedAt // Use created time if not started yet
-		}
-
-		if status.CompletedAt != nil {
-			apiJob.FinishedAt = status.CompletedAt
-		}
-		// Don't set FinishedAt if job hasn't completed - let it be omitted
-
-		apiJobs = append(apiJobs, apiJob)
+		apiJobs = append(apiJobs, v1.NewSyncJob(status))
 	}
 
 	response := v1.ListSyncJobsResponse{
@@ -95,31 +69,8 @@ func (s *Handler) GetSyncJob(c *gin.Context, id string) {
 		return
 	}
 
-	// Convert to API response format
-	remaining := status.Remaining
-	total := status.Total
-	taskResults := v1.ConvertJobResultsToTaskResults(status.Results)
-
-	response := v1.SyncJob{
-		Id:             status.Id.String(),
-		Status:         v1.ConvertJobStatusToAPI(status.Status),
-		RemainingTasks: remaining,
-		TotalTasks:     total,
-		CompletedTasks: taskResults,
-		CreatedAt:      status.CreatedAt,
-	}
-
-	// Set timing fields based on job status
-	if status.StartedAt != nil {
-		response.StartedAt = status.StartedAt
-	} else {
-		response.StartedAt = &status.CreatedAt // Use created time if not started yet
-	}
-
-	if status.CompletedAt != nil {
-		response.FinishedAt = status.CompletedAt
-	}
-	// Don't set FinishedAt if job hasn't completed - let it be omitted
+	// Convert to API response format using centralized function
+	response := v1.NewSyncJob(*status)
 
 	c.JSON(http.StatusOK, response)
 }

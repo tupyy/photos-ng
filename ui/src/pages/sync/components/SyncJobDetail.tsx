@@ -19,6 +19,7 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
   
   // Use centralized job detail hook for fetching and polling
   const { job, isActive } = useSyncJobDetail(jobId);
+  const isPending = job?.status === 'pending';
 
   // Polling is now handled by the useSyncJobDetail hook
 
@@ -36,16 +37,32 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
     }
   };
 
-  // Clear stopping state when job is no longer active
+  // Clear stopping state when job is no longer active or pending
   useEffect(() => {
-    if (!isActive && isStoppingJob) {
+    if (!isActive && !isPending && isStoppingJob) {
       setIsStoppingJob(false);
     }
-  }, [isActive, isStoppingJob]);
+  }, [isActive, isPending, isStoppingJob]);
 
   const getProgressPercentage = () => {
     if (!job || job.totalTasks === 0) return 0;
     return Math.round(((job.totalTasks - job.remainingTasks) / job.totalTasks) * 100);
+  };
+
+  const formatDuration = (seconds?: number) => {
+    if (!seconds || seconds < 1) return '0s';
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${secs}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
   };
 
   const isTaskSuccessful = (taskResult: TaskResult) => {
@@ -108,7 +125,7 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
       <div className="bg-white dark:bg-slate-800 shadow rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900 dark:text-white">Job Overview</h2>
-          {isActive && (
+          {(isActive || isPending) && (
             <button
               onClick={handleStopJob}
               disabled={isStoppingJob}
@@ -121,10 +138,60 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               )}
-              {isStoppingJob ? 'Stopping...' : 'Stop Job'}
+              {isStoppingJob 
+                ? (isPending ? 'Canceling...' : 'Stopping...')
+                : (isPending ? 'Cancel Job' : 'Stop Job')
+              }
             </button>
           )}
         </div>
+
+        {/* Folder Path */}
+        <div className="mb-4 flex items-center">
+          <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2z" />
+          </svg>
+          <p className="text-sm text-gray-900 dark:text-white">
+            <span className="font-medium">Syncing Folder:</span> 
+            <span className="ml-2 font-mono text-gray-600 dark:text-gray-300">
+              {job.path || 'root data folder'}
+            </span>
+          </p>
+        </div>
+
+        {/* Duration */}
+        {job.duration !== undefined && (
+          <div className="mb-4 flex items-center">
+            <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-sm text-gray-900 dark:text-white">
+              <span className="font-medium">Duration:</span> 
+              <span className="ml-2 text-gray-600 dark:text-gray-300">
+                {formatDuration(job.duration)}
+              </span>
+            </p>
+          </div>
+        )}
+
+        {/* Error Message */}
+        {job.error && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+            <div className="flex">
+              <svg className="w-5 h-5 text-red-400 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                  Job Failed
+                </h3>
+                <p className="mt-1 text-sm text-red-700 dark:text-red-300">
+                  {job.error}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="text-center">
@@ -161,8 +228,12 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              job.status === 'pending' 
+              job.status === 'pending' && isStoppingJob
+                ? 'text-orange-700 bg-orange-100 dark:text-orange-300 dark:bg-orange-900'
+                : job.status === 'pending' 
                 ? 'text-yellow-700 bg-yellow-100 dark:text-yellow-300 dark:bg-yellow-900'
+                : job.status === 'running' && isStoppingJob
+                ? 'text-orange-700 bg-orange-100 dark:text-orange-300 dark:bg-orange-900'
                 : job.status === 'running'
                 ? 'text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-900'
                 : job.status === 'completed'
@@ -171,19 +242,21 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
                 ? 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900'
                 : 'text-gray-700 bg-gray-100 dark:text-gray-300 dark:bg-gray-900'
             }`}>
-              {job.status === 'pending' ? 'Pending' : 
+              {job.status === 'pending' && isStoppingJob ? 'Canceling' :
+               job.status === 'pending' ? 'Pending' : 
+               job.status === 'running' && isStoppingJob ? 'Stopping' :
                job.status === 'running' ? 'In Progress' : 
                job.status === 'completed' ? 'Completed' :
                job.status === 'failed' ? 'Failed' :
                job.status === 'stopped' ? 'Stopped' : 'Unknown'}
             </span>
-            {(job.status === 'pending' || job.status === 'running') && (
+            {(job.status === 'pending' || (job.status === 'running' && !isStoppingJob)) && (
               <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
                 {job.status === 'pending' ? 'Waiting to start...' : `${job.remainingTasks} tasks remaining`}
               </span>
             )}
           </div>
-          {job.status === 'running' && (
+          {job.status === 'running' && !isStoppingJob && (
             <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
               Processing...
@@ -270,7 +343,7 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
                           </p>
                         )}
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Duration: {task.duration}s
+                          Duration: {task.duration}ms
                         </p>
                       </div>
                     </div>

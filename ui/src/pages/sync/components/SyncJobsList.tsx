@@ -4,10 +4,7 @@ import { useAppDispatch, useAppSelector, selectSyncJobs, selectSyncLoading, sele
 import { stopSyncJob, stopAllSyncJobs } from '@shared/reducers/syncSlice';
 import { SyncJob } from '@generated/models';
 
-// Extended SyncJob interface to include path information
-interface SyncJobWithPath extends SyncJob {
-  path?: string;
-}
+// SyncJob now includes path field from the API
 
 export const SyncJobsList: React.FC = () => {
   const navigate = useNavigate();
@@ -21,13 +18,13 @@ export const SyncJobsList: React.FC = () => {
   // This component is purely presentational - it only consumes Redux state
   // Data fetching and polling is handled by parent components
 
-  // Clear stopping state for jobs that are no longer active
+  // Clear stopping state for jobs that have finished (stopped, failed, or completed)
   useEffect(() => {
-    const activeJobIds = new Set(jobs.filter(job => job.status === 'running').map(job => job.id));
+    const finishedJobIds = new Set(jobs.filter(job => job.status === 'stopped' || job.status === 'failed' || job.status === 'completed').map(job => job.id));
     setStoppingJobs(prev => {
       const newSet = new Set();
       for (const jobId of prev) {
-        if (activeJobIds.has(jobId)) {
+        if (!finishedJobIds.has(jobId)) {
           newSet.add(jobId);
         }
       }
@@ -73,7 +70,10 @@ export const SyncJobsList: React.FC = () => {
     }
   };
 
-  const getJobStatusColor = (job: SyncJobWithPath) => {
+  const getJobStatusColor = (job: SyncJob) => {
+    if (stoppingJobs.has(job.id)) {
+      return 'text-orange-600 dark:text-orange-400';
+    }
     switch (job.status) {
       case 'pending':
         return 'text-yellow-600 dark:text-yellow-400';
@@ -90,7 +90,10 @@ export const SyncJobsList: React.FC = () => {
     }
   };
 
-  const getJobStatusText = (job: SyncJobWithPath) => {
+  const getJobStatusText = (job: SyncJob) => {
+    if (stoppingJobs.has(job.id)) {
+      return job.status === 'pending' ? 'Canceling' : 'Stopping';
+    }
     switch (job.status) {
       case 'pending':
         return 'Pending';
@@ -107,9 +110,25 @@ export const SyncJobsList: React.FC = () => {
     }
   };
 
-  const getProgressPercentage = (job: SyncJobWithPath) => {
+  const getProgressPercentage = (job: SyncJob) => {
     if (job.totalTasks === 0) return 0;
     return Math.round(((job.totalTasks - job.remainingTasks) / job.totalTasks) * 100);
+  };
+
+  const formatDuration = (seconds?: number) => {
+    if (!seconds || seconds < 1) return '0s';
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${secs}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
   };
 
   if (loading) {
@@ -179,10 +198,10 @@ export const SyncJobsList: React.FC = () => {
   const hasActiveJobs = activeJobs.length > 0;
 
   return (
-    <div className="bg-white dark:bg-slate-800 shadow overflow-hidden sm:rounded-md">
+    <div className="space-y-4">
       {/* Header with Stop All button */}
       {hasActiveJobs && (
-        <div className="bg-gray-50 dark:bg-slate-700 px-4 py-3 border-b border-gray-200 dark:border-gray-600">
+        <div className="bg-white dark:bg-slate-800 shadow rounded-lg p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-900 dark:text-white">
               {activeJobs.length} active job{activeJobs.length !== 1 ? 's' : ''}
@@ -206,13 +225,15 @@ export const SyncJobsList: React.FC = () => {
         </div>
       )}
       
-      <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+      <div className="space-y-4">
         {sortedJobs.map((job) => {
           const progressPercentage = getProgressPercentage(job);
           const isActive = job.status === 'running';
+          const isPending = job.status === 'pending';
+          const isStopping = stoppingJobs.has(job.id);
           
           return (
-            <li key={job.id}>
+            <div key={job.id} className="bg-white dark:bg-slate-800 shadow rounded-lg overflow-hidden">
               <div className="group flex hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                 {/* Main clickable area */}
                 <div
@@ -224,14 +245,14 @@ export const SyncJobsList: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
                           <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            Sync Job #{job.id.substring(5, 13)}
+                            {job.path || 'root data folder'}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            Path: {job.path === '' || !job.path ? 'root data folder' : job.path}
+                            Job #{job.id.substring(0, 8)}
                           </p>
                         </div>
                         <div className="ml-2 flex-shrink-0 flex items-center space-x-2">
-                          {isActive && (
+                          {isActive && !isStopping && (
                             <div className="animate-pulse">
                               <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
                             </div>
@@ -254,17 +275,38 @@ export const SyncJobsList: React.FC = () => {
                       <div className="mt-1 w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                         <div 
                           className={`h-2 rounded-full transition-all duration-300 ${
-                            isActive ? 'bg-blue-500' : 'bg-green-500'
+                            isActive && !isStopping ? 'bg-blue-500' : 'bg-green-500'
                           }`}
                           style={{ width: `${progressPercentage}%` }}
                         />
                       </div>
                     </div>
 
-                    {job.remainingTasks > 0 && (
+                    {job.remainingTasks > 0 && isActive && !isStopping && (
                       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         {job.remainingTasks} tasks remaining
                       </p>
+                    )}
+
+                    {/* Duration for completed/failed jobs */}
+                    {(job.status === 'completed' || job.status === 'failed' || job.status === 'stopped') && job.duration !== undefined && (
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        Duration: {formatDuration(job.duration)}
+                      </p>
+                    )}
+
+                    {/* Error message for failed jobs */}
+                    {job.status === 'failed' && job.error && (
+                      <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+                        <div className="flex items-start">
+                          <svg className="w-4 h-4 text-red-400 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                          <p className="text-xs text-red-700 dark:text-red-300 truncate">
+                            {job.error}
+                          </p>
+                        </div>
+                      </div>
                     )}
                   </div>
                   
@@ -276,8 +318,8 @@ export const SyncJobsList: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Stop button for active jobs */}
-                {isActive && (
+                {/* Stop/Cancel button for active or pending jobs */}
+                {(isActive || isPending) && (
                   <div className="flex items-center px-4 py-4">
                     <button
                       onClick={(e) => {
@@ -286,7 +328,7 @@ export const SyncJobsList: React.FC = () => {
                       }}
                       disabled={stoppingJobs.has(job.id)}
                       className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 relative z-10 disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Stop this sync job"
+                      title={isPending ? "Cancel this sync job" : "Stop this sync job"}
                     >
                       {stoppingJobs.has(job.id) ? (
                         <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600 mr-1"></div>
@@ -295,15 +337,18 @@ export const SyncJobsList: React.FC = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       )}
-                      {stoppingJobs.has(job.id) ? 'Stopping...' : 'Stop'}
+                      {stoppingJobs.has(job.id) 
+                        ? (isPending ? 'Canceling...' : 'Stopping...')
+                        : (isPending ? 'Cancel' : 'Stop')
+                      }
                     </button>
                   </div>
                 )}
               </div>
-            </li>
+            </div>
           );
         })}
-      </ul>
+      </div>
     </div>
   );
 };
