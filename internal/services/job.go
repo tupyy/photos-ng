@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 )
 
 type Task[R any] func(ctx context.Context) entity.Result[R]
@@ -23,6 +24,7 @@ type SyncAlbumJob struct {
 	albumSrv      *AlbumService
 	fs            *fs.Datastore
 	progressMeter *jobProgressMeter
+	doneCh        chan bool
 }
 
 // NewJob creates a new sync job
@@ -41,6 +43,7 @@ func NewSyncJob(rootAlbum entity.Album, albumService *AlbumService, mediaService
 
 // Start begins the job execution
 func (j *SyncAlbumJob) Start(ctx context.Context) error {
+	j.doneCh = make(chan bool)
 	j.progressMeter.Start()
 
 	discoveryTask := j.createFolderStructureDiscoveryTask()
@@ -80,6 +83,9 @@ func (j *SyncAlbumJob) Start(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-j.doneCh:
+			j.doneCh <- true
+			return nil
 		default:
 		}
 	}
@@ -103,6 +109,9 @@ func (j *SyncAlbumJob) Start(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-j.doneCh:
+			j.doneCh <- true
+			return nil
 		default:
 		}
 	}
@@ -111,12 +120,20 @@ func (j *SyncAlbumJob) Start(ctx context.Context) error {
 }
 
 // GetId returns the job's unique identifier
-func (j *SyncAlbumJob) GetId() uuid.UUID {
+func (j *SyncAlbumJob) GetID() uuid.UUID {
 	return j.ID
 }
 
 // Stop cancels the job execution
 func (j *SyncAlbumJob) Stop() error {
+	if j.doneCh == nil {
+		return nil
+	}
+	j.doneCh <- true
+	<-j.doneCh
+
+	j.progressMeter.Stop()
+
 	zap.S().Infow("Job stopped", "id", j.ID)
 	return nil
 }
@@ -302,7 +319,7 @@ func (j *jobProgressMeter) Total(total int) {
 func (j *jobProgressMeter) Stop() {
 	now := time.Now()
 	j.completedAt = &now
-	j.status = StatusCompleted
+	j.status = StatusStopped
 }
 
 func (j *jobProgressMeter) Failed() {

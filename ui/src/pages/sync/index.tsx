@@ -62,8 +62,8 @@ const SyncPage: React.FC = () => {
       // If viewing a specific job, go back to job list
       navigate('/sync');
     } else {
-      // If viewing job list, go back to previous page
-      navigate(-1);
+      // If viewing job list, go back to main page
+      navigate('/');
     }
   };
 

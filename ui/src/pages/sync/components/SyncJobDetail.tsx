@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@shared/store';
 import { stopSyncJob } from '@shared/reducers/syncSlice';
@@ -15,6 +15,7 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
+  const [isStoppingJob, setIsStoppingJob] = useState(false);
   
   // Use centralized job detail hook for fetching and polling
   const { job, isActive } = useSyncJobDetail(jobId);
@@ -22,13 +23,25 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
   // Polling is now handled by the useSyncJobDetail hook
 
   const handleStopJob = async () => {
+    if (isStoppingJob) return; // Prevent multiple clicks
+    
+    setIsStoppingJob(true);
     try {
       await dispatch(stopSyncJob(jobId)).unwrap();
-      navigate('/sync'); // Navigate back to sync list after stopping
+      // Don't clear isStoppingJob immediately - wait for the job status to update to 'stopped'
+      // The polling will pick up the status change and UI will update accordingly
     } catch (error) {
       console.error('Failed to stop sync job:', error);
+      setIsStoppingJob(false); // Only clear on error
     }
   };
+
+  // Clear stopping state when job is no longer active
+  useEffect(() => {
+    if (!isActive && isStoppingJob) {
+      setIsStoppingJob(false);
+    }
+  }, [isActive, isStoppingJob]);
 
   const getProgressPercentage = () => {
     if (!job || job.totalTasks === 0) return 0;
@@ -98,12 +111,17 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
           {isActive && (
             <button
               onClick={handleStopJob}
-              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              disabled={isStoppingJob}
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Stop Job
+              {isStoppingJob ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
+              ) : (
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+              {isStoppingJob ? 'Stopping...' : 'Stop Job'}
             </button>
           )}
         </div>

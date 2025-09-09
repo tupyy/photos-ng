@@ -68,17 +68,17 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 
 	// Add job to scheduler
 	tracer.Step("schedule_job").
-		WithString("job_id", syncJob.GetId().String()).
+		WithString("job_id", syncJob.GetID().String()).
 		WithString("scheduler", "background").
 		Log()
 
 	if err := s.scheduler.Add(syncJob); err != nil {
 		// Return ServiceError (handlers will log the error)
-		return "", NewSyncJobError(ctx, "schedule_job", syncJob.GetId().String(), err).
+		return "", NewSyncJobError(ctx, "schedule_job", syncJob.GetID().String(), err).
 			WithContext("album_path", albumPath)
 	}
 
-	jobID := syncJob.GetId().String()
+	jobID := syncJob.GetID().String()
 
 	debug.BusinessLogic("sync job created and scheduled successfully").
 		WithString("job_id", jobID).
@@ -143,7 +143,6 @@ func (s *SyncService) GetSyncJobStatus(jobID string) (*JobProgress, error) {
 
 // ListSyncJobStatuses returns statuses of all sync jobs
 func (s *SyncService) ListSyncJobStatuses() []JobProgress {
-
 	jobs := s.scheduler.GetAll()
 	statuses := make([]JobProgress, len(jobs))
 	for i, syncJob := range jobs {
@@ -154,7 +153,6 @@ func (s *SyncService) ListSyncJobStatuses() []JobProgress {
 
 // ListSyncJobStatusesByStatus returns job statuses filtered by status
 func (s *SyncService) ListSyncJobStatusesByStatus(status JobStatus) []JobProgress {
-
 	jobs := s.scheduler.GetByStatus(status)
 	statuses := make([]JobProgress, len(jobs))
 	for i, syncJob := range jobs {
@@ -252,7 +250,7 @@ func (s *SyncService) StopAllSyncJobs() error {
 	for _, syncJob := range runningJobs {
 		if err := syncJob.Stop(); err != nil {
 			// Collect error for return (handlers will log the error)
-			errors = append(errors, NewSyncJobError(ctx, "stop_job", syncJob.GetId().String(), err))
+			errors = append(errors, NewSyncJobError(ctx, "stop_job", syncJob.GetID().String(), err))
 		} else {
 			successCount++
 		}
@@ -319,7 +317,6 @@ func (s *SyncService) Shutdown() {
 
 // GetSchedulerStats returns statistics about the scheduler
 func (s *SyncService) GetSchedulerStats() map[string]int {
-
 	stats := make(map[string]int)
 	stats["total"] = len(s.scheduler.GetAll())
 	stats["pending"] = len(s.scheduler.GetByStatus(StatusPending))

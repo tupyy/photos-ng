@@ -20,7 +20,7 @@ var (
 )
 
 type Job interface {
-	GetId() uuid.UUID
+	GetID() uuid.UUID
 	Start(ctx context.Context) error
 	Stop() error
 	Status() JobProgress
@@ -62,7 +62,7 @@ func (s *Scheduler) Add(j Job) error {
 
 func (s *Scheduler) Get(id string) Job {
 	jobs := s.find(func(j Job) bool {
-		return j.GetId().String() == id
+		return j.GetID().String() == id
 	})
 	if len(jobs) > 0 {
 		return jobs[0]
@@ -99,10 +99,7 @@ func (s *Scheduler) find(f func(j Job) bool) []Job {
 
 	jobs := []Job{}
 	element := s.queue.Front()
-	for {
-		if element == nil {
-			break
-		}
+	for element != nil {
 		p := element.Value.(Job)
 		if f(p) {
 			jobs = append(jobs, element.Value.(Job))
@@ -116,10 +113,7 @@ func (s *Scheduler) find(f func(j Job) bool) []Job {
 func (s *Scheduler) run() {
 start:
 	e := s.queue.Front()
-	for {
-		if e == nil {
-			break
-		}
+	for e != nil {
 		j := e.Value.(Job)
 		switch j.Status().Status {
 		case StatusPending:

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector, selectSyncJobs, selectSyncLoading, selectSyncError } from '@shared/store';
 import { stopSyncJob, stopAllSyncJobs } from '@shared/reducers/syncSlice';
@@ -15,9 +15,25 @@ export const SyncJobsList: React.FC = () => {
   const jobs = useAppSelector(selectSyncJobs);
   const loading = useAppSelector(selectSyncLoading);
   const error = useAppSelector(selectSyncError);
+  const [stoppingJobs, setStoppingJobs] = useState<Set<string>>(new Set());
+  const [isStoppingAll, setIsStoppingAll] = useState(false);
 
   // This component is purely presentational - it only consumes Redux state
   // Data fetching and polling is handled by parent components
+
+  // Clear stopping state for jobs that are no longer active
+  useEffect(() => {
+    const activeJobIds = new Set(jobs.filter(job => job.status === 'running').map(job => job.id));
+    setStoppingJobs(prev => {
+      const newSet = new Set();
+      for (const jobId of prev) {
+        if (activeJobIds.has(jobId)) {
+          newSet.add(jobId);
+        }
+      }
+      return newSet;
+    });
+  }, [jobs]);
 
   const handleJobClick = (jobId: string) => {
     console.log('Job clicked:', jobId);
@@ -25,20 +41,35 @@ export const SyncJobsList: React.FC = () => {
   };
 
   const handleStopJob = async (jobId: string) => {
+    if (stoppingJobs.has(jobId)) return; // Prevent multiple clicks
+    
     console.log('Stop button clicked for job:', jobId);
+    setStoppingJobs(prev => new Set(prev).add(jobId));
     try {
       await dispatch(stopSyncJob(jobId)).unwrap();
       console.log('Stop job dispatched successfully for:', jobId);
+      // Don't clear stopping state immediately - wait for job status to update
     } catch (error) {
       console.error('Failed to stop sync job:', error);
+      // Only clear on error
+      setStoppingJobs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(jobId);
+        return newSet;
+      });
     }
   };
 
   const handleStopAllJobs = async () => {
+    if (isStoppingAll) return; // Prevent multiple clicks
+    
+    setIsStoppingAll(true);
     try {
       await dispatch(stopAllSyncJobs()).unwrap();
     } catch (error) {
       console.error('Failed to stop all sync jobs:', error);
+    } finally {
+      setIsStoppingAll(false);
     }
   };
 
@@ -158,13 +189,18 @@ export const SyncJobsList: React.FC = () => {
             </h3>
             <button
               onClick={handleStopAllJobs}
-              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              disabled={isStoppingAll}
+              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10l2 2 4-4" />
-              </svg>
-              Stop All
+              {isStoppingAll ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-1"></div>
+              ) : (
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10l2 2 4-4" />
+                </svg>
+              )}
+              {isStoppingAll ? 'Stopping...' : 'Stop All'}
             </button>
           </div>
         </div>
@@ -248,13 +284,18 @@ export const SyncJobsList: React.FC = () => {
                         e.stopPropagation();
                         handleStopJob(job.id);
                       }}
-                      className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 relative z-10"
+                      disabled={stoppingJobs.has(job.id)}
+                      className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 relative z-10 disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Stop this sync job"
                     >
-                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      Stop
+                      {stoppingJobs.has(job.id) ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600 mr-1"></div>
+                      ) : (
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      {stoppingJobs.has(job.id) ? 'Stopping...' : 'Stop'}
                     </button>
                   </div>
                 )}

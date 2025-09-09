@@ -9,7 +9,7 @@ import { fetchSyncJob } from '@shared/reducers/syncSlice';
 export const useSyncJobDetail = (jobId: string, options: {
   interval?: number;
 } = {}) => {
-  const { interval = 500 } = options;
+  const { interval = 5000 } = options;
   const dispatch = useAppDispatch();
   const jobs = useAppSelector(selectSyncJobs);
   
@@ -26,7 +26,12 @@ export const useSyncJobDetail = (jobId: string, options: {
   }, [dispatch, jobId]);
 
   useEffect(() => {
-    // Start polling immediately and continue until job is finished
+    // Only start polling if the job should be polled
+    if (!shouldPoll) {
+      console.log('useSyncJobDetail: Skipping polling for job', jobId, 'status:', job?.status);
+      return;
+    }
+    
     console.log('useSyncJobDetail: Starting polling for job', jobId, 'status:', job?.status);
     
     const pollInterval = setInterval(() => {
@@ -37,7 +42,7 @@ export const useSyncJobDetail = (jobId: string, options: {
       console.log('useSyncJobDetail: Cleanup polling for job', jobId);
       clearInterval(pollInterval);
     };
-  }, [dispatch, jobId, interval]); // Don't depend on job status - just keep polling
+  }, [dispatch, jobId, interval, shouldPoll]); // Depend on shouldPoll to stop polling when job is finished
 
   return {
     job,
