@@ -55,21 +55,27 @@ type ServerInterface interface {
 	// Get application statistics
 	// (GET /stats)
 	GetStats(c *gin.Context)
-	// Stop all sync jobs
+	// Clear finished sync jobs
 	// (DELETE /sync)
-	StopAllSyncJobs(c *gin.Context)
+	ClearFinishedSyncJobs(c *gin.Context)
 	// List all sync jobs
 	// (GET /sync)
 	ListSyncJobs(c *gin.Context)
+	// Perform action on all sync jobs
+	// (PATCH /sync)
+	ActionAllSyncJobs(c *gin.Context)
 	// Start sync job
 	// (POST /sync)
 	StartSyncJob(c *gin.Context)
-	// Stop sync job by ID
+	// Stop sync job by ID (deprecated)
 	// (DELETE /sync/{id})
 	StopSyncJob(c *gin.Context, id string)
 	// Get sync job by ID
 	// (GET /sync/{id})
 	GetSyncJob(c *gin.Context, id string)
+	// Perform action on sync job by ID
+	// (PATCH /sync/{id})
+	ActionSyncJob(c *gin.Context, id string)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -468,8 +474,8 @@ func (siw *ServerInterfaceWrapper) GetStats(c *gin.Context) {
 	siw.Handler.GetStats(c)
 }
 
-// StopAllSyncJobs operation middleware
-func (siw *ServerInterfaceWrapper) StopAllSyncJobs(c *gin.Context) {
+// ClearFinishedSyncJobs operation middleware
+func (siw *ServerInterfaceWrapper) ClearFinishedSyncJobs(c *gin.Context) {
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -478,7 +484,7 @@ func (siw *ServerInterfaceWrapper) StopAllSyncJobs(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.StopAllSyncJobs(c)
+	siw.Handler.ClearFinishedSyncJobs(c)
 }
 
 // ListSyncJobs operation middleware
@@ -492,6 +498,19 @@ func (siw *ServerInterfaceWrapper) ListSyncJobs(c *gin.Context) {
 	}
 
 	siw.Handler.ListSyncJobs(c)
+}
+
+// ActionAllSyncJobs operation middleware
+func (siw *ServerInterfaceWrapper) ActionAllSyncJobs(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ActionAllSyncJobs(c)
 }
 
 // StartSyncJob operation middleware
@@ -555,6 +574,30 @@ func (siw *ServerInterfaceWrapper) GetSyncJob(c *gin.Context) {
 	siw.Handler.GetSyncJob(c, id)
 }
 
+// ActionSyncJob operation middleware
+func (siw *ServerInterfaceWrapper) ActionSyncJob(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ActionSyncJob(c, id)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -596,9 +639,11 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/media/:id/content", wrapper.GetMediaContent)
 	router.GET(options.BaseURL+"/media/:id/thumbnail", wrapper.GetMediaThumbnail)
 	router.GET(options.BaseURL+"/stats", wrapper.GetStats)
-	router.DELETE(options.BaseURL+"/sync", wrapper.StopAllSyncJobs)
+	router.DELETE(options.BaseURL+"/sync", wrapper.ClearFinishedSyncJobs)
 	router.GET(options.BaseURL+"/sync", wrapper.ListSyncJobs)
+	router.PATCH(options.BaseURL+"/sync", wrapper.ActionAllSyncJobs)
 	router.POST(options.BaseURL+"/sync", wrapper.StartSyncJob)
 	router.DELETE(options.BaseURL+"/sync/:id", wrapper.StopSyncJob)
 	router.GET(options.BaseURL+"/sync/:id", wrapper.GetSyncJob)
+	router.PATCH(options.BaseURL+"/sync/:id", wrapper.ActionSyncJob)
 }

@@ -39,7 +39,7 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 		WithString("album_path", albumPath).
 		Build()
 
-	// Create a root album entity for the sync operation (the job will handle creation if needed)
+	// Create a root album entity for the sync operation
 	tracer.Step("create_album_entity").
 		WithString("album_path", albumPath).
 		Log()
@@ -51,52 +51,79 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 		WithString("album_path", album.Path).
 		Log()
 
-	// Create the sync job - it will handle album creation during execution
-	tracer.Step("create_sync_job").
+	// Generate sync jobs using JobGenerator
+	tracer.Step("generate_sync_jobs").
 		WithString("album_id", album.ID).
 		Log()
 
 	start := time.Now()
-	syncJob, err := NewSyncJob(album, s.albumService, s.mediaService, s.fsDatastore)
-	jobCreationDuration := time.Since(start)
+	generator := NewJobGenerator(s.albumService, s.mediaService, s.fsDatastore)
+	syncJobs, err := generator.Generate(ctx, albumPath)
+	jobGenerationDuration := time.Since(start)
 	if err != nil {
 		// Return ServiceError (handlers will log the error)
-		return "", NewSyncJobError(ctx, "create_job", "", err).
+		return "", NewSyncJobError(ctx, "generate_jobs", "", err).
 			WithContext("album_path", albumPath)
 	}
 
-	tracer.Performance("job_creation", jobCreationDuration)
+	tracer.Performance("job_generation", jobGenerationDuration)
 
-	// Add job to scheduler
-	tracer.Step("schedule_job").
-		WithString("job_id", syncJob.GetID().String()).
+	debug.BusinessLogic("sync jobs generated").
+		WithString("album_id", album.ID).
+		WithInt("job_count", len(syncJobs)).
+		Log()
+
+	if len(syncJobs) == 0 {
+		return "", NewSyncJobError(ctx, "generate_jobs", "", fmt.Errorf("no sync jobs generated for path: %s", albumPath)).
+			WithContext("album_path", albumPath)
+	}
+
+	// Add all jobs to scheduler and log each one
+	tracer.Step("schedule_jobs").
+		WithInt("job_count", len(syncJobs)).
 		WithString("scheduler", "background").
 		Log()
 
-	if err := s.scheduler.Add(syncJob); err != nil {
-		// Return ServiceError (handlers will log the error)
-		return "", NewSyncJobError(ctx, "schedule_job", syncJob.GetID().String(), err).
-			WithContext("album_path", albumPath)
+	start = time.Now()
+	var jobIDs []string
+	for i, syncJob := range syncJobs {
+		if err := s.scheduler.Add(syncJob); err != nil {
+			// Return ServiceError (handlers will log the error)
+			return "", NewSyncJobError(ctx, "schedule_job", syncJob.GetID().String(), err).
+				WithContext("album_path", albumPath).
+				WithContext("job_index", i)
+		}
+		
+		jobID := syncJob.GetID().String()
+		jobIDs = append(jobIDs, jobID)
+		
+		debug.BusinessLogic("sync job scheduled").
+			WithString("job_id", jobID).
+			WithString("album_id", syncJob.GetAlbumID()).
+			WithInt("job_index", i).
+			Log()
 	}
+	schedulingDuration := time.Since(start)
 
-	jobID := syncJob.GetID().String()
+	tracer.Performance("scheduling", schedulingDuration)
 
-	debug.BusinessLogic("sync job created and scheduled successfully").
-		WithString("job_id", jobID).
+	debug.BusinessLogic("all sync jobs scheduled successfully").
+		WithInt("total_jobs", len(syncJobs)).
 		WithString("album_path", albumPath).
 		WithString("album_id", album.ID).
 		Log()
 
 	tracer.Success().
-		WithString("job_id", jobID).
+		WithInt("total_jobs", len(syncJobs)).
 		WithString("album_path", albumPath).
 		Log()
 
-	return jobID, nil
+	// Return a batch identifier or the album path since we have multiple jobs
+	return albumPath, nil
 }
 
 // GetSyncJobStatus returns the status of a sync job by ID
-func (s *SyncService) GetSyncJobStatus(jobID string) (*JobProgress, error) {
+func (s *SyncService) GetSyncJobStatus(jobID string) (*entity.JobProgress, error) {
 	ctx := context.Background()
 	debug := s.debug.WithContext(ctx)
 	tracer := debug.StartOperation("get_sync_job_status").
@@ -143,9 +170,9 @@ func (s *SyncService) GetSyncJobStatus(jobID string) (*JobProgress, error) {
 }
 
 // ListSyncJobStatuses returns statuses of all sync jobs
-func (s *SyncService) ListSyncJobStatuses() []JobProgress {
+func (s *SyncService) ListSyncJobStatuses() []entity.JobProgress {
 	jobs := s.scheduler.GetAll()
-	statuses := make([]JobProgress, len(jobs))
+	statuses := make([]entity.JobProgress, len(jobs))
 	for i, syncJob := range jobs {
 		statuses[i] = syncJob.Status()
 	}
@@ -153,9 +180,9 @@ func (s *SyncService) ListSyncJobStatuses() []JobProgress {
 }
 
 // ListSyncJobStatusesByStatus returns job statuses filtered by status
-func (s *SyncService) ListSyncJobStatusesByStatus(status JobStatus) []JobProgress {
+func (s *SyncService) ListSyncJobStatusesByStatus(status entity.JobStatus) []entity.JobProgress {
 	jobs := s.scheduler.GetByStatus(status)
-	statuses := make([]JobProgress, len(jobs))
+	statuses := make([]entity.JobProgress, len(jobs))
 	for i, syncJob := range jobs {
 		statuses[i] = syncJob.Status()
 	}
@@ -202,33 +229,37 @@ func (s *SyncService) StopAllSyncJobs() error {
 	debug := s.debug.WithContext(ctx)
 	tracer := debug.StartOperation("stop_all_sync_jobs").Build()
 
-	// Get all running jobs
-	tracer.Step("get_running_jobs").Log()
+	// Get all active jobs (running and pending)
+	tracer.Step("get_active_jobs").Log()
 
-	runningJobs := s.scheduler.GetByStatus(StatusRunning)
+	runningJobs := s.scheduler.GetByStatus(entity.StatusRunning)
+	pendingJobs := s.scheduler.GetByStatus(entity.StatusPending)
+	activeJobs := append(runningJobs, pendingJobs...)
 
-	debug.BusinessLogic("found running jobs to stop").
+	debug.BusinessLogic("found active jobs to stop").
 		WithInt("running_count", len(runningJobs)).
+		WithInt("pending_count", len(pendingJobs)).
+		WithInt("total_active", len(activeJobs)).
 		Log()
 
-	if len(runningJobs) == 0 {
+	if len(activeJobs) == 0 {
 		tracer.Success().
 			WithInt("stopped_count", 0).
-			WithInt("running_count", 0).
+			WithInt("active_count", 0).
 			Log()
 		return nil
 	}
 
 	// Stop each job
 	tracer.Step("stop_jobs").
-		WithInt("job_count", len(runningJobs)).
+		WithInt("job_count", len(activeJobs)).
 		Log()
 
 	var errors []error
 	successCount := 0
 
 	start := time.Now()
-	for _, syncJob := range runningJobs {
+	for _, syncJob := range activeJobs {
 		if err := syncJob.Stop(); err != nil {
 			// Collect error for return (handlers will log the error)
 			errors = append(errors, NewSyncJobError(ctx, "stop_job", syncJob.GetID().String(), err))
@@ -241,7 +272,7 @@ func (s *SyncService) StopAllSyncJobs() error {
 	tracer.Performance("stop_all_duration", stopDuration)
 
 	debug.BusinessLogic("bulk job stop completed").
-		WithInt("total_jobs", len(runningJobs)).
+		WithInt("total_jobs", len(activeJobs)).
 		WithInt("success_count", successCount).
 		WithInt("failed_count", len(errors)).
 		WithParam("duration", stopDuration).
@@ -250,11 +281,82 @@ func (s *SyncService) StopAllSyncJobs() error {
 	if len(errors) > 0 {
 		return NewInternalError(ctx, "stop_all_sync_jobs", "multiple_job_failures", fmt.Errorf("failed to stop some jobs: %v", errors)).
 			WithContext("failed_count", len(errors)).
-			WithContext("total_count", len(runningJobs))
+			WithContext("total_count", len(activeJobs))
 	}
 
 	tracer.Success().
-		WithInt("stopped_count", len(runningJobs)).
+		WithInt("stopped_count", len(activeJobs)).
+		Log()
+
+	return nil
+}
+
+// ClearFinishedSyncJobs removes all completed, stopped, and failed sync jobs
+func (s *SyncService) ClearFinishedSyncJobs() error {
+	ctx := context.Background()
+	debug := s.debug.WithContext(ctx)
+	tracer := debug.StartOperation("clear_finished_sync_jobs").Build()
+
+	// Get all finished jobs (completed, stopped, failed)
+	tracer.Step("get_finished_jobs").Log()
+
+	completedJobs := s.scheduler.GetByStatus(entity.StatusCompleted)
+	stoppedJobs := s.scheduler.GetByStatus(entity.StatusStopped)
+	failedJobs := s.scheduler.GetByStatus(entity.StatusFailed)
+	
+	finishedJobs := append(completedJobs, stoppedJobs...)
+	finishedJobs = append(finishedJobs, failedJobs...)
+
+	debug.BusinessLogic("found finished jobs to clear").
+		WithInt("completed_count", len(completedJobs)).
+		WithInt("stopped_count", len(stoppedJobs)).
+		WithInt("failed_count", len(failedJobs)).
+		WithInt("total_finished", len(finishedJobs)).
+		Log()
+
+	if len(finishedJobs) == 0 {
+		tracer.Success().
+			WithInt("cleared_count", 0).
+			Log()
+		return nil
+	}
+
+	// Remove each finished job from scheduler
+	tracer.Step("clear_jobs").
+		WithInt("job_count", len(finishedJobs)).
+		Log()
+
+	var errors []error
+	successCount := 0
+
+	start := time.Now()
+	for _, syncJob := range finishedJobs {
+		if err := s.scheduler.Remove(syncJob.GetID().String()); err != nil {
+			// Collect error for return (handlers will log the error)
+			errors = append(errors, NewSyncJobError(ctx, "clear_job", syncJob.GetID().String(), err))
+		} else {
+			successCount++
+		}
+	}
+	clearDuration := time.Since(start)
+
+	tracer.Performance("clear_all_duration", clearDuration)
+
+	debug.BusinessLogic("bulk job clear completed").
+		WithInt("total_jobs", len(finishedJobs)).
+		WithInt("success_count", successCount).
+		WithInt("failed_count", len(errors)).
+		WithParam("duration", clearDuration).
+		Log()
+
+	if len(errors) > 0 {
+		return NewInternalError(ctx, "clear_finished_sync_jobs", "multiple_job_failures", fmt.Errorf("failed to clear some jobs: %v", errors)).
+			WithContext("failed_count", len(errors)).
+			WithContext("total_count", len(finishedJobs))
+	}
+
+	tracer.Success().
+		WithInt("cleared_count", len(finishedJobs)).
 		Log()
 
 	return nil
@@ -296,15 +398,31 @@ func (s *SyncService) Shutdown() {
 		Log()
 }
 
+// IsAlbumSyncing checks if there's an active sync job for the given album ID
+func (s *SyncService) IsAlbumSyncing(albumID string) bool {
+	jobs := s.scheduler.GetByAlbumID(albumID)
+	if len(jobs) == 0 {
+		return false
+	}
+
+	for _, j := range jobs {
+		if j.Status().Status == entity.StatusRunning {
+			return true
+		}
+	}
+
+	return false
+}
+
 // GetSchedulerStats returns statistics about the scheduler
 func (s *SyncService) GetSchedulerStats() map[string]int {
 	stats := make(map[string]int)
 	stats["total"] = len(s.scheduler.GetAll())
-	stats["pending"] = len(s.scheduler.GetByStatus(StatusPending))
-	stats["running"] = len(s.scheduler.GetByStatus(StatusRunning))
-	stats["completed"] = len(s.scheduler.GetByStatus(StatusCompleted))
-	stats["failed"] = len(s.scheduler.GetByStatus(StatusFailed))
-	stats["stopped"] = len(s.scheduler.GetByStatus(StatusStopped))
+	stats["pending"] = len(s.scheduler.GetByStatus(entity.StatusPending))
+	stats["running"] = len(s.scheduler.GetByStatus(entity.StatusRunning))
+	stats["completed"] = len(s.scheduler.GetByStatus(entity.StatusCompleted))
+	stats["failed"] = len(s.scheduler.GetByStatus(entity.StatusFailed))
+	stats["stopped"] = len(s.scheduler.GetByStatus(entity.StatusStopped))
 
 	return stats
 }

@@ -5,7 +5,7 @@ import { startSyncJob, clearError } from '@shared/reducers/syncSlice';
 interface StartSyncModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onJobCreated: (jobId: string) => void;
+  onJobCreated: () => void;
   initialPath?: string;
 }
 
@@ -48,10 +48,11 @@ export const StartSyncModal: React.FC<StartSyncModalProps> = ({
     try {
       const resultAction = await dispatch(startSyncJob(path.trim() || ''));
       if (startSyncJob.fulfilled.match(resultAction)) {
-        onJobCreated(resultAction.payload.jobId);
+        // Multiple jobs are now created, so we just notify success
+        onJobCreated();
       }
     } catch (err: any) {
-      console.error('Failed to start sync job:', err);
+      console.error('Failed to start sync jobs:', err);
     }
   };
 

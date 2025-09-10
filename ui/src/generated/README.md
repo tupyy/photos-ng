@@ -65,11 +65,13 @@ Class | Method | HTTP request | Description
 *MediaApi* | [**updateMedia**](docs/MediaApi.md#updatemedia) | **PUT** /media/{id} | Update media by ID
 *MediaApi* | [**uploadMedia**](docs/MediaApi.md#uploadmedia) | **POST** /media | Upload new media
 *StatsApi* | [**getStats**](docs/StatsApi.md#getstats) | **GET** /stats | Get application statistics
+*SyncApi* | [**actionAllSyncJobs**](docs/SyncApi.md#actionallsyncjobs) | **PATCH** /sync | Perform action on all sync jobs
+*SyncApi* | [**actionSyncJob**](docs/SyncApi.md#actionsyncjob) | **PATCH** /sync/{id} | Perform action on sync job by ID
+*SyncApi* | [**clearFinishedSyncJobs**](docs/SyncApi.md#clearfinishedsyncjobs) | **DELETE** /sync | Clear finished sync jobs
 *SyncApi* | [**getSyncJob**](docs/SyncApi.md#getsyncjob) | **GET** /sync/{id} | Get sync job by ID
 *SyncApi* | [**listSyncJobs**](docs/SyncApi.md#listsyncjobs) | **GET** /sync | List all sync jobs
 *SyncApi* | [**startSyncJob**](docs/SyncApi.md#startsyncjob) | **POST** /sync | Start sync job
-*SyncApi* | [**stopAllSyncJobs**](docs/SyncApi.md#stopallsyncjobs) | **DELETE** /sync | Stop all sync jobs
-*SyncApi* | [**stopSyncJob**](docs/SyncApi.md#stopsyncjob) | **DELETE** /sync/{id} | Stop sync job by ID
+*SyncApi* | [**stopSyncJob**](docs/SyncApi.md#stopsyncjob) | **DELETE** /sync/{id} | Stop sync job by ID (deprecated)
 
 
 ### Documentation For Models
@@ -77,6 +79,7 @@ Class | Method | HTTP request | Description
  - [Album](docs/Album.md)
  - [AlbumChildrenInner](docs/AlbumChildrenInner.md)
  - [Bucket](docs/Bucket.md)
+ - [ClearFinishedSyncJobsResponse](docs/ClearFinishedSyncJobsResponse.md)
  - [CreateAlbumRequest](docs/CreateAlbumRequest.md)
  - [ExifHeader](docs/ExifHeader.md)
  - [ListAlbumsResponse](docs/ListAlbumsResponse.md)
@@ -87,10 +90,11 @@ Class | Method | HTTP request | Description
  - [StartSyncRequest](docs/StartSyncRequest.md)
  - [StartSyncResponse](docs/StartSyncResponse.md)
  - [StatsResponse](docs/StatsResponse.md)
- - [StopAllSyncJobs200Response](docs/StopAllSyncJobs200Response.md)
  - [StopSyncJob200Response](docs/StopSyncJob200Response.md)
  - [SyncAlbumResponse](docs/SyncAlbumResponse.md)
  - [SyncJob](docs/SyncJob.md)
+ - [SyncJobActionRequest](docs/SyncJobActionRequest.md)
+ - [SyncJobActionResponse](docs/SyncJobActionResponse.md)
  - [TaskResult](docs/TaskResult.md)
  - [TaskResultResult](docs/TaskResultResult.md)
  - [UpdateAlbumRequest](docs/UpdateAlbumRequest.md)

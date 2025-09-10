@@ -1,10 +1,10 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { SyncApi } from '@generated/api/sync-api';
-import { SyncJob, StartSyncRequest, StopSyncJob200Response, StopAllSyncJobs200Response } from '@generated/models';
+import { SyncJob, StartSyncRequest, StopSyncJob200Response, ClearFinishedSyncJobsResponse, SyncJobActionRequestActionEnum } from '@generated/models';
 import { apiConfig } from '@shared/api/apiConfig';
 
 // Extended SyncJob interface to include path information
-interface SyncJobWithPath extends SyncJob {
+interface SyncJobWithPath extends Omit<SyncJob, 'path'> {
   path?: string;
 }
 
@@ -24,22 +24,28 @@ const initialState: SyncState = {
 
 const syncApi = new SyncApi(apiConfig);
 
-// Async thunk to start a new sync job
+// Async thunk to start a new sync job (now creates multiple jobs)
 export const startSyncJob = createAsyncThunk(
   'sync/startJob',
   async (path: string, { rejectWithValue }) => {
     try {
       const request: StartSyncRequest = { path };
       const response = await syncApi.startSyncJob(request);
-      const jobId = response.data.id;
+      const albumPath = response.data.id; // Now returns album path instead of single job ID
       
-      // Fetch the newly created job details
-      const jobResponse = await syncApi.getSyncJob(jobId);
+      // Fetch all jobs to get the newly created jobs for this sync operation
+      const allJobsResponse = await syncApi.listSyncJobs();
+      const allJobs = allJobsResponse.data.jobs || [];
+      
+      // Filter jobs that are related to this album path (jobs for folders within this path)
+      const relatedJobs = allJobs.filter(job => 
+        job.path === path || job.path?.startsWith(path + '/')
+      );
       
       return {
-        jobId,
+        albumPath,
         path,
-        job: jobResponse.data,
+        jobs: relatedJobs,
       };
     } catch (error: any) {
       return rejectWithValue(
@@ -90,7 +96,7 @@ export const stopSyncJob = createAsyncThunk(
   'sync/stopJob',
   async (jobId: string, { rejectWithValue }) => {
     try {
-      const response = await syncApi.stopSyncJob(jobId);
+      const response = await syncApi.actionSyncJob(jobId, { action: SyncJobActionRequestActionEnum.Stop });
       return {
         jobId,
         message: response.data.message || 'Sync job stopped successfully',
@@ -108,14 +114,32 @@ export const stopAllSyncJobs = createAsyncThunk(
   'sync/stopAllJobs',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await syncApi.stopAllSyncJobs();
+      const response = await syncApi.actionAllSyncJobs({ action: SyncJobActionRequestActionEnum.Stop });
       return {
         message: response.data.message || 'All sync jobs stopped successfully',
-        stoppedCount: response.data.stoppedCount || 0,
+        stoppedCount: response.data.affectedCount || 0,
       };
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to stop sync jobs'
+      );
+    }
+  }
+);
+
+// Async thunk to clear finished sync jobs
+export const clearFinishedSyncJobs = createAsyncThunk(
+  'sync/clearFinishedJobs',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await syncApi.clearFinishedSyncJobs();
+      return {
+        message: response.data.message || 'Finished sync jobs cleared successfully',
+        clearedCount: response.data.clearedCount || 0,
+      };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to clear finished sync jobs'
       );
     }
   }
@@ -147,12 +171,20 @@ const syncSlice = createSlice({
       .addCase(startSyncJob.fulfilled, (state, action) => {
         state.startingSync = false;
         state.error = null;
-        // Add the newly created job to the jobs list with path information
-        const jobWithPath: SyncJobWithPath = {
-          ...action.payload.job,
+        // Add all newly created jobs to the jobs list with path information
+        const newJobs = action.payload.jobs.map(job => ({
+          ...job,
           path: action.payload.path,
-        };
-        state.jobs.push(jobWithPath);
+        }));
+        
+        // Remove any existing jobs for this path to avoid duplicates
+        state.jobs = state.jobs.filter(job => 
+          job.path !== action.payload.path && 
+          !job.path?.startsWith(action.payload.path + '/')
+        );
+        
+        // Add the new jobs
+        state.jobs.push(...newJobs);
       })
       .addCase(startSyncJob.rejected, (state, action) => {
         state.startingSync = false;
@@ -214,6 +246,20 @@ const syncSlice = createSlice({
         state.error = null;
       })
       .addCase(stopAllSyncJobs.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
+      
+      // Clear finished sync jobs
+      .addCase(clearFinishedSyncJobs.fulfilled, (state, action) => {
+        // Remove completed, stopped, and failed jobs from the list
+        state.jobs = state.jobs.filter(job => 
+          job.status !== 'completed' && 
+          job.status !== 'stopped' && 
+          job.status !== 'failed'
+        );
+        state.error = null;
+      })
+      .addCase(clearFinishedSyncJobs.rejected, (state, action) => {
         state.error = action.payload as string;
       });
   },

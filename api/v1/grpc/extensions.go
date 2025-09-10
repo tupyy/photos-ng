@@ -7,22 +7,22 @@ import (
 	"time"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // NewAlbum converts an entity.Album to a gRPC Album for API responses
-func NewAlbum(album entity.Album) *Album {
+func NewAlbum(album entity.Album, syncInProgress bool) *Album {
 	_, name := path.Split(album.Path)
 
 	grpcAlbum := &Album{
-		Id:          album.ID,
-		Path:        album.Path,
-		Description: album.Description,
-		MediaCount:  int32(album.MediaCount),
-		Name:        name,
-		ParentId:    album.ParentId,
-		Thumbnail:   album.Thumbnail,
+		Id:             album.ID,
+		Path:           album.Path,
+		Description:    album.Description,
+		MediaCount:     int32(album.MediaCount),
+		Name:           name,
+		ParentId:       album.ParentId,
+		Thumbnail:      album.Thumbnail,
+		SyncInProgress: &syncInProgress,
 	}
 
 	// Convert children
@@ -145,17 +145,17 @@ func ToMediaEntity(filename, albumId string, fileContent io.Reader, album entity
 }
 
 // ConvertJobStatusToAPI converts internal job status to gRPC status
-func ConvertJobStatusToAPI(status services.JobStatus) SyncJobStatus {
+func ConvertJobStatusToAPI(status entity.JobStatus) SyncJobStatus {
 	switch status {
-	case services.StatusPending:
+	case entity.StatusPending:
 		return SyncJobStatus_SYNC_JOB_STATUS_PENDING
-	case services.StatusRunning:
+	case entity.StatusRunning:
 		return SyncJobStatus_SYNC_JOB_STATUS_RUNNING
-	case services.StatusCompleted:
+	case entity.StatusCompleted:
 		return SyncJobStatus_SYNC_JOB_STATUS_COMPLETED
-	case services.StatusFailed:
+	case entity.StatusFailed:
 		return SyncJobStatus_SYNC_JOB_STATUS_FAILED
-	case services.StatusStopped:
+	case entity.StatusStopped:
 		return SyncJobStatus_SYNC_JOB_STATUS_STOPPED
 	default:
 		return SyncJobStatus_SYNC_JOB_STATUS_UNSPECIFIED
@@ -163,7 +163,7 @@ func ConvertJobStatusToAPI(status services.JobStatus) SyncJobStatus {
 }
 
 // ConvertJobResultsToTaskResults converts internal job results to gRPC task results
-func ConvertJobResultsToTaskResults(jobResults []services.JobResult) []*TaskResult {
+func ConvertJobResultsToTaskResults(jobResults []entity.JobResult) []*TaskResult {
 	taskResults := make([]*TaskResult, 0, len(jobResults))
 
 	for _, jobResult := range jobResults {
@@ -175,7 +175,7 @@ func ConvertJobResultsToTaskResults(jobResults []services.JobResult) []*TaskResu
 }
 
 // ConvertJobResultToTaskResult converts a single JobResult to gRPC TaskResult
-func ConvertJobResultToTaskResult(jobResult services.JobResult) *TaskResult {
+func ConvertJobResultToTaskResult(jobResult entity.JobResult) *TaskResult {
 	// Calculate duration in milliseconds
 	duration := int32(jobResult.CompletedAt.Sub(jobResult.StartedAt).Milliseconds())
 
@@ -235,7 +235,7 @@ func extractItemAndType(resultStr string) (string, TaskResultItemType) {
 }
 
 // NewSyncJob converts an internal JobProgress to a gRPC SyncJob
-func NewSyncJob(job services.JobProgress) *SyncJob {
+func NewSyncJob(job entity.JobProgress) *SyncJob {
 	grpcJob := &SyncJob{
 		Id:             job.Id.String(),
 		Status:         ConvertJobStatusToAPI(job.Status),
@@ -267,10 +267,9 @@ func NewSyncJob(job services.JobProgress) *SyncJob {
 		grpcJob.Duration = &durationSeconds
 	}
 
-	// Set error message if job failed
-	if job.Err != nil {
-		errorMessage := job.Err.Error()
-		grpcJob.Error = &errorMessage
+	// Set message if available (provides additional info about job status/reason)
+	if job.Reason != "" {
+		grpcJob.Error = &job.Reason
 	}
 
 	// Note: RemainingTime calculation would need to be added to JobProgress struct

@@ -55,7 +55,9 @@ func (s *Handler) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 	// Convert entity albums to API albums
 	apiAlbums := make([]v1.Album, 0, len(albums))
 	for _, album := range albums {
-		apiAlbums = append(apiAlbums, v1.NewAlbum(album))
+		// Check if album has sync job in progress
+		syncInProgress := s.syncSrv.IsAlbumSyncing(album.ID)
+		apiAlbums = append(apiAlbums, v1.NewAlbum(album, syncInProgress))
 	}
 
 	response := v1.ListAlbumsResponse{
@@ -86,7 +88,9 @@ func (s *Handler) CreateAlbum(c *gin.Context) {
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
-	c.JSON(http.StatusCreated, v1.NewAlbum(*createdAlbum))
+	// Check if album has sync job in progress
+	syncInProgress := s.syncSrv.IsAlbumSyncing(createdAlbum.ID)
+	c.JSON(http.StatusCreated, v1.NewAlbum(*createdAlbum, syncInProgress))
 }
 
 // GetAlbum handles GET /api/v1/albums/{id} requests to retrieve a specific album by ID.
@@ -101,7 +105,9 @@ func (s *Handler) GetAlbum(c *gin.Context, id string) {
 		return
 	}
 
-	c.JSON(http.StatusOK, v1.NewAlbum(*album))
+	// Check if album has sync job in progress
+	syncInProgress := s.syncSrv.IsAlbumSyncing(album.ID)
+	c.JSON(http.StatusOK, v1.NewAlbum(*album, syncInProgress))
 }
 
 // UpdateAlbum handles PUT /api/v1/albums/{id} requests to update an album's metadata.
@@ -132,7 +138,9 @@ func (s *Handler) UpdateAlbum(c *gin.Context, id string) {
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, v1.NewAlbum(*updatedAlbum))
+	// Check if album has sync job in progress
+	syncInProgress := s.syncSrv.IsAlbumSyncing(updatedAlbum.ID)
+	c.JSON(http.StatusOK, v1.NewAlbum(*updatedAlbum, syncInProgress))
 }
 
 // DeleteAlbum handles DELETE /api/v1/albums/{id} requests to delete an album.

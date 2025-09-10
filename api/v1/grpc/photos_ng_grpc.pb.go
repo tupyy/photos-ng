@@ -20,25 +20,28 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PhotosNGService_ListAlbums_FullMethodName        = "/photos_ng.api.v1.grpc.PhotosNGService/ListAlbums"
-	PhotosNGService_CreateAlbum_FullMethodName       = "/photos_ng.api.v1.grpc.PhotosNGService/CreateAlbum"
-	PhotosNGService_GetAlbum_FullMethodName          = "/photos_ng.api.v1.grpc.PhotosNGService/GetAlbum"
-	PhotosNGService_UpdateAlbum_FullMethodName       = "/photos_ng.api.v1.grpc.PhotosNGService/UpdateAlbum"
-	PhotosNGService_DeleteAlbum_FullMethodName       = "/photos_ng.api.v1.grpc.PhotosNGService/DeleteAlbum"
-	PhotosNGService_SyncAlbum_FullMethodName         = "/photos_ng.api.v1.grpc.PhotosNGService/SyncAlbum"
-	PhotosNGService_ListMedia_FullMethodName         = "/photos_ng.api.v1.grpc.PhotosNGService/ListMedia"
-	PhotosNGService_UploadMedia_FullMethodName       = "/photos_ng.api.v1.grpc.PhotosNGService/UploadMedia"
-	PhotosNGService_GetMedia_FullMethodName          = "/photos_ng.api.v1.grpc.PhotosNGService/GetMedia"
-	PhotosNGService_UpdateMedia_FullMethodName       = "/photos_ng.api.v1.grpc.PhotosNGService/UpdateMedia"
-	PhotosNGService_DeleteMedia_FullMethodName       = "/photos_ng.api.v1.grpc.PhotosNGService/DeleteMedia"
-	PhotosNGService_GetMediaThumbnail_FullMethodName = "/photos_ng.api.v1.grpc.PhotosNGService/GetMediaThumbnail"
-	PhotosNGService_GetMediaContent_FullMethodName   = "/photos_ng.api.v1.grpc.PhotosNGService/GetMediaContent"
-	PhotosNGService_StartSyncJob_FullMethodName      = "/photos_ng.api.v1.grpc.PhotosNGService/StartSyncJob"
-	PhotosNGService_ListSyncJobs_FullMethodName      = "/photos_ng.api.v1.grpc.PhotosNGService/ListSyncJobs"
-	PhotosNGService_GetSyncJob_FullMethodName        = "/photos_ng.api.v1.grpc.PhotosNGService/GetSyncJob"
-	PhotosNGService_StopSyncJob_FullMethodName       = "/photos_ng.api.v1.grpc.PhotosNGService/StopSyncJob"
-	PhotosNGService_StopAllSyncJobs_FullMethodName   = "/photos_ng.api.v1.grpc.PhotosNGService/StopAllSyncJobs"
-	PhotosNGService_GetStats_FullMethodName          = "/photos_ng.api.v1.grpc.PhotosNGService/GetStats"
+	PhotosNGService_ListAlbums_FullMethodName            = "/photos_ng.api.v1.grpc.PhotosNGService/ListAlbums"
+	PhotosNGService_CreateAlbum_FullMethodName           = "/photos_ng.api.v1.grpc.PhotosNGService/CreateAlbum"
+	PhotosNGService_GetAlbum_FullMethodName              = "/photos_ng.api.v1.grpc.PhotosNGService/GetAlbum"
+	PhotosNGService_UpdateAlbum_FullMethodName           = "/photos_ng.api.v1.grpc.PhotosNGService/UpdateAlbum"
+	PhotosNGService_DeleteAlbum_FullMethodName           = "/photos_ng.api.v1.grpc.PhotosNGService/DeleteAlbum"
+	PhotosNGService_SyncAlbum_FullMethodName             = "/photos_ng.api.v1.grpc.PhotosNGService/SyncAlbum"
+	PhotosNGService_ListMedia_FullMethodName             = "/photos_ng.api.v1.grpc.PhotosNGService/ListMedia"
+	PhotosNGService_UploadMedia_FullMethodName           = "/photos_ng.api.v1.grpc.PhotosNGService/UploadMedia"
+	PhotosNGService_GetMedia_FullMethodName              = "/photos_ng.api.v1.grpc.PhotosNGService/GetMedia"
+	PhotosNGService_UpdateMedia_FullMethodName           = "/photos_ng.api.v1.grpc.PhotosNGService/UpdateMedia"
+	PhotosNGService_DeleteMedia_FullMethodName           = "/photos_ng.api.v1.grpc.PhotosNGService/DeleteMedia"
+	PhotosNGService_GetMediaThumbnail_FullMethodName     = "/photos_ng.api.v1.grpc.PhotosNGService/GetMediaThumbnail"
+	PhotosNGService_GetMediaContent_FullMethodName       = "/photos_ng.api.v1.grpc.PhotosNGService/GetMediaContent"
+	PhotosNGService_StartSyncJob_FullMethodName          = "/photos_ng.api.v1.grpc.PhotosNGService/StartSyncJob"
+	PhotosNGService_ListSyncJobs_FullMethodName          = "/photos_ng.api.v1.grpc.PhotosNGService/ListSyncJobs"
+	PhotosNGService_GetSyncJob_FullMethodName            = "/photos_ng.api.v1.grpc.PhotosNGService/GetSyncJob"
+	PhotosNGService_ActionAllSyncJobs_FullMethodName     = "/photos_ng.api.v1.grpc.PhotosNGService/ActionAllSyncJobs"
+	PhotosNGService_ActionSyncJob_FullMethodName         = "/photos_ng.api.v1.grpc.PhotosNGService/ActionSyncJob"
+	PhotosNGService_ClearFinishedSyncJobs_FullMethodName = "/photos_ng.api.v1.grpc.PhotosNGService/ClearFinishedSyncJobs"
+	PhotosNGService_StopSyncJob_FullMethodName           = "/photos_ng.api.v1.grpc.PhotosNGService/StopSyncJob"
+	PhotosNGService_StopAllSyncJobs_FullMethodName       = "/photos_ng.api.v1.grpc.PhotosNGService/StopAllSyncJobs"
+	PhotosNGService_GetStats_FullMethodName              = "/photos_ng.api.v1.grpc.PhotosNGService/GetStats"
 )
 
 // PhotosNGServiceClient is the client API for PhotosNGService service.
@@ -66,6 +69,9 @@ type PhotosNGServiceClient interface {
 	StartSyncJob(ctx context.Context, in *StartSyncRequest, opts ...grpc.CallOption) (*StartSyncResponse, error)
 	ListSyncJobs(ctx context.Context, in *ListSyncJobsRequest, opts ...grpc.CallOption) (*ListSyncJobsResponse, error)
 	GetSyncJob(ctx context.Context, in *GetSyncJobRequest, opts ...grpc.CallOption) (*SyncJob, error)
+	ActionAllSyncJobs(ctx context.Context, in *ActionAllSyncJobsRequest, opts ...grpc.CallOption) (*ActionAllSyncJobsResponse, error)
+	ActionSyncJob(ctx context.Context, in *ActionSyncJobRequest, opts ...grpc.CallOption) (*ActionSyncJobResponse, error)
+	ClearFinishedSyncJobs(ctx context.Context, in *ClearFinishedSyncJobsRequest, opts ...grpc.CallOption) (*ClearFinishedSyncJobsResponse, error)
 	StopSyncJob(ctx context.Context, in *StopSyncJobRequest, opts ...grpc.CallOption) (*StopSyncJobResponse, error)
 	StopAllSyncJobs(ctx context.Context, in *StopAllSyncJobsRequest, opts ...grpc.CallOption) (*StopAllSyncJobsResponse, error)
 	// Stats operations
@@ -258,6 +264,36 @@ func (c *photosNGServiceClient) GetSyncJob(ctx context.Context, in *GetSyncJobRe
 	return out, nil
 }
 
+func (c *photosNGServiceClient) ActionAllSyncJobs(ctx context.Context, in *ActionAllSyncJobsRequest, opts ...grpc.CallOption) (*ActionAllSyncJobsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ActionAllSyncJobsResponse)
+	err := c.cc.Invoke(ctx, PhotosNGService_ActionAllSyncJobs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *photosNGServiceClient) ActionSyncJob(ctx context.Context, in *ActionSyncJobRequest, opts ...grpc.CallOption) (*ActionSyncJobResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ActionSyncJobResponse)
+	err := c.cc.Invoke(ctx, PhotosNGService_ActionSyncJob_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *photosNGServiceClient) ClearFinishedSyncJobs(ctx context.Context, in *ClearFinishedSyncJobsRequest, opts ...grpc.CallOption) (*ClearFinishedSyncJobsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClearFinishedSyncJobsResponse)
+	err := c.cc.Invoke(ctx, PhotosNGService_ClearFinishedSyncJobs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *photosNGServiceClient) StopSyncJob(ctx context.Context, in *StopSyncJobRequest, opts ...grpc.CallOption) (*StopSyncJobResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(StopSyncJobResponse)
@@ -313,6 +349,9 @@ type PhotosNGServiceServer interface {
 	StartSyncJob(context.Context, *StartSyncRequest) (*StartSyncResponse, error)
 	ListSyncJobs(context.Context, *ListSyncJobsRequest) (*ListSyncJobsResponse, error)
 	GetSyncJob(context.Context, *GetSyncJobRequest) (*SyncJob, error)
+	ActionAllSyncJobs(context.Context, *ActionAllSyncJobsRequest) (*ActionAllSyncJobsResponse, error)
+	ActionSyncJob(context.Context, *ActionSyncJobRequest) (*ActionSyncJobResponse, error)
+	ClearFinishedSyncJobs(context.Context, *ClearFinishedSyncJobsRequest) (*ClearFinishedSyncJobsResponse, error)
 	StopSyncJob(context.Context, *StopSyncJobRequest) (*StopSyncJobResponse, error)
 	StopAllSyncJobs(context.Context, *StopAllSyncJobsRequest) (*StopAllSyncJobsResponse, error)
 	// Stats operations
@@ -374,6 +413,15 @@ func (UnimplementedPhotosNGServiceServer) ListSyncJobs(context.Context, *ListSyn
 }
 func (UnimplementedPhotosNGServiceServer) GetSyncJob(context.Context, *GetSyncJobRequest) (*SyncJob, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSyncJob not implemented")
+}
+func (UnimplementedPhotosNGServiceServer) ActionAllSyncJobs(context.Context, *ActionAllSyncJobsRequest) (*ActionAllSyncJobsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ActionAllSyncJobs not implemented")
+}
+func (UnimplementedPhotosNGServiceServer) ActionSyncJob(context.Context, *ActionSyncJobRequest) (*ActionSyncJobResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ActionSyncJob not implemented")
+}
+func (UnimplementedPhotosNGServiceServer) ClearFinishedSyncJobs(context.Context, *ClearFinishedSyncJobsRequest) (*ClearFinishedSyncJobsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ClearFinishedSyncJobs not implemented")
 }
 func (UnimplementedPhotosNGServiceServer) StopSyncJob(context.Context, *StopSyncJobRequest) (*StopSyncJobResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopSyncJob not implemented")
@@ -679,6 +727,60 @@ func _PhotosNGService_GetSyncJob_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PhotosNGService_ActionAllSyncJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ActionAllSyncJobsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PhotosNGServiceServer).ActionAllSyncJobs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PhotosNGService_ActionAllSyncJobs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PhotosNGServiceServer).ActionAllSyncJobs(ctx, req.(*ActionAllSyncJobsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PhotosNGService_ActionSyncJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ActionSyncJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PhotosNGServiceServer).ActionSyncJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PhotosNGService_ActionSyncJob_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PhotosNGServiceServer).ActionSyncJob(ctx, req.(*ActionSyncJobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PhotosNGService_ClearFinishedSyncJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClearFinishedSyncJobsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PhotosNGServiceServer).ClearFinishedSyncJobs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PhotosNGService_ClearFinishedSyncJobs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PhotosNGServiceServer).ClearFinishedSyncJobs(ctx, req.(*ClearFinishedSyncJobsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PhotosNGService_StopSyncJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StopSyncJobRequest)
 	if err := dec(in); err != nil {
@@ -795,6 +897,18 @@ var PhotosNGService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSyncJob",
 			Handler:    _PhotosNGService_GetSyncJob_Handler,
+		},
+		{
+			MethodName: "ActionAllSyncJobs",
+			Handler:    _PhotosNGService_ActionAllSyncJobs_Handler,
+		},
+		{
+			MethodName: "ActionSyncJob",
+			Handler:    _PhotosNGService_ActionSyncJob_Handler,
+		},
+		{
+			MethodName: "ClearFinishedSyncJobs",
+			Handler:    _PhotosNGService_ClearFinishedSyncJobs_Handler,
 		},
 		{
 			MethodName: "StopSyncJob",

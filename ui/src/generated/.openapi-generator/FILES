@@ -13,6 +13,7 @@ docs/Album.md
 docs/AlbumChildrenInner.md
 docs/AlbumsApi.md
 docs/Bucket.md
+docs/ClearFinishedSyncJobsResponse.md
 docs/CreateAlbumRequest.md
 docs/Error.md
 docs/ExifHeader.md
@@ -25,11 +26,12 @@ docs/StartSyncRequest.md
 docs/StartSyncResponse.md
 docs/StatsApi.md
 docs/StatsResponse.md
-docs/StopAllSyncJobs200Response.md
 docs/StopSyncJob200Response.md
 docs/SyncAlbumResponse.md
 docs/SyncApi.md
 docs/SyncJob.md
+docs/SyncJobActionRequest.md
+docs/SyncJobActionResponse.md
 docs/TaskResult.md
 docs/TaskResultResult.md
 docs/UpdateAlbumRequest.md
@@ -39,6 +41,7 @@ index.ts
 models/album-children-inner.ts
 models/album.ts
 models/bucket.ts
+models/clear-finished-sync-jobs-response.ts
 models/create-album-request.ts
 models/exif-header.ts
 models/index.ts
@@ -50,9 +53,10 @@ models/model-error.ts
 models/start-sync-request.ts
 models/start-sync-response.ts
 models/stats-response.ts
-models/stop-all-sync-jobs200-response.ts
 models/stop-sync-job200-response.ts
 models/sync-album-response.ts
+models/sync-job-action-request.ts
+models/sync-job-action-response.ts
 models/sync-job.ts
 models/task-result-result.ts
 models/task-result.ts

@@ -65,13 +65,13 @@ func (a *AlbumService) GetAlbums(ctx context.Context, opts *AlbumOptions) ([]ent
 		WithInt("end", opts.Offset+opts.Limit).
 		Log()
 
-	start_idx := opts.Offset
-	end_idx := opts.Offset + opts.Limit
+	startIdx := opts.Offset
+	endIdx := opts.Offset + opts.Limit
 
 	// Handle bounds
-	if start_idx >= len(allAlbums) {
+	if startIdx >= len(allAlbums) {
 		debug.BusinessLogic("pagination out of bounds, returning empty result").
-			WithInt("start_index", start_idx).
+			WithInt("start_index", startIdx).
 			WithInt("total_albums", len(allAlbums)).
 			Log()
 		tracer.Success().
@@ -80,23 +80,23 @@ func (a *AlbumService) GetAlbums(ctx context.Context, opts *AlbumOptions) ([]ent
 			Log()
 		return []entity.Album{}, nil
 	}
-	if end_idx > len(allAlbums) || opts.Limit <= 0 {
-		end_idx = len(allAlbums)
+	if endIdx > len(allAlbums) || opts.Limit <= 0 {
+		endIdx = len(allAlbums)
 		debug.BusinessLogic("pagination end adjusted to total albums").
 			WithInt("original_end", opts.Offset+opts.Limit).
-			WithInt("adjusted_end", end_idx).
+			WithInt("adjusted_end", endIdx).
 			WithInt("total_albums", len(allAlbums)).
 			Log()
 	}
 
 	// Return the paginated slice
-	paginatedAlbums := allAlbums[start_idx:end_idx]
+	paginatedAlbums := allAlbums[startIdx:endIdx]
 
 	tracer.Success().
 		WithInt(AlbumsReturned, len(paginatedAlbums)).
 		WithInt(TotalAlbums, len(allAlbums)).
-		WithInt(StartIndex, start_idx).
-		WithInt(EndIndex, end_idx).
+		WithInt(StartIndex, startIdx).
+		WithInt(EndIndex, endIdx).
 		Log()
 
 	return paginatedAlbums, nil

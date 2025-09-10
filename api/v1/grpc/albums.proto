@@ -28,6 +28,7 @@ message Album {
   repeated AlbumChild children = 7;     // List of child album references
   int32 media_count = 8;               // Total media count including children
   repeated string media_ids = 9;      // List of media IDs in this album
+  optional bool sync_in_progress = 10; // True if a sync job is running for this album
 }
 
 // Request to create a new album

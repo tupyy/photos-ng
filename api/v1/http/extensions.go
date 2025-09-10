@@ -8,17 +8,17 @@ import (
 	"time"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
 )
 
 // NewAlbum converts an entity.Album to a v1.Album for API responses
-func NewAlbum(album entity.Album) Album {
+func NewAlbum(album entity.Album, syncInProgress bool) Album {
 	apiAlbum := Album{
-		Id:          album.ID,
-		Path:        album.Path,
-		Description: album.Description,
-		Href:        "/api/v1/albums/" + album.ID,
-		MediaCount:  album.MediaCount,
+		Id:             album.ID,
+		Path:           album.Path,
+		Description:    album.Description,
+		Href:           "/api/v1/albums/" + album.ID,
+		MediaCount:     album.MediaCount,
+		SyncInProgress: &syncInProgress,
 	}
 
 	_, name := path.Split(album.Path)
@@ -147,17 +147,17 @@ func ToMediaEntity(filename, albumId string, fileContent io.Reader, album entity
 }
 
 // ConvertJobStatusToAPI converts internal job status to API status
-func ConvertJobStatusToAPI(status services.JobStatus) SyncJobStatus {
+func ConvertJobStatusToAPI(status entity.JobStatus) SyncJobStatus {
 	switch status {
-	case services.StatusPending:
+	case entity.StatusPending:
 		return Pending
-	case services.StatusRunning:
+	case entity.StatusRunning:
 		return Running
-	case services.StatusCompleted:
+	case entity.StatusCompleted:
 		return Completed
-	case services.StatusFailed:
+	case entity.StatusFailed:
 		return Failed
-	case services.StatusStopped:
+	case entity.StatusStopped:
 		return Stopped
 	default:
 		return Pending
@@ -165,7 +165,7 @@ func ConvertJobStatusToAPI(status services.JobStatus) SyncJobStatus {
 }
 
 // ConvertJobResultsToTaskResults converts internal job results to API task results
-func ConvertJobResultsToTaskResults(jobResults []services.JobResult) []TaskResult {
+func ConvertJobResultsToTaskResults(jobResults []entity.JobResult) []TaskResult {
 	taskResults := make([]TaskResult, 0, len(jobResults))
 
 	for _, jobResult := range jobResults {
@@ -177,7 +177,7 @@ func ConvertJobResultsToTaskResults(jobResults []services.JobResult) []TaskResul
 }
 
 // ConvertJobResultToTaskResult converts a single JobResult to TaskResult
-func ConvertJobResultToTaskResult(jobResult services.JobResult) TaskResult {
+func ConvertJobResultToTaskResult(jobResult entity.JobResult) TaskResult {
 	// Calculate duration in seconds
 	duration := int(jobResult.CompletedAt.Sub(jobResult.StartedAt).Seconds())
 
@@ -234,8 +234,8 @@ func extractItemAndType(resultStr string) (string, TaskResultItemType) {
 	return resultStr, Folder
 }
 
-// NewSyncJob converts a services.JobProgress to a v1.SyncJob for API responses
-func NewSyncJob(jobProgress services.JobProgress) SyncJob {
+// NewSyncJob converts an entity.JobProgress to a v1.SyncJob for API responses
+func NewSyncJob(jobProgress entity.JobProgress) SyncJob {
 	// Convert job results to API task results
 	taskResults := ConvertJobResultsToTaskResults(jobProgress.Results)
 
@@ -269,16 +269,13 @@ func NewSyncJob(jobProgress services.JobProgress) SyncJob {
 			durationSeconds = int(jobProgress.CompletedAt.Sub(*jobProgress.StartedAt).Seconds())
 		} else {
 			// Job still running - calculate elapsed time
-			durationSeconds = int(time.Now().Sub(*jobProgress.StartedAt).Seconds())
+			durationSeconds = int(time.Since(*jobProgress.StartedAt).Seconds())
 		}
 		apiJob.Duration = &durationSeconds
 	}
 
 	// Set error message if job failed
-	if jobProgress.Err != nil {
-		errorMessage := jobProgress.Err.Error()
-		apiJob.Error = &errorMessage
-	}
+	apiJob.Message = &jobProgress.Reason
 
 	return apiJob
 }

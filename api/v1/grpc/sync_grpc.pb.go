@@ -19,11 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SyncService_StartSyncJob_FullMethodName    = "/photos_ng.api.v1.grpc.SyncService/StartSyncJob"
-	SyncService_ListSyncJobs_FullMethodName    = "/photos_ng.api.v1.grpc.SyncService/ListSyncJobs"
-	SyncService_GetSyncJob_FullMethodName      = "/photos_ng.api.v1.grpc.SyncService/GetSyncJob"
-	SyncService_StopSyncJob_FullMethodName     = "/photos_ng.api.v1.grpc.SyncService/StopSyncJob"
-	SyncService_StopAllSyncJobs_FullMethodName = "/photos_ng.api.v1.grpc.SyncService/StopAllSyncJobs"
+	SyncService_StartSyncJob_FullMethodName          = "/photos_ng.api.v1.grpc.SyncService/StartSyncJob"
+	SyncService_ListSyncJobs_FullMethodName          = "/photos_ng.api.v1.grpc.SyncService/ListSyncJobs"
+	SyncService_GetSyncJob_FullMethodName            = "/photos_ng.api.v1.grpc.SyncService/GetSyncJob"
+	SyncService_ActionAllSyncJobs_FullMethodName     = "/photos_ng.api.v1.grpc.SyncService/ActionAllSyncJobs"
+	SyncService_ActionSyncJob_FullMethodName         = "/photos_ng.api.v1.grpc.SyncService/ActionSyncJob"
+	SyncService_ClearFinishedSyncJobs_FullMethodName = "/photos_ng.api.v1.grpc.SyncService/ClearFinishedSyncJobs"
+	SyncService_StopSyncJob_FullMethodName           = "/photos_ng.api.v1.grpc.SyncService/StopSyncJob"
+	SyncService_StopAllSyncJobs_FullMethodName       = "/photos_ng.api.v1.grpc.SyncService/StopAllSyncJobs"
 )
 
 // SyncServiceClient is the client API for SyncService service.
@@ -38,9 +41,15 @@ type SyncServiceClient interface {
 	ListSyncJobs(ctx context.Context, in *ListSyncJobsRequest, opts ...grpc.CallOption) (*ListSyncJobsResponse, error)
 	// Get detailed information about a specific sync job
 	GetSyncJob(ctx context.Context, in *GetSyncJobRequest, opts ...grpc.CallOption) (*SyncJob, error)
-	// Stop a specific sync job by ID
+	// Perform action on all sync jobs (stop or resume)
+	ActionAllSyncJobs(ctx context.Context, in *ActionAllSyncJobsRequest, opts ...grpc.CallOption) (*ActionAllSyncJobsResponse, error)
+	// Perform action on a specific sync job by ID (stop or resume)
+	ActionSyncJob(ctx context.Context, in *ActionSyncJobRequest, opts ...grpc.CallOption) (*ActionSyncJobResponse, error)
+	// Clear all finished sync jobs (completed, stopped, failed)
+	ClearFinishedSyncJobs(ctx context.Context, in *ClearFinishedSyncJobsRequest, opts ...grpc.CallOption) (*ClearFinishedSyncJobsResponse, error)
+	// Stop a specific sync job by ID (deprecated - use ActionSyncJob instead)
 	StopSyncJob(ctx context.Context, in *StopSyncJobRequest, opts ...grpc.CallOption) (*StopSyncJobResponse, error)
-	// Stop all running sync jobs
+	// Stop all running sync jobs (deprecated - use ActionAllSyncJobs instead)
 	StopAllSyncJobs(ctx context.Context, in *StopAllSyncJobsRequest, opts ...grpc.CallOption) (*StopAllSyncJobsResponse, error)
 }
 
@@ -82,6 +91,36 @@ func (c *syncServiceClient) GetSyncJob(ctx context.Context, in *GetSyncJobReques
 	return out, nil
 }
 
+func (c *syncServiceClient) ActionAllSyncJobs(ctx context.Context, in *ActionAllSyncJobsRequest, opts ...grpc.CallOption) (*ActionAllSyncJobsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ActionAllSyncJobsResponse)
+	err := c.cc.Invoke(ctx, SyncService_ActionAllSyncJobs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *syncServiceClient) ActionSyncJob(ctx context.Context, in *ActionSyncJobRequest, opts ...grpc.CallOption) (*ActionSyncJobResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ActionSyncJobResponse)
+	err := c.cc.Invoke(ctx, SyncService_ActionSyncJob_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *syncServiceClient) ClearFinishedSyncJobs(ctx context.Context, in *ClearFinishedSyncJobsRequest, opts ...grpc.CallOption) (*ClearFinishedSyncJobsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClearFinishedSyncJobsResponse)
+	err := c.cc.Invoke(ctx, SyncService_ClearFinishedSyncJobs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *syncServiceClient) StopSyncJob(ctx context.Context, in *StopSyncJobRequest, opts ...grpc.CallOption) (*StopSyncJobResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(StopSyncJobResponse)
@@ -114,9 +153,15 @@ type SyncServiceServer interface {
 	ListSyncJobs(context.Context, *ListSyncJobsRequest) (*ListSyncJobsResponse, error)
 	// Get detailed information about a specific sync job
 	GetSyncJob(context.Context, *GetSyncJobRequest) (*SyncJob, error)
-	// Stop a specific sync job by ID
+	// Perform action on all sync jobs (stop or resume)
+	ActionAllSyncJobs(context.Context, *ActionAllSyncJobsRequest) (*ActionAllSyncJobsResponse, error)
+	// Perform action on a specific sync job by ID (stop or resume)
+	ActionSyncJob(context.Context, *ActionSyncJobRequest) (*ActionSyncJobResponse, error)
+	// Clear all finished sync jobs (completed, stopped, failed)
+	ClearFinishedSyncJobs(context.Context, *ClearFinishedSyncJobsRequest) (*ClearFinishedSyncJobsResponse, error)
+	// Stop a specific sync job by ID (deprecated - use ActionSyncJob instead)
 	StopSyncJob(context.Context, *StopSyncJobRequest) (*StopSyncJobResponse, error)
-	// Stop all running sync jobs
+	// Stop all running sync jobs (deprecated - use ActionAllSyncJobs instead)
 	StopAllSyncJobs(context.Context, *StopAllSyncJobsRequest) (*StopAllSyncJobsResponse, error)
 	mustEmbedUnimplementedSyncServiceServer()
 }
@@ -136,6 +181,15 @@ func (UnimplementedSyncServiceServer) ListSyncJobs(context.Context, *ListSyncJob
 }
 func (UnimplementedSyncServiceServer) GetSyncJob(context.Context, *GetSyncJobRequest) (*SyncJob, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSyncJob not implemented")
+}
+func (UnimplementedSyncServiceServer) ActionAllSyncJobs(context.Context, *ActionAllSyncJobsRequest) (*ActionAllSyncJobsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ActionAllSyncJobs not implemented")
+}
+func (UnimplementedSyncServiceServer) ActionSyncJob(context.Context, *ActionSyncJobRequest) (*ActionSyncJobResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ActionSyncJob not implemented")
+}
+func (UnimplementedSyncServiceServer) ClearFinishedSyncJobs(context.Context, *ClearFinishedSyncJobsRequest) (*ClearFinishedSyncJobsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ClearFinishedSyncJobs not implemented")
 }
 func (UnimplementedSyncServiceServer) StopSyncJob(context.Context, *StopSyncJobRequest) (*StopSyncJobResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopSyncJob not implemented")
@@ -218,6 +272,60 @@ func _SyncService_GetSyncJob_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SyncService_ActionAllSyncJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ActionAllSyncJobsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SyncServiceServer).ActionAllSyncJobs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SyncService_ActionAllSyncJobs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SyncServiceServer).ActionAllSyncJobs(ctx, req.(*ActionAllSyncJobsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SyncService_ActionSyncJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ActionSyncJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SyncServiceServer).ActionSyncJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SyncService_ActionSyncJob_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SyncServiceServer).ActionSyncJob(ctx, req.(*ActionSyncJobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SyncService_ClearFinishedSyncJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClearFinishedSyncJobsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SyncServiceServer).ClearFinishedSyncJobs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SyncService_ClearFinishedSyncJobs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SyncServiceServer).ClearFinishedSyncJobs(ctx, req.(*ClearFinishedSyncJobsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SyncService_StopSyncJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StopSyncJobRequest)
 	if err := dec(in); err != nil {
@@ -272,6 +380,18 @@ var SyncService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSyncJob",
 			Handler:    _SyncService_GetSyncJob_Handler,
+		},
+		{
+			MethodName: "ActionAllSyncJobs",
+			Handler:    _SyncService_ActionAllSyncJobs_Handler,
+		},
+		{
+			MethodName: "ActionSyncJob",
+			Handler:    _SyncService_ActionSyncJob_Handler,
+		},
+		{
+			MethodName: "ClearFinishedSyncJobs",
+			Handler:    _SyncService_ClearFinishedSyncJobs_Handler,
 		},
 		{
 			MethodName: "StopSyncJob",

@@ -12,8 +12,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '@shared/store';
-import { useSyncPolling } from '@shared/hooks/useSyncPolling';
 import { fetchSyncJobs } from '@shared/reducers/syncSlice';
+import { useSyncPolling } from '@shared/hooks/useSyncPolling';
 import { SyncJobsList } from './components/SyncJobsList';
 import { SyncJobDetail } from './components/SyncJobDetail';
 import { StartSyncModal } from './components/StartSyncModal';
@@ -26,19 +26,26 @@ const SyncPage: React.FC = () => {
   // Get jobId from URL params if viewing a specific job
   const jobId = searchParams.get('jobId');
   const [showStartModal, setShowStartModal] = useState(false);
+  const [resetPolling, setResetPolling] = useState(false);
   
   // Use centralized sync polling hook - only poll when viewing jobs list
   const { jobs, hasActiveJobs, isPolling } = useSyncPolling({
     enabled: !jobId, // Only poll when viewing jobs list, not individual job detail
+    interval: 2000, // Poll every 2 seconds
+    resetExponentialPolling: resetPolling,
   });
 
-  // Fetch jobs when returning to list view (jobId becomes null)
+  // Initial fetch of sync jobs when component mounts
   useEffect(() => {
-    if (!jobId) {
-      // When returning to list view, fetch jobs to ensure we have the latest state
-      dispatch(fetchSyncJobs());
+    dispatch(fetchSyncJobs({}));
+  }, [dispatch]);
+
+  // Reset the polling reset flag after it's been applied
+  useEffect(() => {
+    if (resetPolling) {
+      setResetPolling(false);
     }
-  }, [jobId, dispatch]);
+  }, [resetPolling]);
 
   // Auto-start sync if path is provided in URL params
   const autoStartPath = searchParams.get('autoStart');
@@ -81,10 +88,12 @@ const SyncPage: React.FC = () => {
     }
   };
 
-  const handleJobCreated = (newJobId: string) => {
+  const handleJobCreated = () => {
     setShowStartModal(false);
-    // Navigate to the new job detail view
-    navigate(`/sync?jobId=${newJobId}`);
+    // Fetch updated job list after creation to ensure we have the latest data
+    dispatch(fetchSyncJobs({}));
+    // Reset exponential polling to start from 2 seconds again
+    setResetPolling(true);
   };
 
   return (
@@ -192,7 +201,9 @@ const SyncPage: React.FC = () => {
         {jobId ? (
           <SyncJobDetail jobId={jobId} />
         ) : (
-          <SyncJobsList />
+          <div className="h-[calc(100vh-16rem)]">
+            <SyncJobsList />
+          </div>
         )}
 
         {/* Start Sync Modal */}

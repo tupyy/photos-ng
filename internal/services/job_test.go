@@ -113,7 +113,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			Expect(syncJob).ToNot(BeNil())
 
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(services.StatusPending))
+			Expect(status.Status).To(Equal(entity.StatusPending))
 			Expect(status.Total).To(Equal(0))
 			Expect(status.Remaining).To(Equal(0))
 		})
@@ -154,7 +154,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Verify job completed successfully
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(services.StatusCompleted))
+			Expect(status.Status).To(Equal(entity.StatusCompleted))
 			Expect(status.StartedAt).ToNot(BeNil())
 			Expect(status.CompletedAt).ToNot(BeNil())
 
@@ -198,7 +198,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Verify job completed successfully
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(services.StatusCompleted))
+			Expect(status.Status).To(Equal(entity.StatusCompleted))
 			Expect(status.Total).To(Equal(0)) // No subdirectories or files to process
 		})
 
@@ -230,7 +230,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			// Verify job completed successfully
 			status := syncJob.Status()
 
-			Expect(status.Status).To(Equal(services.StatusCompleted))
+			Expect(status.Status).To(Equal(entity.StatusCompleted))
 			// Should discover: 2023, 2023/summer, 2023/winter, 2024, 2024/spring, documents = 6 albums
 			// Should process: 2 + 1 + 1 = 4 media files (readme.txt ignored as non-media, no root media)
 			Expect(status.Total).To(Equal(10)) // 6 albums + 4 media files
@@ -294,7 +294,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Verify job completed successfully
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(services.StatusCompleted))
+			Expect(status.Status).To(Equal(entity.StatusCompleted))
 			Expect(status.StartedAt).ToNot(BeNil())
 			Expect(status.CompletedAt).ToNot(BeNil())
 
@@ -377,7 +377,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Verify job completed successfully
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(services.StatusCompleted))
+			Expect(status.Status).To(Equal(entity.StatusCompleted))
 			Expect(status.StartedAt).ToNot(BeNil())
 			Expect(status.CompletedAt).ToNot(BeNil())
 
@@ -463,7 +463,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Job should complete even with some failed media processing
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(services.StatusCompleted))
+			Expect(status.Status).To(Equal(entity.StatusCompleted))
 
 			// Check task results
 			Expect(status.Results).To(HaveLen(4)) // 1 album + 3 media files
@@ -507,7 +507,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Check initial status
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(services.StatusPending))
+			Expect(status.Status).To(Equal(entity.StatusPending))
 			Expect(status.Total).To(Equal(0))
 			Expect(status.Remaining).To(Equal(0))
 
@@ -517,7 +517,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Check final status - 2 child albums + 2 media files
 			finalStatus := syncJob.Status()
-			Expect(finalStatus.Status).To(Equal(services.StatusCompleted))
+			Expect(finalStatus.Status).To(Equal(entity.StatusCompleted))
 			Expect(finalStatus.Total).To(Equal(4))
 			Expect(finalStatus.Remaining).To(Equal(0))
 			Expect(finalStatus.Results).To(HaveLen(4))
@@ -539,7 +539,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 			Expect(err).ToNot(BeNil())
 
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(services.StatusFailed))
+			Expect(status.Status).To(Equal(entity.StatusFailed))
 		})
 
 		It("continues processing despite individual media failures", func() {
@@ -568,7 +568,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Job should complete despite failures
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(services.StatusCompleted))
+			Expect(status.Status).To(Equal(entity.StatusCompleted))
 
 			// Some tasks should have failed, but job continues - 1 child album + 3 media files
 			Expect(status.Results).To(HaveLen(4))
@@ -613,7 +613,7 @@ var _ = Describe("SyncAlbumJob", Ordered, func() {
 
 			// Verify job completed successfully
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(services.StatusCompleted))
+			Expect(status.Status).To(Equal(entity.StatusCompleted))
 
 			// The sync job processes all nested directories and creates them as albums
 			// We verify this by checking that all media files were processed
@@ -733,7 +733,7 @@ var _ = Describe("JobProgress and Progress Meter", func() {
 			status := syncJob.Status()
 
 			Expect(status.Id).To(Equal(syncJob.ID))
-			Expect(status.Status).To(Equal(services.StatusPending))
+			Expect(status.Status).To(Equal(entity.StatusPending))
 			Expect(status.Total).To(Equal(0))
 			Expect(status.Remaining).To(Equal(0))
 			Expect(status.StartedAt).To(BeNil())
@@ -767,11 +767,11 @@ var _ = Describe("JobProgress and Progress Meter", func() {
 			// Check that it's running or completed (depending on timing)
 			status := syncJob.Status()
 			Expect(status.Status).To(SatisfyAny(
-				Equal(services.StatusRunning),
-				Equal(services.StatusCompleted),
+				Equal(entity.StatusRunning),
+				Equal(entity.StatusCompleted),
 			))
 
-			if status.Status == services.StatusRunning {
+			if status.Status == entity.StatusRunning {
 				Expect(status.StartedAt).ToNot(BeNil())
 				Expect(status.Total).To(BeNumerically(">", 0))
 				Expect(status.Remaining).To(BeNumerically(">=", 0))
@@ -796,7 +796,7 @@ var _ = Describe("JobProgress and Progress Meter", func() {
 			Expect(err).To(BeNil())
 
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(services.StatusCompleted))
+			Expect(status.Status).To(Equal(entity.StatusCompleted))
 			Expect(status.CompletedAt).ToNot(BeNil())
 			Expect(status.Total).To(BeNumerically(">", 0))
 			Expect(status.Remaining).To(Equal(0))
@@ -849,7 +849,7 @@ var _ = Describe("JobProgress and Progress Meter", func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			progressSnapshots := []services.JobProgress{}
+			progressSnapshots := []entity.JobProgress{}
 			done := make(chan error, 1)
 
 			go func() {
@@ -866,13 +866,13 @@ var _ = Describe("JobProgress and Progress Meter", func() {
 			finalStatus := syncJob.Status()
 
 			// Final status should show completion
-			Expect(finalStatus.Status).To(Equal(services.StatusCompleted))
+			Expect(finalStatus.Status).To(Equal(entity.StatusCompleted))
 			Expect(finalStatus.Total).To(Equal(7)) // 3 albums + 4 media files
 			Expect(finalStatus.Remaining).To(Equal(0))
 
 			// At least one snapshot should show the job in progress
 			for _, snapshot := range progressSnapshots {
-				if snapshot.Status == services.StatusRunning {
+				if snapshot.Status == entity.StatusRunning {
 					Expect(snapshot.Remaining).To(BeNumerically("<=", snapshot.Total))
 					Expect(snapshot.Remaining).To(BeNumerically(">=", 0))
 				}
@@ -898,7 +898,7 @@ var _ = Describe("JobProgress and Progress Meter", func() {
 			Expect(err).To(BeNil())
 
 			status := syncJob.Status()
-			Expect(status.Status).To(Equal(services.StatusCompleted))
+			Expect(status.Status).To(Equal(entity.StatusCompleted))
 			Expect(status.Total).To(Equal(0)) // No tasks to process
 			Expect(status.Remaining).To(Equal(0))
 		})
@@ -967,7 +967,7 @@ var _ = Describe("JobProgress and Progress Meter", func() {
 			}()
 
 			// Concurrently check status multiple times
-			statusChecks := make(chan services.JobProgress, 50)
+			statusChecks := make(chan entity.JobProgress, 50)
 			for i := 0; i < 10; i++ {
 				go func() {
 					for j := 0; j < 5; j++ {
@@ -978,7 +978,7 @@ var _ = Describe("JobProgress and Progress Meter", func() {
 			}
 
 			// Collect results
-			var statuses []services.JobProgress
+			var statuses []entity.JobProgress
 			timeout := time.After(5 * time.Second)
 			for i := 0; i < 50; i++ {
 				select {

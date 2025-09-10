@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
 )
 
@@ -92,23 +92,118 @@ func (s *Handler) StopSyncJob(c *gin.Context, id string) {
 	c.JSON(http.StatusOK, response)
 }
 
-// StopAllSyncJobs stops all running sync jobs
-func (s *Handler) StopAllSyncJobs(c *gin.Context) {
-	// Get running jobs count before stopping
-	runningJobStatuses := s.syncSrv.ListSyncJobStatusesByStatus(services.StatusRunning)
-	stoppedCount := len(runningJobStatuses)
 
-	// Stop all jobs using SyncService
-	err := s.syncSrv.StopAllSyncJobs()
+// ActionAllSyncJobs performs action on all sync jobs
+func (s *Handler) ActionAllSyncJobs(c *gin.Context) {
+	var request v1.SyncJobActionRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		zap.S().Errorw("invalid request body", "error", err)
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Invalid request body"))
+		return
+	}
+
+	var affectedCount int
+	var message string
+	var responseAction v1.SyncJobActionResponseAction
+
+	switch request.Action {
+	case v1.SyncJobActionRequestActionStop:
+		// Get running jobs count before stopping
+		runningJobStatuses := s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusRunning)
+		pendingJobStatuses := s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusPending)
+		affectedCount = len(runningJobStatuses) + len(pendingJobStatuses)
+
+		// Stop all jobs using SyncService
+		err := s.syncSrv.StopAllSyncJobs()
+		if err != nil {
+			logError(requestid.FromGin(c), "ActionAllSyncJobs", err)
+			c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
+			return
+		}
+		message = "All sync jobs stopped successfully"
+		responseAction = v1.SyncJobActionResponseActionStop
+
+	case v1.SyncJobActionRequestActionResume:
+		// Resume functionality not yet implemented
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Resume functionality not yet implemented"))
+		return
+
+	default:
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Invalid action. Supported actions: stop, resume"))
+		return
+	}
+
+	response := v1.SyncJobActionResponse{
+		Message:       message,
+		Action:        responseAction,
+		AffectedCount: affectedCount,
+	}
+	c.JSON(http.StatusOK, response)
+}
+
+// ActionSyncJob performs action on a specific sync job
+func (s *Handler) ActionSyncJob(c *gin.Context, id string) {
+	var request v1.SyncJobActionRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		zap.S().Errorw("invalid request body", "error", err)
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Invalid request body"))
+		return
+	}
+
+	var affectedCount int
+	var message string
+	var responseAction v1.SyncJobActionResponseAction
+
+	switch request.Action {
+	case v1.SyncJobActionRequestActionStop:
+		// Stop the job using SyncService
+		err := s.syncSrv.StopSyncJob(id)
+		if err != nil {
+			logError(requestid.FromGin(c), "ActionSyncJob", err)
+			c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
+			return
+		}
+		affectedCount = 1
+		message = "Sync job stopped successfully"
+		responseAction = v1.SyncJobActionResponseActionStop
+
+	case v1.SyncJobActionRequestActionResume:
+		// Resume functionality not yet implemented
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Resume functionality not yet implemented"))
+		return
+
+	default:
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Invalid action. Supported actions: stop, resume"))
+		return
+	}
+
+	response := v1.SyncJobActionResponse{
+		Message:       message,
+		Action:        responseAction,
+		AffectedCount: affectedCount,
+	}
+	c.JSON(http.StatusOK, response)
+}
+
+// ClearFinishedSyncJobs clears all finished sync jobs (completed, stopped, failed)
+func (s *Handler) ClearFinishedSyncJobs(c *gin.Context) {
+	// Get finished jobs count before clearing
+	finishedJobStatuses := append(s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusCompleted),
+		append(s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusStopped),
+			s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusFailed)...)...)
+	clearedCount := len(finishedJobStatuses)
+
+	// Clear all finished jobs using SyncService
+	err := s.syncSrv.ClearFinishedSyncJobs()
 	if err != nil {
-		logError(requestid.FromGin(c), "StopAllSyncJobs", err)
+		logError(requestid.FromGin(c), "ClearFinishedSyncJobs", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 
-	response := map[string]any{
-		"message":      "All sync jobs stopped",
-		"stoppedCount": stoppedCount,
+	response := v1.ClearFinishedSyncJobsResponse{
+		Message:      "Finished sync jobs cleared",
+		ClearedCount: clearedCount,
 	}
 	c.JSON(http.StatusOK, response)
 }

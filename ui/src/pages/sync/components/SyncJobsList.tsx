@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector, selectSyncJobs, selectSyncLoading, selectSyncError } from '@shared/store';
-import { stopSyncJob, stopAllSyncJobs } from '@shared/reducers/syncSlice';
+import { stopSyncJob, stopAllSyncJobs, clearFinishedSyncJobs } from '@shared/reducers/syncSlice';
 import { SyncJob } from '@generated/models';
 
 // SyncJob now includes path field from the API
@@ -14,6 +14,7 @@ export const SyncJobsList: React.FC = () => {
   const error = useAppSelector(selectSyncError);
   const [stoppingJobs, setStoppingJobs] = useState<Set<string>>(new Set());
   const [isStoppingAll, setIsStoppingAll] = useState(false);
+  const [isClearingFinished, setIsClearingFinished] = useState(false);
 
   // This component is purely presentational - it only consumes Redux state
   // Data fetching and polling is handled by parent components
@@ -67,6 +68,19 @@ export const SyncJobsList: React.FC = () => {
       console.error('Failed to stop all sync jobs:', error);
     } finally {
       setIsStoppingAll(false);
+    }
+  };
+
+  const handleClearFinishedJobs = async () => {
+    if (isClearingFinished) return; // Prevent multiple clicks
+    
+    setIsClearingFinished(true);
+    try {
+      await dispatch(clearFinishedSyncJobs()).unwrap();
+    } catch (error) {
+      console.error('Failed to clear finished sync jobs:', error);
+    } finally {
+      setIsClearingFinished(false);
     }
   };
 
@@ -169,13 +183,13 @@ export const SyncJobsList: React.FC = () => {
     );
   }
 
-  // Sort jobs: pending/running first, then stopped/failed, then completed, then by creation time (newest first)
+  // Sort jobs: running first, then pending, then stopped/failed, then completed, then by creation time (newest first)
   const sortedJobs = [...jobs].sort((a, b) => {
-    // Priority order: pending/running > stopped/failed > completed
+    // Priority order: running > pending > stopped/failed > completed
     const getStatusPriority = (status: string) => {
       switch (status) {
-        case 'pending': return 4;
-        case 'running': return 3;
+        case 'running': return 4;
+        case 'pending': return 3;
         case 'stopped': return 2;
         case 'failed': return 2;
         case 'completed': return 1;
@@ -194,38 +208,83 @@ export const SyncJobsList: React.FC = () => {
     return b.id.localeCompare(a.id);
   });
 
-  const activeJobs = sortedJobs.filter(job => job.status === 'running');
+  const activeJobs = sortedJobs.filter(job => job.status === 'running' || job.status === 'pending');
   const hasActiveJobs = activeJobs.length > 0;
+  
+  const finishedJobs = sortedJobs.filter(job => job.status === 'completed' || job.status === 'stopped' || job.status === 'failed');
+  const hasFinishedJobs = finishedJobs.length > 0;
 
   return (
-    <div className="space-y-4">
-      {/* Header with Stop All button */}
-      {hasActiveJobs && (
-        <div className="bg-white dark:bg-slate-800 shadow rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-              {activeJobs.length} active job{activeJobs.length !== 1 ? 's' : ''}
-            </h3>
-            <button
-              onClick={handleStopAllJobs}
-              disabled={isStoppingAll}
-              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isStoppingAll ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-1"></div>
-              ) : (
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10l2 2 4-4" />
-                </svg>
-              )}
-              {isStoppingAll ? 'Stopping...' : 'Stop All'}
-            </button>
+    <div className="flex flex-col h-full">
+      {/* Fixed header section */}
+      <div className="flex-shrink-0 mb-4">
+        {(hasActiveJobs || hasFinishedJobs) && (
+          <div className="bg-white dark:bg-slate-800 shadow rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-900 dark:text-white">
+                {hasActiveJobs && (
+                  <div className="mb-1">
+                    <span className="font-medium">
+                      {activeJobs.length} active job{activeJobs.length !== 1 ? 's' : ''}
+                    </span>
+                    <span className="text-gray-500 dark:text-gray-400 font-normal ml-1">
+                      ({sortedJobs.filter(job => job.status === 'running').length} running, {sortedJobs.filter(job => job.status === 'pending').length} pending)
+                    </span>
+                  </div>
+                )}
+                {hasFinishedJobs && (
+                  <div>
+                    <span className="font-medium">
+                      {finishedJobs.length} finished job{finishedJobs.length !== 1 ? 's' : ''}
+                    </span>
+                    <span className="text-gray-500 dark:text-gray-400 font-normal ml-1">
+                      ({sortedJobs.filter(job => job.status === 'completed').length} completed, {sortedJobs.filter(job => job.status === 'stopped').length} stopped, {sortedJobs.filter(job => job.status === 'failed').length} failed)
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                {hasActiveJobs && (
+                  <button
+                    onClick={handleStopAllJobs}
+                    disabled={isStoppingAll}
+                    className="inline-flex items-center justify-center px-3 py-1.5 min-w-[84px] border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isStoppingAll ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-1"></div>
+                    ) : (
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 10l2 2 4-4" />
+                      </svg>
+                    )}
+                    {isStoppingAll ? 'Stopping...' : 'Stop All'}
+                  </button>
+                )}
+                {hasFinishedJobs && (
+                  <button
+                    onClick={handleClearFinishedJobs}
+                    disabled={isClearingFinished}
+                    className="inline-flex items-center justify-center px-3 py-1.5 min-w-[84px] border border-transparent text-xs font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isClearingFinished ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-1"></div>
+                    ) : (
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    )}
+                    {isClearingFinished ? 'Clearing...' : 'Clear Finished'}
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
       
-      <div className="space-y-4">
+      {/* Scrollable job list */}
+      <div className="flex-1 overflow-y-auto space-y-4">
         {sortedJobs.map((job) => {
           const progressPercentage = getProgressPercentage(job);
           const isActive = job.status === 'running';
@@ -295,15 +354,23 @@ export const SyncJobsList: React.FC = () => {
                       </p>
                     )}
 
-                    {/* Error message for failed jobs */}
-                    {job.status === 'failed' && job.error && (
-                      <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+                    {/* Message for any job status */}
+                    {job.message && (
+                      <div className={`mt-2 p-2 border rounded ${
+                        job.status === 'failed'
+                          ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+                          : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'
+                      }`}>
                         <div className="flex items-start">
-                          <svg className="w-4 h-4 text-red-400 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          <svg className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={
+                              job.status === 'failed'
+                                ? "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                                : "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            } />
                           </svg>
-                          <p className="text-xs text-red-700 dark:text-red-300 truncate">
-                            {job.error}
+                          <p className="text-xs truncate">
+                            {job.message}
                           </p>
                         </div>
                       </div>

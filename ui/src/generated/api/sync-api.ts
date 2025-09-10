@@ -22,23 +22,133 @@ import { DUMMY_BASE_URL, assertParamExists, setApiKeyToObject, setBasicAuthToObj
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS, type RequestArgs, BaseAPI, RequiredError, operationServerMap } from '../base';
 // @ts-ignore
+import type { ClearFinishedSyncJobsResponse } from '../models';
+// @ts-ignore
 import type { ListSyncJobsResponse } from '../models';
 // @ts-ignore
 import type { StartSyncRequest } from '../models';
 // @ts-ignore
 import type { StartSyncResponse } from '../models';
 // @ts-ignore
-import type { StopAllSyncJobs200Response } from '../models';
-// @ts-ignore
 import type { StopSyncJob200Response } from '../models';
 // @ts-ignore
 import type { SyncJob } from '../models';
+// @ts-ignore
+import type { SyncJobActionRequest } from '../models';
+// @ts-ignore
+import type { SyncJobActionResponse } from '../models';
 /**
  * SyncApi - axios parameter creator
  * @export
  */
 export const SyncApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
+        /**
+         * Perform an action (stop or resume) on all applicable sync jobs
+         * @summary Perform action on all sync jobs
+         * @param {SyncJobActionRequest} syncJobActionRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        actionAllSyncJobs: async (syncJobActionRequest: SyncJobActionRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'syncJobActionRequest' is not null or undefined
+            assertParamExists('actionAllSyncJobs', 'syncJobActionRequest', syncJobActionRequest)
+            const localVarPath = `/sync`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PATCH', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(syncJobActionRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Perform an action (stop or resume) on a specific sync job
+         * @summary Perform action on sync job by ID
+         * @param {string} id The ID of the sync job to perform action on
+         * @param {SyncJobActionRequest} syncJobActionRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        actionSyncJob: async (id: string, syncJobActionRequest: SyncJobActionRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('actionSyncJob', 'id', id)
+            // verify required parameter 'syncJobActionRequest' is not null or undefined
+            assertParamExists('actionSyncJob', 'syncJobActionRequest', syncJobActionRequest)
+            const localVarPath = `/sync/{id}`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PATCH', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(syncJobActionRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Remove all completed, stopped, and failed sync jobs from the system
+         * @summary Clear finished sync jobs
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        clearFinishedSyncJobs: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/sync`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
         /**
          * Retrieve detailed information about a specific sync job
          * @summary Get sync job by ID
@@ -140,38 +250,8 @@ export const SyncApiAxiosParamCreator = function (configuration?: Configuration)
             };
         },
         /**
-         * Stop all running sync jobs
-         * @summary Stop all sync jobs
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        stopAllSyncJobs: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/sync`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
          * Stop a specific sync job by its ID
-         * @summary Stop sync job by ID
+         * @summary Stop sync job by ID (deprecated)
          * @param {string} id The ID of the sync job to stop
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -214,6 +294,45 @@ export const SyncApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = SyncApiAxiosParamCreator(configuration)
     return {
         /**
+         * Perform an action (stop or resume) on all applicable sync jobs
+         * @summary Perform action on all sync jobs
+         * @param {SyncJobActionRequest} syncJobActionRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async actionAllSyncJobs(syncJobActionRequest: SyncJobActionRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SyncJobActionResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.actionAllSyncJobs(syncJobActionRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SyncApi.actionAllSyncJobs']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Perform an action (stop or resume) on a specific sync job
+         * @summary Perform action on sync job by ID
+         * @param {string} id The ID of the sync job to perform action on
+         * @param {SyncJobActionRequest} syncJobActionRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async actionSyncJob(id: string, syncJobActionRequest: SyncJobActionRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SyncJobActionResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.actionSyncJob(id, syncJobActionRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SyncApi.actionSyncJob']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Remove all completed, stopped, and failed sync jobs from the system
+         * @summary Clear finished sync jobs
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async clearFinishedSyncJobs(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ClearFinishedSyncJobsResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.clearFinishedSyncJobs(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['SyncApi.clearFinishedSyncJobs']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Retrieve detailed information about a specific sync job
          * @summary Get sync job by ID
          * @param {string} id The ID of the sync job to retrieve
@@ -252,20 +371,8 @@ export const SyncApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Stop all running sync jobs
-         * @summary Stop all sync jobs
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async stopAllSyncJobs(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<StopAllSyncJobs200Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.stopAllSyncJobs(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['SyncApi.stopAllSyncJobs']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
          * Stop a specific sync job by its ID
-         * @summary Stop sync job by ID
+         * @summary Stop sync job by ID (deprecated)
          * @param {string} id The ID of the sync job to stop
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -286,6 +393,36 @@ export const SyncApiFp = function(configuration?: Configuration) {
 export const SyncApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
     const localVarFp = SyncApiFp(configuration)
     return {
+        /**
+         * Perform an action (stop or resume) on all applicable sync jobs
+         * @summary Perform action on all sync jobs
+         * @param {SyncJobActionRequest} syncJobActionRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        actionAllSyncJobs(syncJobActionRequest: SyncJobActionRequest, options?: RawAxiosRequestConfig): AxiosPromise<SyncJobActionResponse> {
+            return localVarFp.actionAllSyncJobs(syncJobActionRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Perform an action (stop or resume) on a specific sync job
+         * @summary Perform action on sync job by ID
+         * @param {string} id The ID of the sync job to perform action on
+         * @param {SyncJobActionRequest} syncJobActionRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        actionSyncJob(id: string, syncJobActionRequest: SyncJobActionRequest, options?: RawAxiosRequestConfig): AxiosPromise<SyncJobActionResponse> {
+            return localVarFp.actionSyncJob(id, syncJobActionRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Remove all completed, stopped, and failed sync jobs from the system
+         * @summary Clear finished sync jobs
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        clearFinishedSyncJobs(options?: RawAxiosRequestConfig): AxiosPromise<ClearFinishedSyncJobsResponse> {
+            return localVarFp.clearFinishedSyncJobs(options).then((request) => request(axios, basePath));
+        },
         /**
          * Retrieve detailed information about a specific sync job
          * @summary Get sync job by ID
@@ -316,17 +453,8 @@ export const SyncApiFactory = function (configuration?: Configuration, basePath?
             return localVarFp.startSyncJob(startSyncRequest, options).then((request) => request(axios, basePath));
         },
         /**
-         * Stop all running sync jobs
-         * @summary Stop all sync jobs
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        stopAllSyncJobs(options?: RawAxiosRequestConfig): AxiosPromise<StopAllSyncJobs200Response> {
-            return localVarFp.stopAllSyncJobs(options).then((request) => request(axios, basePath));
-        },
-        /**
          * Stop a specific sync job by its ID
-         * @summary Stop sync job by ID
+         * @summary Stop sync job by ID (deprecated)
          * @param {string} id The ID of the sync job to stop
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -343,6 +471,36 @@ export const SyncApiFactory = function (configuration?: Configuration, basePath?
  * @interface SyncApi
  */
 export interface SyncApiInterface {
+    /**
+     * Perform an action (stop or resume) on all applicable sync jobs
+     * @summary Perform action on all sync jobs
+     * @param {SyncJobActionRequest} syncJobActionRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SyncApiInterface
+     */
+    actionAllSyncJobs(syncJobActionRequest: SyncJobActionRequest, options?: RawAxiosRequestConfig): AxiosPromise<SyncJobActionResponse>;
+
+    /**
+     * Perform an action (stop or resume) on a specific sync job
+     * @summary Perform action on sync job by ID
+     * @param {string} id The ID of the sync job to perform action on
+     * @param {SyncJobActionRequest} syncJobActionRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SyncApiInterface
+     */
+    actionSyncJob(id: string, syncJobActionRequest: SyncJobActionRequest, options?: RawAxiosRequestConfig): AxiosPromise<SyncJobActionResponse>;
+
+    /**
+     * Remove all completed, stopped, and failed sync jobs from the system
+     * @summary Clear finished sync jobs
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SyncApiInterface
+     */
+    clearFinishedSyncJobs(options?: RawAxiosRequestConfig): AxiosPromise<ClearFinishedSyncJobsResponse>;
+
     /**
      * Retrieve detailed information about a specific sync job
      * @summary Get sync job by ID
@@ -373,17 +531,8 @@ export interface SyncApiInterface {
     startSyncJob(startSyncRequest: StartSyncRequest, options?: RawAxiosRequestConfig): AxiosPromise<StartSyncResponse>;
 
     /**
-     * Stop all running sync jobs
-     * @summary Stop all sync jobs
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof SyncApiInterface
-     */
-    stopAllSyncJobs(options?: RawAxiosRequestConfig): AxiosPromise<StopAllSyncJobs200Response>;
-
-    /**
      * Stop a specific sync job by its ID
-     * @summary Stop sync job by ID
+     * @summary Stop sync job by ID (deprecated)
      * @param {string} id The ID of the sync job to stop
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -400,6 +549,42 @@ export interface SyncApiInterface {
  * @extends {BaseAPI}
  */
 export class SyncApi extends BaseAPI implements SyncApiInterface {
+    /**
+     * Perform an action (stop or resume) on all applicable sync jobs
+     * @summary Perform action on all sync jobs
+     * @param {SyncJobActionRequest} syncJobActionRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SyncApi
+     */
+    public actionAllSyncJobs(syncJobActionRequest: SyncJobActionRequest, options?: RawAxiosRequestConfig) {
+        return SyncApiFp(this.configuration).actionAllSyncJobs(syncJobActionRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Perform an action (stop or resume) on a specific sync job
+     * @summary Perform action on sync job by ID
+     * @param {string} id The ID of the sync job to perform action on
+     * @param {SyncJobActionRequest} syncJobActionRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SyncApi
+     */
+    public actionSyncJob(id: string, syncJobActionRequest: SyncJobActionRequest, options?: RawAxiosRequestConfig) {
+        return SyncApiFp(this.configuration).actionSyncJob(id, syncJobActionRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Remove all completed, stopped, and failed sync jobs from the system
+     * @summary Clear finished sync jobs
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SyncApi
+     */
+    public clearFinishedSyncJobs(options?: RawAxiosRequestConfig) {
+        return SyncApiFp(this.configuration).clearFinishedSyncJobs(options).then((request) => request(this.axios, this.basePath));
+    }
+
     /**
      * Retrieve detailed information about a specific sync job
      * @summary Get sync job by ID
@@ -436,19 +621,8 @@ export class SyncApi extends BaseAPI implements SyncApiInterface {
     }
 
     /**
-     * Stop all running sync jobs
-     * @summary Stop all sync jobs
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof SyncApi
-     */
-    public stopAllSyncJobs(options?: RawAxiosRequestConfig) {
-        return SyncApiFp(this.configuration).stopAllSyncJobs(options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
      * Stop a specific sync job by its ID
-     * @summary Stop sync job by ID
+     * @summary Stop sync job by ID (deprecated)
      * @param {string} id The ID of the sync job to stop
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}

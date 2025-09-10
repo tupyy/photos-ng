@@ -20,6 +20,18 @@ const (
 	Stopped   SyncJobStatus = "stopped"
 )
 
+// Defines values for SyncJobActionRequestAction.
+const (
+	SyncJobActionRequestActionResume SyncJobActionRequestAction = "resume"
+	SyncJobActionRequestActionStop   SyncJobActionRequestAction = "stop"
+)
+
+// Defines values for SyncJobActionResponseAction.
+const (
+	SyncJobActionResponseActionResume SyncJobActionResponseAction = "resume"
+	SyncJobActionResponseActionStop   SyncJobActionResponseAction = "stop"
+)
+
 // Defines values for TaskResultItemType.
 const (
 	File   TaskResultItemType = "file"
@@ -83,6 +95,9 @@ type Album struct {
 	// Path path of the folder on disk
 	Path string `json:"path"`
 
+	// SyncInProgress set true if a job syncing this album exists
+	SyncInProgress *bool `json:"syncInProgress,omitempty"`
+
 	// Thumbnail href of the thumbnail
 	Thumbnail *string `json:"thumbnail,omitempty"`
 }
@@ -93,6 +108,15 @@ type Bucket struct {
 	Media *[]string `json:"media,omitempty"`
 	Month *int      `json:"month,omitempty"`
 	Year  *int      `json:"year,omitempty"`
+}
+
+// ClearFinishedSyncJobsResponse defines model for ClearFinishedSyncJobsResponse.
+type ClearFinishedSyncJobsResponse struct {
+	// ClearedCount Number of jobs that were cleared
+	ClearedCount int `json:"clearedCount"`
+
+	// Message Success message
+	Message string `json:"message"`
 }
 
 // CreateAlbumRequest defines model for CreateAlbumRequest.
@@ -213,14 +237,14 @@ type SyncJob struct {
 	CreatedAt      time.Time    `json:"createdAt"`
 
 	// Duration Duration of the sync job in seconds
-	Duration *int `json:"duration,omitempty"`
-
-	// Error Error message if the job failed
-	Error      *string    `json:"error,omitempty"`
+	Duration   *int       `json:"duration,omitempty"`
 	FinishedAt *time.Time `json:"finishedAt,omitempty"`
 
 	// Id Unique identifier for the sync job
 	Id string `json:"id"`
+
+	// Message Additional message for job status
+	Message *string `json:"message,omitempty"`
 
 	// Path The folder path being synchronized
 	Path string `json:"path"`
@@ -241,6 +265,30 @@ type SyncJob struct {
 
 // SyncJobStatus Current status of the sync job
 type SyncJobStatus string
+
+// SyncJobActionRequest defines model for SyncJobActionRequest.
+type SyncJobActionRequest struct {
+	// Action Action to perform on sync job(s)
+	Action SyncJobActionRequestAction `json:"action"`
+}
+
+// SyncJobActionRequestAction Action to perform on sync job(s)
+type SyncJobActionRequestAction string
+
+// SyncJobActionResponse defines model for SyncJobActionResponse.
+type SyncJobActionResponse struct {
+	// Action Action that was performed
+	Action SyncJobActionResponseAction `json:"action"`
+
+	// AffectedCount Number of jobs affected by the action
+	AffectedCount int `json:"affectedCount"`
+
+	// Message Success message
+	Message string `json:"message"`
+}
+
+// SyncJobActionResponseAction Action that was performed
+type SyncJobActionResponseAction string
 
 // TaskResult defines model for TaskResult.
 type TaskResult struct {
@@ -371,8 +419,14 @@ type UploadMediaMultipartRequestBody UploadMediaMultipartBody
 // UpdateMediaJSONRequestBody defines body for UpdateMedia for application/json ContentType.
 type UpdateMediaJSONRequestBody = UpdateMediaRequest
 
+// ActionAllSyncJobsJSONRequestBody defines body for ActionAllSyncJobs for application/json ContentType.
+type ActionAllSyncJobsJSONRequestBody = SyncJobActionRequest
+
 // StartSyncJobJSONRequestBody defines body for StartSyncJob for application/json ContentType.
 type StartSyncJobJSONRequestBody = StartSyncRequest
+
+// ActionSyncJobJSONRequestBody defines body for ActionSyncJob for application/json ContentType.
+type ActionSyncJobJSONRequestBody = SyncJobActionRequest
 
 // AsTaskResultResult0 returns the union data inside the TaskResult_Result as a TaskResultResult0
 func (t TaskResult_Result) AsTaskResultResult0() (TaskResultResult0, error) {

@@ -10,6 +10,7 @@ import (
 	v1grpc "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/grpc"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -80,7 +81,9 @@ func (s *Handler) ListAlbums(ctx context.Context, req *v1grpc.ListAlbumsRequest)
 	// Convert entity albums to gRPC albums
 	grpcAlbums := make([]*v1grpc.Album, 0, len(albums))
 	for _, album := range albums {
-		grpcAlbums = append(grpcAlbums, v1grpc.NewAlbum(album))
+		// Check if album has sync job in progress
+		syncInProgress := s.syncSrv.IsAlbumSyncing(album.ID)
+		grpcAlbums = append(grpcAlbums, v1grpc.NewAlbum(album, syncInProgress))
 	}
 
 	return &v1grpc.ListAlbumsResponse{
@@ -99,7 +102,9 @@ func (s *Handler) GetAlbum(ctx context.Context, req *v1grpc.GetAlbumRequest) (*v
 		return nil, err
 	}
 
-	return v1grpc.NewAlbum(*album), nil
+	// Check if album has sync job in progress
+	syncInProgress := s.syncSrv.IsAlbumSyncing(album.ID)
+	return v1grpc.NewAlbum(*album, syncInProgress), nil
 }
 
 func (s *Handler) CreateAlbum(ctx context.Context, req *v1grpc.CreateAlbumRequest) (*v1grpc.Album, error) {
@@ -112,7 +117,9 @@ func (s *Handler) CreateAlbum(ctx context.Context, req *v1grpc.CreateAlbumReques
 		return nil, err
 	}
 
-	return v1grpc.NewAlbum(*createdAlbum), nil
+	// Check if album has sync job in progress
+	syncInProgress := s.syncSrv.IsAlbumSyncing(createdAlbum.ID)
+	return v1grpc.NewAlbum(*createdAlbum, syncInProgress), nil
 }
 
 func (s *Handler) UpdateAlbum(ctx context.Context, req *v1grpc.UpdateAlbumByIdRequest) (*v1grpc.Album, error) {
@@ -131,7 +138,9 @@ func (s *Handler) UpdateAlbum(ctx context.Context, req *v1grpc.UpdateAlbumByIdRe
 		return nil, err
 	}
 
-	return v1grpc.NewAlbum(*updatedAlbum), nil
+	// Check if album has sync job in progress
+	syncInProgress := s.syncSrv.IsAlbumSyncing(updatedAlbum.ID)
+	return v1grpc.NewAlbum(*updatedAlbum, syncInProgress), nil
 }
 
 func (s *Handler) DeleteAlbum(ctx context.Context, req *v1grpc.DeleteAlbumRequest) (*emptypb.Empty, error) {
@@ -415,6 +424,84 @@ func (s *Handler) StopSyncJob(ctx context.Context, req *v1grpc.StopSyncJobReques
 	return &v1grpc.StopSyncJobResponse{
 		Message: "Sync job stopped successfully",
 		JobId:   req.Id,
+	}, nil
+}
+
+func (s *Handler) ActionAllSyncJobs(ctx context.Context, req *v1grpc.ActionAllSyncJobsRequest) (*v1grpc.ActionAllSyncJobsResponse, error) {
+	var affectedCount int32
+	var message string
+
+	switch req.Action {
+	case v1grpc.SyncJobAction_SYNC_JOB_ACTION_STOP:
+		// Get count of active jobs before stopping
+		runningJobs := s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusRunning)
+		pendingJobs := s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusPending)
+		affectedCount = int32(len(runningJobs) + len(pendingJobs))
+
+		err := s.syncSrv.StopAllSyncJobs()
+		if err != nil {
+			return nil, err
+		}
+		message = "All sync jobs stopped successfully"
+
+	case v1grpc.SyncJobAction_SYNC_JOB_ACTION_RESUME:
+		// Resume functionality not yet implemented
+		return nil, fmt.Errorf("resume functionality not yet implemented")
+
+	default:
+		return nil, fmt.Errorf("invalid action: %v", req.Action)
+	}
+
+	return &v1grpc.ActionAllSyncJobsResponse{
+		Message:       message,
+		Action:        req.Action,
+		AffectedCount: affectedCount,
+	}, nil
+}
+
+func (s *Handler) ActionSyncJob(ctx context.Context, req *v1grpc.ActionSyncJobRequest) (*v1grpc.ActionSyncJobResponse, error) {
+	var affectedCount int32
+	var message string
+
+	switch req.Action {
+	case v1grpc.SyncJobAction_SYNC_JOB_ACTION_STOP:
+		err := s.syncSrv.StopSyncJob(req.Id)
+		if err != nil {
+			return nil, err
+		}
+		affectedCount = 1
+		message = "Sync job stopped successfully"
+
+	case v1grpc.SyncJobAction_SYNC_JOB_ACTION_RESUME:
+		// Resume functionality not yet implemented
+		return nil, fmt.Errorf("resume functionality not yet implemented")
+
+	default:
+		return nil, fmt.Errorf("invalid action: %v", req.Action)
+	}
+
+	return &v1grpc.ActionSyncJobResponse{
+		Message:       message,
+		Action:        req.Action,
+		AffectedCount: affectedCount,
+	}, nil
+}
+
+func (s *Handler) ClearFinishedSyncJobs(ctx context.Context, req *v1grpc.ClearFinishedSyncJobsRequest) (*v1grpc.ClearFinishedSyncJobsResponse, error) {
+	// Get count of finished jobs before clearing
+	completedJobs := s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusCompleted)
+	stoppedJobs := s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusStopped)
+	failedJobs := s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusFailed)
+	clearedCount := int32(len(completedJobs) + len(stoppedJobs) + len(failedJobs))
+
+	err := s.syncSrv.ClearFinishedSyncJobs()
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1grpc.ClearFinishedSyncJobsResponse{
+		Message:      "Finished sync jobs cleared",
+		ClearedCount: clearedCount,
 	}, nil
 }
 

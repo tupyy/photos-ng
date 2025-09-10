@@ -503,28 +503,45 @@ paths:
                 $ref: '#/components/schemas/ListSyncJobsResponse'
         '500':
           $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Perform action on all sync jobs
+      description: Perform an action (stop or resume) on all applicable sync jobs
+      operationId: actionAllSyncJobs
+      tags:
+        - Sync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncJobActionRequest'
+      responses:
+        '200':
+          description: Action performed successfully on sync jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncJobActionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     delete:
-      summary: Stop all sync jobs
-      description: Stop all running sync jobs
-      operationId: stopAllSyncJobs
+      summary: Clear finished sync jobs
+      description: Remove all completed, stopped, and failed sync jobs from the system
+      operationId: clearFinishedSyncJobs
       tags:
         - Sync
       responses:
         '200':
-          description: All sync jobs stopped successfully
+          description: Finished sync jobs cleared successfully
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "All sync jobs stopped"
-                  stoppedCount:
-                    type: integer
-                    description: Number of jobs that were stopped
+                $ref: '#/components/schemas/ClearFinishedSyncJobsResponse'
         '500':
           $ref: '#/components/responses/InternalServerError'
+
 
   /sync/{id}:
     get:
@@ -551,8 +568,40 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Perform action on sync job by ID
+      description: Perform an action (stop or resume) on a specific sync job
+      operationId: actionSyncJob
+      tags:
+        - Sync
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the sync job to perform action on
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncJobActionRequest'
+      responses:
+        '200':
+          description: Action performed successfully on sync job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncJobActionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     delete:
-      summary: Stop sync job by ID
+      summary: Stop sync job by ID (deprecated)
       description: Stop a specific sync job by its ID
       operationId: stopSyncJob
       tags:
@@ -634,6 +683,9 @@ components:
           description: list of media href
           items:
             type: string
+        syncInProgress:
+          type: boolean
+          description: set true if a job syncing this album exists
 
     Media:
       type: object
@@ -890,9 +942,9 @@ components:
         duration:
           type: integer
           description: Duration of the sync job in seconds
-        error:
+        message:
           type: string
-          description: Error message if the job failed
+          description: Additional message for job status
         status:
           type: string
           description: Current status of the sync job
@@ -948,6 +1000,54 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SyncJob'
+
+    SyncJobActionRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [stop, resume]
+          description: Action to perform on sync job(s)
+          example: "stop"
+
+    SyncJobActionResponse:
+      type: object
+      required:
+        - message
+        - action
+        - affectedCount
+      properties:
+        message:
+          type: string
+          description: Success message
+          example: "Sync jobs stopped successfully"
+        action:
+          type: string
+          enum: [stop, resume]
+          description: Action that was performed
+          example: "stop"
+        affectedCount:
+          type: integer
+          description: Number of jobs affected by the action
+          example: 3
+
+    ClearFinishedSyncJobsResponse:
+      type: object
+      required:
+        - message
+        - clearedCount
+      properties:
+        message:
+          type: string
+          description: Success message
+          example: "Finished sync jobs cleared"
+        clearedCount:
+          type: integer
+          description: Number of jobs that were cleared
+          example: 5
+
 
   responses:
     BadRequest:

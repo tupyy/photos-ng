@@ -174,19 +174,35 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
           </div>
         )}
 
-        {/* Error Message */}
-        {job.error && (
-          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+        {/* Job Message */}
+        {job.message && (
+          <div className={`mb-6 p-4 border rounded-md ${
+            job.status === 'failed'
+              ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+              : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+          }`}>
             <div className="flex">
-              <svg className="w-5 h-5 text-red-400 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              <svg className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={
+                  job.status === 'failed'
+                    ? "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                    : "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                } />
               </svg>
               <div className="flex-1">
-                <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
-                  Job Failed
+                <h3 className={`text-sm font-medium ${
+                  job.status === 'failed'
+                    ? 'text-red-800 dark:text-red-200'
+                    : 'text-blue-800 dark:text-blue-200'
+                }`}>
+                  {job.status === 'failed' ? 'Job Failed' : 'Job Information'}
                 </h3>
-                <p className="mt-1 text-sm text-red-700 dark:text-red-300">
-                  {job.error}
+                <p className={`mt-1 text-sm ${
+                  job.status === 'failed'
+                    ? 'text-red-700 dark:text-red-300'
+                    : 'text-blue-700 dark:text-blue-300'
+                }`}>
+                  {job.message}
                 </p>
               </div>
             </div>

@@ -82,6 +82,49 @@ message StopAllSyncJobsResponse {
   int32 stopped_count = 2;                 // Number of jobs that were stopped
 }
 
+// Sync job action enumeration
+enum SyncJobAction {
+  SYNC_JOB_ACTION_UNSPECIFIED = 0;
+  SYNC_JOB_ACTION_STOP = 1;
+  SYNC_JOB_ACTION_RESUME = 2;
+}
+
+// Request to perform action on all sync jobs
+message ActionAllSyncJobsRequest {
+  SyncJobAction action = 1;                // Action to perform (stop or resume)
+}
+
+// Response when performing action on all sync jobs
+message ActionAllSyncJobsResponse {
+  string message = 1;                      // Success message
+  SyncJobAction action = 2;                // Action that was performed
+  int32 affected_count = 3;                // Number of jobs affected by the action
+}
+
+// Request to perform action on a specific sync job
+message ActionSyncJobRequest {
+  string id = 1;                           // Sync job ID
+  SyncJobAction action = 2;                // Action to perform (stop or resume)
+}
+
+// Response when performing action on a specific sync job
+message ActionSyncJobResponse {
+  string message = 1;                      // Success message
+  SyncJobAction action = 2;                // Action that was performed
+  int32 affected_count = 3;                // Number of jobs affected by the action
+}
+
+// Request to clear finished sync jobs
+message ClearFinishedSyncJobsRequest {
+  // No parameters needed
+}
+
+// Response when clearing finished sync jobs
+message ClearFinishedSyncJobsResponse {
+  string message = 1;                      // Success message
+  int32 cleared_count = 2;                 // Number of jobs that were cleared
+}
+
 // Sync service definition
 service SyncService {
   // Start a new sync job for the specified path
@@ -93,9 +136,18 @@ service SyncService {
   // Get detailed information about a specific sync job
   rpc GetSyncJob(GetSyncJobRequest) returns (SyncJob);
   
-  // Stop a specific sync job by ID
+  // Perform action on all sync jobs (stop or resume)
+  rpc ActionAllSyncJobs(ActionAllSyncJobsRequest) returns (ActionAllSyncJobsResponse);
+  
+  // Perform action on a specific sync job by ID (stop or resume)
+  rpc ActionSyncJob(ActionSyncJobRequest) returns (ActionSyncJobResponse);
+  
+  // Clear all finished sync jobs (completed, stopped, failed)
+  rpc ClearFinishedSyncJobs(ClearFinishedSyncJobsRequest) returns (ClearFinishedSyncJobsResponse);
+  
+  // Stop a specific sync job by ID (deprecated - use ActionSyncJob instead)
   rpc StopSyncJob(StopSyncJobRequest) returns (StopSyncJobResponse);
   
-  // Stop all running sync jobs
+  // Stop all running sync jobs (deprecated - use ActionAllSyncJobs instead)
   rpc StopAllSyncJobs(StopAllSyncJobsRequest) returns (StopAllSyncJobsResponse);
 }

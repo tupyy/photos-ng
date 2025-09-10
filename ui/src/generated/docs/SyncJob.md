@@ -12,6 +12,7 @@ Name | Type | Description | Notes
 **finishedAt** | **string** |  | [optional] [default to undefined]
 **remainingTime** | **number** | aproximative ramaining running tile in seconds | [optional] [default to undefined]
 **duration** | **number** | Duration of the sync job in seconds | [optional] [default to undefined]
+**message** | **string** | Additional message for job status | [optional] [default to undefined]
 **status** | **string** | Current status of the sync job | [default to undefined]
 **remainingTasks** | **number** | Number of files still to be processed | [default to undefined]
 **totalTasks** | **number** | Total number of files to process | [default to undefined]
@@ -30,6 +31,7 @@ const instance: SyncJob = {
     finishedAt,
     remainingTime,
     duration,
+    message,
     status,
     remainingTasks,
     totalTasks,

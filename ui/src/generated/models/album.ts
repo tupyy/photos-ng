@@ -83,5 +83,11 @@ export interface Album {
      * @memberof Album
      */
     'media'?: Array<string>;
+    /**
+     * set true if a job syncing this album exists
+     * @type {boolean}
+     * @memberof Album
+     */
+    'syncInProgress'?: boolean;
 }
 

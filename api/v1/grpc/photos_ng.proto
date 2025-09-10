@@ -37,6 +37,9 @@ service PhotosNGService {
   rpc StartSyncJob(StartSyncRequest) returns (StartSyncResponse);
   rpc ListSyncJobs(ListSyncJobsRequest) returns (ListSyncJobsResponse);
   rpc GetSyncJob(GetSyncJobRequest) returns (SyncJob);
+  rpc ActionAllSyncJobs(ActionAllSyncJobsRequest) returns (ActionAllSyncJobsResponse);
+  rpc ActionSyncJob(ActionSyncJobRequest) returns (ActionSyncJobResponse);
+  rpc ClearFinishedSyncJobs(ClearFinishedSyncJobsRequest) returns (ClearFinishedSyncJobsResponse);
   rpc StopSyncJob(StopSyncJobRequest) returns (StopSyncJobResponse);
   rpc StopAllSyncJobs(StopAllSyncJobsRequest) returns (StopAllSyncJobsResponse);
   

@@ -66,6 +66,12 @@ export interface SyncJob {
      */
     'duration'?: number;
     /**
+     * Additional message for job status
+     * @type {string}
+     * @memberof SyncJob
+     */
+    'message'?: string;
+    /**
      * Current status of the sync job
      * @type {string}
      * @memberof SyncJob

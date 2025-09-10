@@ -3,69 +3,57 @@ package services
 import (
 	"context"
 	"fmt"
-	"path"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 )
 
 type Task[R any] func(ctx context.Context) entity.Result[R]
 
-// SyncAlbumJob represents a sync job that processes files in a directory
+// SyncAlbumJob represents a sync job that executes pre-generated tasks
 type SyncAlbumJob struct {
 	ID            uuid.UUID
-	album         entity.Album
-	mediaSrv      *MediaService
-	albumSrv      *AlbumService
-	fs            *fs.Datastore
-	progressMeter *jobProgressMeter
+	albumID       string
+	albumPath     string
+	albumTasks    []Task[entity.Album]
+	mediaTasks    []Task[entity.Media]
+	progressMeter *progressMeter
 	doneCh        chan bool
 }
 
-// NewJob creates a new sync job
-func NewSyncJob(album entity.Album, albumService *AlbumService, mediaService *MediaService, fsDatastore *fs.Datastore) (*SyncAlbumJob, error) {
+func NewSyncJob(albumID string, albumPath string, albumTasks []Task[entity.Album], mediaTasks []Task[entity.Media]) (*SyncAlbumJob, error) {
 	job := &SyncAlbumJob{
 		ID:            uuid.New(),
-		mediaSrv:      mediaService,
-		albumSrv:      albumService,
-		fs:            fsDatastore,
-		album:         album,
-		progressMeter: newJobProgressMeter(),
+		albumID:       albumID,
+		albumPath:     albumPath,
+		albumTasks:    albumTasks,
+		mediaTasks:    mediaTasks,
+		progressMeter: newProgressMeter(),
 	}
 
 	return job, nil
 }
 
-// Start begins the job execution
+// Start begins the job execution with pre-generated tasks
 func (j *SyncAlbumJob) Start(ctx context.Context) error {
 	j.doneCh = make(chan bool)
 	j.progressMeter.Start()
 
-	discoveryTask := j.createFolderStructureDiscoveryTask()
-
-	zap.S().Debugw("starting folder structure discovery", "job_id", j.ID)
-
-	result := discoveryTask(ctx)
-	if result.Err != nil {
-		j.progressMeter.Failed(result.Err)
-		return result.Err
-	}
-
 	defer func() {
-		j.progressMeter.Stop()
+		j.progressMeter.Stop(entity.StatusCompleted)
 	}()
 
-	albumTasks, mediaTasks := j.createTasks(result.Data)
-	j.progressMeter.Total(len(albumTasks) + len(mediaTasks))
+	// Set total task count from pre-generated tasks
+	j.progressMeter.Total(len(j.albumTasks) + len(j.mediaTasks))
 
-	zap.S().Debugw("creating albums", "job_id", j.ID, "tasks_count", len(albumTasks))
+	zap.S().Debugw("creating albums", "job_id", j.ID, "tasks_count", len(j.albumTasks))
 
-	for _, t := range albumTasks {
+	// Execute album tasks
+	for _, t := range j.albumTasks {
 		start := time.Now()
 		r := t(ctx)
 		if r.Err != nil {
@@ -73,7 +61,7 @@ func (j *SyncAlbumJob) Start(ctx context.Context) error {
 		}
 		end := time.Now()
 
-		j.progressMeter.Result(JobResult{
+		j.progressMeter.Result(entity.JobResult{
 			Result:      fmt.Sprintf("Album %s processed", r.Data.Path),
 			Err:         r.Err,
 			StartedAt:   start,
@@ -90,8 +78,10 @@ func (j *SyncAlbumJob) Start(ctx context.Context) error {
 		}
 	}
 
-	zap.S().Debugw("processing media", "job_id", j.ID, "tasks_count", len(mediaTasks))
-	for _, t := range mediaTasks {
+	zap.S().Debugw("processing media", "job_id", j.ID, "tasks_count", len(j.mediaTasks))
+
+	// Execute media tasks
+	for _, t := range j.mediaTasks {
 		start := time.Now()
 		r := t(ctx)
 		if r.Err != nil {
@@ -99,7 +89,7 @@ func (j *SyncAlbumJob) Start(ctx context.Context) error {
 		}
 		end := time.Now()
 
-		j.progressMeter.Result(JobResult{
+		j.progressMeter.Result(entity.JobResult{
 			Result:      fmt.Sprintf("Media %s processed", r.Data.Filepath()),
 			Err:         r.Err,
 			StartedAt:   start,
@@ -119,15 +109,23 @@ func (j *SyncAlbumJob) Start(ctx context.Context) error {
 	return nil
 }
 
-// GetId returns the job's unique identifier
 func (j *SyncAlbumJob) GetID() uuid.UUID {
 	return j.ID
 }
 
+func (j *SyncAlbumJob) GetAlbumID() string {
+	return j.albumID
+}
+
+func (j *SyncAlbumJob) GetAlbumPath() string {
+	return j.albumPath
+}
+
 // Stop cancels the job execution
 func (j *SyncAlbumJob) Stop() error {
+	j.progressMeter.status = entity.StatusStopping
 	defer func() {
-		j.progressMeter.Stop()
+		j.progressMeter.Stop(entity.StatusStopped)
 	}()
 	if j.doneCh == nil {
 		return nil
@@ -140,211 +138,65 @@ func (j *SyncAlbumJob) Stop() error {
 	return nil
 }
 
-// createFolderStructureDiscoveryTask creates a task that discovers the complete folder structure
-// using WalkTree to return a hierarchical tree of folders and media files
-func (j *SyncAlbumJob) createFolderStructureDiscoveryTask() Task[*entity.FolderNode] {
-	return func(ctx context.Context) entity.Result[*entity.FolderNode] {
-		// Use the new WalkTree method to get the complete structure as a tree
-		tree, err := j.fs.WalkTree(ctx, j.album.Path)
-		if err != nil {
-			return entity.NewResultWithError[*entity.FolderNode](err)
-		}
-
-		return entity.NewResult(tree)
-	}
+func (j *SyncAlbumJob) Status() entity.JobProgress {
+	return j.progressMeter.Status(j.ID, j.albumPath)
 }
 
-// createTasksFromTree processes the folder tree and creates album and media tasks
-func (j *SyncAlbumJob) createTasks(tree *entity.FolderNode) ([]Task[entity.Album], []Task[entity.Media]) {
-	albumTasks := []Task[entity.Album]{}
-	mediaTasks := []Task[entity.Media]{}
-
-	// Create a map to track created albums by path for parent lookup
-	albumMap := make(map[string]*entity.Album)
-	albumMap[j.album.Path] = &j.album
-
-	// Process the tree recursively to maintain parent-child relationships
-	j.processNodeForTasks(tree, albumMap, &albumTasks, &mediaTasks)
-
-	return albumTasks, mediaTasks
-}
-
-// processNodeForTasks recursively processes a folder node and its children
-func (j *SyncAlbumJob) processNodeForTasks(node *entity.FolderNode, albumMap map[string]*entity.Album, albumTasks *[]Task[entity.Album], mediaTasks *[]Task[entity.Media]) {
-	// Handle root node logic
-	if node.Path == j.album.Path {
-		// Root data folder never has media files - only process if root path is not empty
-		if j.album.Path != "" {
-			// Non-empty root album - process media files
-			for _, mediaFilePath := range node.MediaFiles {
-				*mediaTasks = append(*mediaTasks, j.createMediaTask(mediaFilePath, j.album))
-			}
-		}
-		// Empty root path (data folder itself) - no media files to process by design
-	} else {
-		// Non-root node - create album
-		var parentAlbum *entity.Album
-		if node.Parent != nil {
-			// If parent is root with empty path, parent album is nil (top-level album)
-			if node.Parent.Path == "" {
-				parentAlbum = nil
-			} else {
-				parentAlbum = albumMap[node.Parent.Path]
-			}
-		}
-
-		// Create album task for this folder
-		*albumTasks = append(*albumTasks, j.createAlbumTaskWithParent(node.Path, parentAlbum))
-
-		// Add this album to the map for its children to reference
-		albumEntity := entity.NewAlbum(node.Path)
-		if parentAlbum != nil {
-			albumEntity.ParentId = &parentAlbum.ID
-		}
-		albumMap[node.Path] = &albumEntity
-
-		// Process media files in this folder
-		for _, mediaFilePath := range node.MediaFiles {
-			*mediaTasks = append(*mediaTasks, j.createMediaTask(mediaFilePath, albumEntity))
-		}
-	}
-
-	// Recursively process children
-	for _, child := range node.Children {
-		j.processNodeForTasks(child, albumMap, albumTasks, mediaTasks)
-	}
-}
-
-// createAlbumTaskWithParent creates a task to create an album with proper parent relationship
-func (j *SyncAlbumJob) createAlbumTaskWithParent(albumPath string, parent *entity.Album) Task[entity.Album] {
-	return func(ctx context.Context) entity.Result[entity.Album] {
-		album := entity.NewAlbum(albumPath)
-		if parent != nil {
-			album.ParentId = &parent.ID
-		}
-
-		createdAlbum, err := j.albumSrv.CreateAlbum(ctx, album)
-		if err != nil {
-			return entity.NewResultWithError[entity.Album](err)
-		}
-		return entity.NewResult(*createdAlbum)
-	}
-}
-
-// createMediaTask creates a task to process a media file
-func (j *SyncAlbumJob) createMediaTask(mediaFilePath string, album entity.Album) Task[entity.Media] {
-	return func(ctx context.Context) entity.Result[entity.Media] {
-		// Extract filename from full path
-		filename := path.Base(mediaFilePath)
-
-		// Create media entity
-		media := entity.NewMedia(filename, album)
-
-		// Get content function
-		contentFn := j.mediaSrv.GetContentFn(ctx, media)
-		media.Content = contentFn
-
-		// Process the media
-		createdMedia, err := j.mediaSrv.WriteMedia(ctx, media)
-		if err != nil {
-			return entity.NewResultWithError[entity.Media](err)
-		}
-		return entity.NewResult(*createdMedia)
-	}
-}
-
-func (j *SyncAlbumJob) Status() JobProgress {
-	p := j.progressMeter.Status()
-	p.Id = j.ID
-	p.Path = j.album.Path
-	return p
-}
-
-// JobStatus represents the current status of a job
-type JobStatus string
-
-const (
-	StatusPending   JobStatus = "pending"
-	StatusRunning   JobStatus = "running"
-	StatusCompleted JobStatus = "completed"
-	StatusFailed    JobStatus = "failed"
-	StatusStopped   JobStatus = "stopped"
-)
-
-// JobProgress tracks the progress of a job
-type JobProgress struct {
-	Id          uuid.UUID
-	Status      JobStatus
-	Err         error
-	CreatedAt   time.Time
-	StartedAt   *time.Time
-	CompletedAt *time.Time
-	Total       int
-	Remaining   int
-	Results     []JobResult
-	Path        string // The folder path being synchronized
-}
-
-type JobResult struct {
-	Result      string
-	Err         error
-	StartedAt   time.Time
-	CompletedAt time.Time
-}
-
-type jobProgressMeter struct {
+type progressMeter struct {
 	createdAt   time.Time
 	startedAt   *time.Time
 	completedAt *time.Time
-	status      JobStatus
+	status      entity.JobStatus
 	total       int
 	remaining   int
-	results     []JobResult
-	err         error
+	results     []entity.JobResult
+	reason      string
 	mu          sync.Mutex
 }
 
-func newJobProgressMeter() *jobProgressMeter {
-	return &jobProgressMeter{
+func newProgressMeter() *progressMeter {
+	return &progressMeter{
 		createdAt: time.Now(),
-		status:    StatusPending,
-		results:   []JobResult{},
+		status:    entity.StatusPending,
+		results:   []entity.JobResult{},
 	}
 }
 
-func (j *jobProgressMeter) Start() {
+func (j *progressMeter) Start() {
 	now := time.Now()
 	j.startedAt = &now
-	j.status = StatusRunning
+	j.status = entity.StatusRunning
 }
 
-func (j *jobProgressMeter) Total(total int) {
+func (j *progressMeter) Total(total int) {
 	j.total, j.remaining = total, total
 }
 
-func (j *jobProgressMeter) Stop() {
+func (j *progressMeter) Stop(s entity.JobStatus) {
 	now := time.Now()
 	j.completedAt = &now
-	j.status = StatusStopped
+	j.status = s
 }
 
-func (j *jobProgressMeter) Failed(err error) {
+func (j *progressMeter) Failed(err error) {
 	now := time.Now()
 	j.completedAt = &now
-	j.err = err
-	j.status = StatusFailed
+	j.reason = err.Error()
+	j.status = entity.StatusFailed
 }
 
-func (j *jobProgressMeter) Result(r JobResult) {
+func (j *progressMeter) Result(r entity.JobResult) {
 	j.remaining--
 	j.results = append(j.results, r)
 }
 
-func (j *jobProgressMeter) Status() JobProgress {
+func (j *progressMeter) Status(id uuid.UUID, path string) entity.JobProgress {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 
-	p := JobProgress{
+	p := entity.JobProgress{
+		Id:          id,
+		Path:        path,
 		Status:      j.status,
 		CreatedAt:   j.createdAt,
 		Total:       j.total,
@@ -352,7 +204,7 @@ func (j *jobProgressMeter) Status() JobProgress {
 		StartedAt:   j.startedAt,
 		CompletedAt: j.completedAt,
 		Results:     j.results,
-		Err:         j.err,
+		Reason:      j.reason,
 	}
 
 	return p
