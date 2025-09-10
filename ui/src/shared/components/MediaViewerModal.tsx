@@ -219,21 +219,19 @@ const MediaViewerModal: React.FC<MediaViewerModalProps> = ({
           )}
         </div>
 
-        {/* Desktop Only: Image Info - Below the image */}
-        <div className="hidden md:block w-full max-w-4xl px-4">
-          <div className="bg-black bg-opacity-70 rounded-lg p-3 md:p-4 text-white">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <h3 className="font-medium text-lg">{currentMedia.filename}</h3>
-                <p className="text-sm text-gray-300 mt-1">
-                  {currentIndex + 1} of {media.length}
-                </p>
-              </div>
-              <div className="text-right text-sm text-gray-300">
-                <p>{currentMedia.type}</p>
-                <p>{new Date(currentMedia.capturedAt).toLocaleDateString()}</p>
-              </div>
-            </div>
+        {/* Date - Below the image */}
+        <div className="w-full max-w-4xl px-4">
+          <div className="bg-black bg-opacity-70 rounded-lg p-3 md:p-4 text-white text-center">
+            <p className="text-lg font-light text-gray-100">
+              {new Date(currentMedia.capturedAt).toLocaleDateString('ro-RO', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </p>
           </div>
         </div>
       </div>
