@@ -133,7 +133,7 @@ func (a *AlbumService) CountAlbums(ctx context.Context, opts *AlbumOptions) (int
 func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, error) {
 	debug := a.debug.WithContext(ctx)
 	tracer := debug.StartOperation("get_album").
-		WithString("album_id", id).
+		WithString(AlbumID, id).
 		Build()
 
 	// Input validation (return ServiceError, no logging)
@@ -180,8 +180,8 @@ func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, 
 func (a *AlbumService) CreateAlbum(ctx context.Context, album entity.Album) (*entity.Album, error) {
 	debug := a.debug.WithContext(ctx)
 	tracer := debug.StartOperation("create_album").
-		WithString("album_id", album.ID).
-		WithString("album_path", album.Path).
+		WithString(AlbumID, album.ID).
+		WithString(AlbumPath, album.Path).
 		WithStringPtr("parent_id", album.ParentId).
 		Build()
 
@@ -196,7 +196,7 @@ func (a *AlbumService) CreateAlbum(ctx context.Context, album entity.Album) (*en
 		case *NotFoundError:
 			isAlbumExists = false
 			debug.BusinessLogic("album does not exist, proceeding with creation").
-				WithString("album_id", album.ID).
+				WithString(AlbumID, album.ID).
 				Log()
 		default:
 			return nil, NewInternalError(ctx, "create_album", "check_album_exists", err).
@@ -300,14 +300,14 @@ func (a *AlbumService) CreateAlbum(ctx context.Context, album entity.Album) (*en
 func (a *AlbumService) UpdateAlbum(ctx context.Context, album entity.Album) (*entity.Album, error) {
 	debug := a.debug.WithContext(ctx)
 	tracer := debug.StartOperation("update_album").
-		WithString("album_id", album.ID).
+		WithString(AlbumID, album.ID).
 		WithStringPtr("description", album.Description).
 		WithStringPtr("thumbnail", album.Thumbnail).
 		Build()
 
 	// Validate album exists
 	tracer.Step("validate_exists").
-		WithString("album_id", album.ID).
+		WithString(AlbumID, album.ID).
 		Log()
 
 	existingAlbum, err := a.GetAlbum(ctx, album.ID)
@@ -397,12 +397,12 @@ func (a *AlbumService) UpdateAlbum(ctx context.Context, album entity.Album) (*en
 func (a *AlbumService) DeleteAlbum(ctx context.Context, id string) error {
 	debug := a.debug.WithContext(ctx)
 	tracer := debug.StartOperation("delete_album").
-		WithString("album_id", id).
+		WithString(AlbumID, id).
 		Build()
 
 	// Check if album exists
 	tracer.Step("validate_exists").
-		WithString("album_id", id).
+		WithString(AlbumID, id).
 		Log()
 
 	album, err := a.GetAlbum(ctx, id)
@@ -412,13 +412,13 @@ func (a *AlbumService) DeleteAlbum(ctx context.Context, id string) error {
 	}
 
 	debug.BusinessLogic("album found, proceeding with deletion").
-		WithString("album_id", album.ID).
-		WithString("album_path", album.Path).
+		WithString(AlbumID, album.ID).
+		WithString(AlbumPath, album.Path).
 		Log()
 
 	// Delete the album from the datastore using a write transaction
 	tracer.Step("transaction_start").
-		WithString("album_path", album.Path).
+		WithString(AlbumPath, album.Path).
 		WithParam("operations", []string{"filesystem_delete", "database_delete"}).
 		Log()
 
@@ -442,7 +442,7 @@ func (a *AlbumService) DeleteAlbum(ctx context.Context, id string) error {
 		// Delete the album from the database
 		tracer.Step("database_delete").
 			WithString("table", "albums").
-			WithString("album_id", id).
+			WithString(AlbumID, id).
 			Log()
 
 		dbStart := time.Now()

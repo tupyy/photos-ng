@@ -80,7 +80,7 @@ func GetScheduler() *Scheduler {
 
 func (s *Scheduler) Add(j Job) error {
 	tracer := s.logger.StartOperation("add_job").
-		WithString("job_id", j.GetID().String()).
+		WithString(JobID, j.GetID().String()).
 		Build()
 
 	s.m.Lock()
@@ -117,7 +117,7 @@ func (s *Scheduler) GetByAlbumID(albumID string) []Job {
 
 func (s *Scheduler) Get(id string) Job {
 	tracer := s.logger.StartOperation("get_job_by_id").
-		WithString("job_id", id).
+		WithString(JobID, id).
 		Build()
 
 	jobs := s.find(func(j Job) bool {
@@ -151,13 +151,13 @@ func (s *Scheduler) StopJob(id string) error {
 
 	// Log info-level message for job state change only
 	s.infoLogger.BusinessLogic("job_stopped").
-		WithString("job_id", id).
+		WithString(JobID, id).
 		WithString("previous_status", string(job.Status().Status)).
 		Log()
 
 	err := job.Cancel()
 	if err != nil {
-		zap.S().Errorw("Failed to stop job", "job_id", id, "error", err)
+		zap.S().Errorw("Failed to stop job", JobID, id, "error", err)
 	}
 
 	return err
@@ -176,7 +176,7 @@ func (s *Scheduler) PauseJob(id string) error {
 	// Log info-level message only when status actually changed
 	if currentStatus != newStatus {
 		s.infoLogger.BusinessLogic("job_status_changed").
-			WithString("job_id", id).
+			WithString(JobID, id).
 			WithString("from", string(currentStatus)).
 			WithString("to", string(newStatus)).
 			Log()
@@ -187,7 +187,7 @@ func (s *Scheduler) PauseJob(id string) error {
 
 func (s *Scheduler) Remove(id string) error {
 	tracer := s.logger.StartOperation("remove_job").
-		WithString("job_id", id).
+		WithString(JobID, id).
 		Build()
 
 	s.m.Lock()
@@ -278,7 +278,7 @@ start:
 			if currentRunning < maxRunningPipelines {
 				// Log info-level message for job state change
 				s.infoLogger.BusinessLogic("starting_job").
-					WithString("job_id", j.GetID().String()).
+					WithString(JobID, j.GetID().String()).
 					WithInt("running_jobs", currentRunning).
 					Log()
 
@@ -297,8 +297,8 @@ start:
 			completedAt := j.Status().CompletedAt
 			if completedAt != nil && completedAt.Add(defaultKeepPeriod*time.Second).Before(time.Now()) {
 				s.infoLogger.BusinessLogic("cleaning_up_old_job").
-					WithString("job_id", j.GetID().String()).
-					WithString("status", string(j.Status().Status)).
+					WithString(JobID, j.GetID().String()).
+					WithString(Status, string(j.Status().Status)).
 					WithInt("age_seconds", int(time.Since(*completedAt).Seconds())).
 					Log()
 

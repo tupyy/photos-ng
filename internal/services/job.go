@@ -79,7 +79,7 @@ func (j *SyncJob) Start(ctx context.Context) error {
 	}()
 
 	tracer := j.logger.StartOperation("process_tasks").
-		WithString("job_id", j.ID.String()).
+		WithString(JobID, j.ID.String()).
 		WithInt("tasks_count", j.tasks.Len()).
 		Build()
 
@@ -91,7 +91,7 @@ func (j *SyncJob) Start(ctx context.Context) error {
 
 		if result.Err != nil {
 			j.logger.BusinessLogic("task_failed").
-				WithString("job_id", j.ID.String()).
+				WithString(JobID, j.ID.String()).
 				WithInt("task_index", taskIndex).
 				WithString("error", result.Err.Error()).
 				Log()
@@ -168,7 +168,7 @@ func (j *SyncJob) Cancel() error {
 	<-j.doneCh
 
 	j.logger.BusinessLogic("job_cancelled").
-		WithString("job_id", j.ID.String()).
+		WithString(JobID, j.ID.String()).
 		Log()
 
 	return nil

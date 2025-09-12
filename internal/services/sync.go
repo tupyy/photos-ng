@@ -36,24 +36,24 @@ func NewSyncService(albumService *AlbumService, mediaService *MediaService, fsDa
 func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, error) {
 	debug := s.debug.WithContext(ctx)
 	tracer := debug.StartOperation("start_sync").
-		WithString("album_path", albumPath).
+		WithString(AlbumPath, albumPath).
 		Build()
 
 	// Create a root album entity for the sync operation
 	tracer.Step("create_album_entity").
-		WithString("album_path", albumPath).
+		WithString(AlbumPath, albumPath).
 		Log()
 
 	album := entity.NewAlbum(strings.TrimSuffix(albumPath, "/"))
 
 	debug.BusinessLogic("album entity created for sync").
-		WithString("album_id", album.ID).
-		WithString("album_path", album.Path).
+		WithString(AlbumID, album.ID).
+		WithString(AlbumPath, album.Path).
 		Log()
 
 	// Generate sync jobs using JobGenerator
 	tracer.Step("generate_sync_jobs").
-		WithString("album_id", album.ID).
+		WithString(AlbumID, album.ID).
 		Log()
 
 	start := time.Now()
@@ -63,19 +63,19 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 	if err != nil {
 		// Return ServiceError (handlers will log the error)
 		return "", NewSyncJobError(ctx, "generate_jobs", "", err).
-			WithContext("album_path", albumPath)
+			WithContext(AlbumPath, albumPath)
 	}
 
 	tracer.Performance("job_generation", jobGenerationDuration)
 
 	debug.BusinessLogic("sync jobs generated").
-		WithString("album_id", album.ID).
+		WithString(AlbumID, album.ID).
 		WithInt("job_count", len(syncJobs)).
 		Log()
 
 	if len(syncJobs) == 0 {
 		return "", NewSyncJobError(ctx, "generate_jobs", "", fmt.Errorf("no sync jobs generated for path: %s", albumPath)).
-			WithContext("album_path", albumPath)
+			WithContext(AlbumPath, albumPath)
 	}
 
 	// Add all jobs to scheduler and log each one
@@ -89,14 +89,14 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 		if err := s.scheduler.Add(syncJob); err != nil {
 			// Return ServiceError (handlers will log the error)
 			return "", NewSyncJobError(ctx, "schedule_job", syncJob.GetID().String(), err).
-				WithContext("album_path", albumPath).
+				WithContext(AlbumPath, albumPath).
 				WithContext("job_index", i)
 		}
 
 		jobID := syncJob.GetID().String()
 
 		debug.BusinessLogic("sync job scheduled").
-			WithString("job_id", jobID).
+			WithString(JobID, jobID).
 			WithInt("job_index", i).
 			Log()
 	}
@@ -106,13 +106,13 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 
 	debug.BusinessLogic("all sync jobs scheduled successfully").
 		WithInt("total_jobs", len(syncJobs)).
-		WithString("album_path", albumPath).
-		WithString("album_id", album.ID).
+		WithString(AlbumPath, albumPath).
+		WithString(AlbumID, album.ID).
 		Log()
 
 	tracer.Success().
 		WithInt("total_jobs", len(syncJobs)).
-		WithString("album_path", albumPath).
+		WithString(AlbumPath, albumPath).
 		Log()
 
 	// Return a batch identifier or the album path since we have multiple jobs
@@ -124,7 +124,7 @@ func (s *SyncService) GetJobStatus(jobID string) (*entity.JobProgress, error) {
 	ctx := context.Background()
 	debug := s.debug.WithContext(ctx)
 	tracer := debug.StartOperation("get_sync_job_status").
-		WithString("job_id", jobID).
+		WithString(JobID, jobID).
 		Build()
 
 	// Input validation (return ServiceError, no logging)
@@ -135,7 +135,7 @@ func (s *SyncService) GetJobStatus(jobID string) (*entity.JobProgress, error) {
 
 	// Scheduler query with debug timing
 	tracer.Step("scheduler_lookup").
-		WithString("job_id", jobID).
+		WithString(JobID, jobID).
 		Log()
 
 	start := time.Now()
@@ -143,7 +143,7 @@ func (s *SyncService) GetJobStatus(jobID string) (*entity.JobProgress, error) {
 	lookupDuration := time.Since(start)
 
 	debug.BusinessLogic("scheduler job lookup").
-		WithString("job_id", jobID).
+		WithString(JobID, jobID).
 		WithBool("found", syncJob != nil).
 		WithParam("duration", lookupDuration).
 		Log()
@@ -151,13 +151,13 @@ func (s *SyncService) GetJobStatus(jobID string) (*entity.JobProgress, error) {
 	if syncJob == nil {
 		// Return ServiceError (handlers will log the error)
 		return nil, NewNotFoundError(ctx, "get_sync_job_status", "job_not_found").
-			WithContext("job_id", jobID)
+			WithContext(JobID, jobID)
 	}
 
 	status := syncJob.Status()
 
 	tracer.Success().
-		WithString("job_id", jobID).
+		WithString(JobID, jobID).
 		WithParam("status", status.Status).
 		WithInt("total", status.Total).
 		WithInt("remaining", status.Remaining).
@@ -191,7 +191,7 @@ func (s *SyncService) StopJob(jobID string) error {
 	ctx := context.Background()
 	debug := s.debug.WithContext(ctx)
 	tracer := debug.StartOperation("stop_sync_job").
-		WithString("job_id", jobID).
+		WithString(JobID, jobID).
 		Build()
 
 	// Input validation (return ServiceError, no logging)
@@ -202,7 +202,7 @@ func (s *SyncService) StopJob(jobID string) error {
 
 	// Scheduler lookup
 	tracer.Step("scheduler_lookup").
-		WithString("job_id", jobID).
+		WithString(JobID, jobID).
 		Log()
 
 	if err := s.scheduler.StopJob(jobID); err != nil {
@@ -210,11 +210,11 @@ func (s *SyncService) StopJob(jobID string) error {
 	}
 
 	debug.BusinessLogic("sync job stopped successfully").
-		WithString("job_id", jobID).
+		WithString(JobID, jobID).
 		Log()
 
 	tracer.Success().
-		WithString("job_id", jobID).
+		WithString(JobID, jobID).
 		Log()
 
 	return nil
@@ -225,7 +225,7 @@ func (s *SyncService) PauseJob(jobID string) error {
 	ctx := context.Background()
 	debug := s.debug.WithContext(ctx)
 	tracer := debug.StartOperation("pause_sync_job").
-		WithString("job_id", jobID).
+		WithString(JobID, jobID).
 		Build()
 
 	// Input validation (return ServiceError, no logging)
@@ -236,7 +236,7 @@ func (s *SyncService) PauseJob(jobID string) error {
 
 	// Scheduler lookup
 	tracer.Step("scheduler_lookup").
-		WithString("job_id", jobID).
+		WithString(JobID, jobID).
 		Log()
 
 	if err := s.scheduler.PauseJob(jobID); err != nil {
@@ -244,11 +244,11 @@ func (s *SyncService) PauseJob(jobID string) error {
 	}
 
 	debug.BusinessLogic("sync job pause/resume toggled successfully").
-		WithString("job_id", jobID).
+		WithString(JobID, jobID).
 		Log()
 
 	tracer.Success().
-		WithString("job_id", jobID).
+		WithString(JobID, jobID).
 		Log()
 
 	return nil
