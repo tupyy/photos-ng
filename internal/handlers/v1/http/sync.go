@@ -43,7 +43,7 @@ func (s *Handler) StartSyncJob(c *gin.Context) {
 // Returns HTTP 200 with list of sync jobs on success.
 func (s *Handler) ListSyncJobs(c *gin.Context) {
 	// Get all job statuses from the SyncService
-	statuses := s.syncSrv.ListSyncJobStatuses()
+	statuses := s.syncSrv.ListJobStatuses()
 
 	// Convert to API response format
 	var apiJobs []v1.SyncJob
@@ -62,7 +62,7 @@ func (s *Handler) ListSyncJobs(c *gin.Context) {
 // Returns HTTP 404 if job not found, HTTP 200 with job details on success.
 func (s *Handler) GetSyncJob(c *gin.Context, id string) {
 	// Get job status from SyncService
-	status, err := s.syncSrv.GetSyncJobStatus(id)
+	status, err := s.syncSrv.GetJobStatus(id)
 	if err != nil {
 		logError(requestid.FromGin(c), "GetSyncJob", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -78,7 +78,7 @@ func (s *Handler) GetSyncJob(c *gin.Context, id string) {
 // StopSyncJob stops a specific sync job by ID
 func (s *Handler) StopSyncJob(c *gin.Context, id string) {
 	// Stop the job using SyncService
-	err := s.syncSrv.StopSyncJob(id)
+	err := s.syncSrv.StopJob(id)
 	if err != nil {
 		logError(requestid.FromGin(c), "StopSyncJob", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -107,29 +107,29 @@ func (s *Handler) ActionAllSyncJobs(c *gin.Context) {
 	var responseAction v1.SyncJobActionResponseAction
 
 	switch request.Action {
-	case v1.SyncJobActionRequestActionStop:
+	case v1.SyncJobActionRequestActionCancel:
 		// Get running jobs count before stopping
-		runningJobStatuses := s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusRunning)
-		pendingJobStatuses := s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusPending)
+		runningJobStatuses := s.syncSrv.ListJobStatusesByStatus(entity.StatusRunning)
+		pendingJobStatuses := s.syncSrv.ListJobStatusesByStatus(entity.StatusPending)
 		affectedCount = len(runningJobStatuses) + len(pendingJobStatuses)
 
 		// Stop all jobs using SyncService
-		err := s.syncSrv.StopAllSyncJobs()
+		err := s.syncSrv.StopAllJobs()
 		if err != nil {
 			logError(requestid.FromGin(c), "ActionAllSyncJobs", err)
 			c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 			return
 		}
-		message = "All sync jobs stopped successfully"
-		responseAction = v1.SyncJobActionResponseActionStop
+		message = "All sync jobs cancelled successfully"
+		responseAction = v1.SyncJobActionResponseActionCancel
 
-	case v1.SyncJobActionRequestActionResume:
-		// Resume functionality not yet implemented
-		c.JSON(http.StatusBadRequest, errorResponse(c, "Resume functionality not yet implemented"))
+	case v1.SyncJobActionRequestActionPause:
+		// Pause functionality not yet implemented for all jobs
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Pause all functionality not yet implemented"))
 		return
 
 	default:
-		c.JSON(http.StatusBadRequest, errorResponse(c, "Invalid action. Supported actions: stop, resume"))
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Invalid action. Supported actions: pause, cancel"))
 		return
 	}
 
@@ -155,25 +155,32 @@ func (s *Handler) ActionSyncJob(c *gin.Context, id string) {
 	var responseAction v1.SyncJobActionResponseAction
 
 	switch request.Action {
-	case v1.SyncJobActionRequestActionStop:
+	case v1.SyncJobActionRequestActionCancel:
 		// Stop the job using SyncService
-		err := s.syncSrv.StopSyncJob(id)
+		err := s.syncSrv.StopJob(id)
 		if err != nil {
 			logError(requestid.FromGin(c), "ActionSyncJob", err)
 			c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 			return
 		}
 		affectedCount = 1
-		message = "Sync job stopped successfully"
-		responseAction = v1.SyncJobActionResponseActionStop
+		message = "Sync job cancelled successfully"
+		responseAction = v1.SyncJobActionResponseActionCancel
 
-	case v1.SyncJobActionRequestActionResume:
-		// Resume functionality not yet implemented
-		c.JSON(http.StatusBadRequest, errorResponse(c, "Resume functionality not yet implemented"))
-		return
+	case v1.SyncJobActionRequestActionPause:
+		// Pause/resume the job using SyncService
+		err := s.syncSrv.PauseJob(id)
+		if err != nil {
+			logError(requestid.FromGin(c), "ActionSyncJob", err)
+			c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
+			return
+		}
+		affectedCount = 1
+		message = "Sync job pause/resume toggled successfully"
+		responseAction = v1.SyncJobActionResponseActionPause
 
 	default:
-		c.JSON(http.StatusBadRequest, errorResponse(c, "Invalid action. Supported actions: stop, resume"))
+		c.JSON(http.StatusBadRequest, errorResponse(c, "Invalid action. Supported actions: pause, cancel"))
 		return
 	}
 
@@ -188,13 +195,13 @@ func (s *Handler) ActionSyncJob(c *gin.Context, id string) {
 // ClearFinishedSyncJobs clears all finished sync jobs (completed, stopped, failed)
 func (s *Handler) ClearFinishedSyncJobs(c *gin.Context) {
 	// Get finished jobs count before clearing
-	finishedJobStatuses := append(s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusCompleted),
-		append(s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusStopped),
-			s.syncSrv.ListSyncJobStatusesByStatus(entity.StatusFailed)...)...)
+	finishedJobStatuses := append(s.syncSrv.ListJobStatusesByStatus(entity.StatusCompleted),
+		append(s.syncSrv.ListJobStatusesByStatus(entity.StatusStopped),
+			s.syncSrv.ListJobStatusesByStatus(entity.StatusFailed)...)...)
 	clearedCount := len(finishedJobStatuses)
 
 	// Clear all finished jobs using SyncService
-	err := s.syncSrv.ClearFinishedSyncJobs()
+	err := s.syncSrv.ClearFinishedJobs()
 	if err != nil {
 		logError(requestid.FromGin(c), "ClearFinishedSyncJobs", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))

@@ -948,7 +948,7 @@ components:
         status:
           type: string
           description: Current status of the sync job
-          enum: ["pending", "running", "completed", "failed", "stopped"]
+          enum: ["pending", "running","paused", "completed", "failed", "stopped"]
           example: "running"
         remainingTasks:
           type: integer
@@ -1008,9 +1008,9 @@ components:
       properties:
         action:
           type: string
-          enum: [stop, resume]
+          enum: [pause, cancel]
           description: Action to perform on sync job(s)
-          example: "stop"
+          example: "cancel"
 
     SyncJobActionResponse:
       type: object
@@ -1022,12 +1022,12 @@ components:
         message:
           type: string
           description: Success message
-          example: "Sync jobs stopped successfully"
+          example: "Sync jobs cancelled successfully"
         action:
           type: string
-          enum: [stop, resume]
+          enum: [pause, cancel]
           description: Action that was performed
-          example: "stop"
+          example: "cancel"
         affectedCount:
           type: integer
           description: Number of jobs affected by the action

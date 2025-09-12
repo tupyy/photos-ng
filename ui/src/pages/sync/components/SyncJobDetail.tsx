@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@shared/store';
-import { stopSyncJob } from '@shared/reducers/syncSlice';
+import { stopSyncJob, pauseSyncJob } from '@shared/reducers/syncSlice';
 import { useSyncJobDetail } from '@shared/hooks/useSyncJobDetail';
 import { TaskResult } from '@generated/models';
 
@@ -16,10 +16,13 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
   const dispatch = useAppDispatch();
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
   const [isStoppingJob, setIsStoppingJob] = useState(false);
+  const [isPausingJob, setIsPausingJob] = useState(false);
   
   // Use centralized job detail hook for fetching and polling
   const { job, isActive } = useSyncJobDetail(jobId);
   const isPending = job?.status === 'pending';
+  const isRunning = job?.status === 'running';
+  const isPaused = job?.status === 'paused';
 
   // Polling is now handled by the useSyncJobDetail hook
 
@@ -37,12 +40,31 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
     }
   };
 
-  // Clear stopping state when job is no longer active or pending
+  const handlePauseJob = async () => {
+    if (isPausingJob) return; // Prevent multiple clicks
+    
+    setIsPausingJob(true);
+    try {
+      await dispatch(pauseSyncJob(jobId)).unwrap();
+      // Don't clear isPausingJob immediately - wait for the job status to update
+      // The polling will pick up the status change and UI will update accordingly
+    } catch (error) {
+      console.error('Failed to pause/resume sync job:', error);
+      setIsPausingJob(false); // Only clear on error
+    }
+  };
+
+  // Clear stopping and pausing state when job status changes appropriately
   useEffect(() => {
     if (!isActive && !isPending && isStoppingJob) {
       setIsStoppingJob(false);
     }
-  }, [isActive, isPending, isStoppingJob]);
+    if (!isPausingJob) return;
+    // Clear pausing state when status has changed from the transitional state
+    if (isPaused || isRunning || !isActive) {
+      setIsPausingJob(false);
+    }
+  }, [isActive, isPending, isPaused, isRunning, isStoppingJob, isPausingJob]);
 
   const getProgressPercentage = () => {
     if (!job || job.totalTasks === 0) return 0;
@@ -125,24 +147,52 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
       <div className="bg-white dark:bg-slate-800 shadow rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900 dark:text-white">Job Overview</h2>
-          {(isActive || isPending) && (
-            <button
-              onClick={handleStopJob}
-              disabled={isStoppingJob}
-              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isStoppingJob ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
-              ) : (
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+          {(isActive || isPending || isPaused) && (
+            <div className="flex items-center space-x-2">
+              {/* Pause/Resume button for running or paused jobs */}
+              {(isRunning || isPaused) && (
+                <button
+                  onClick={handlePauseJob}
+                  disabled={isPausingJob || isStoppingJob}
+                  className="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed w-[100px]"
+                >
+                  {isPausingJob ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-1"></div>
+                  ) : (
+                    <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                      {isPaused ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 5v14l11-7z" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 9v6m4-6v6" />
+                      )}
+                    </svg>
+                  )}
+                  {isPausingJob 
+                    ? (isPaused ? 'Resuming...' : 'Pausing...')
+                    : (isPaused ? 'Resume' : 'Pause')
+                  }
+                </button>
               )}
-              {isStoppingJob 
-                ? (isPending ? 'Canceling...' : 'Stopping...')
-                : (isPending ? 'Cancel Job' : 'Stop Job')
-              }
-            </button>
+              
+              {/* Cancel/Stop button */}
+              <button
+                onClick={handleStopJob}
+                disabled={isStoppingJob}
+                className="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed w-[100px]"
+              >
+                {isStoppingJob ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-1"></div>
+                ) : (
+                  <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )}
+                {isStoppingJob 
+                  ? (isPending ? 'Canceling...' : 'Canceling...')
+                  : (isPending ? 'Cancel' : 'Cancel')
+                }
+              </button>
+            </div>
           )}
         </div>
 
@@ -233,7 +283,9 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
           <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3">
             <div 
               className={`h-3 rounded-full transition-all duration-300 ${
-                isActive ? 'bg-blue-500' : 'bg-green-500'
+                isRunning ? 'bg-blue-500' : 
+                isPaused ? 'bg-blue-500' : 
+                'bg-green-500'
               }`}
               style={{ width: `${progressPercentage}%` }}
             />
@@ -244,31 +296,38 @@ export const SyncJobDetail: React.FC<SyncJobDetailProps> = ({ jobId }) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              job.status === 'pending' && isStoppingJob
+              (job.status === 'pending' || job.status === 'running' || job.status === 'paused') && isStoppingJob
                 ? 'text-orange-700 bg-orange-100 dark:text-orange-300 dark:bg-orange-900'
+                : (job.status === 'running' || job.status === 'paused') && isPausingJob
+                ? 'text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-900'
                 : job.status === 'pending' 
                 ? 'text-yellow-700 bg-yellow-100 dark:text-yellow-300 dark:bg-yellow-900'
-                : job.status === 'running' && isStoppingJob
-                ? 'text-orange-700 bg-orange-100 dark:text-orange-300 dark:bg-orange-900'
                 : job.status === 'running'
+                ? 'text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-900'
+                : job.status === 'paused'
                 ? 'text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-900'
                 : job.status === 'completed'
                 ? 'text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-900'
                 : job.status === 'failed'
                 ? 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900'
+                : job.status === 'stopped'
+                ? 'text-gray-700 bg-gray-100 dark:text-gray-300 dark:bg-gray-900'
                 : 'text-gray-700 bg-gray-100 dark:text-gray-300 dark:bg-gray-900'
             }`}>
-              {job.status === 'pending' && isStoppingJob ? 'Canceling' :
+              {isStoppingJob ? 'Canceling' :
+               isPausingJob ? (isPaused ? 'Resuming' : 'Pausing') :
                job.status === 'pending' ? 'Pending' : 
-               job.status === 'running' && isStoppingJob ? 'Stopping' :
-               job.status === 'running' ? 'In Progress' : 
+               job.status === 'running' ? 'In Progress' :
+               job.status === 'paused' ? 'Paused' :
                job.status === 'completed' ? 'Completed' :
                job.status === 'failed' ? 'Failed' :
                job.status === 'stopped' ? 'Stopped' : 'Unknown'}
             </span>
-            {(job.status === 'pending' || (job.status === 'running' && !isStoppingJob)) && (
+            {(job.status === 'pending' || (job.status === 'running' && !isStoppingJob) || (job.status === 'paused' && !isPausingJob)) && (
               <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                {job.status === 'pending' ? 'Waiting to start...' : `${job.remainingTasks} tasks remaining`}
+                {job.status === 'pending' ? 'Waiting to start...' : 
+                 job.status === 'paused' ? 'Job is paused' :
+                 `${job.remainingTasks} tasks remaining`}
               </span>
             )}
           </div>

@@ -2,130 +2,163 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/logger"
 )
 
 type Task[R any] func(ctx context.Context) entity.Result[R]
 
-// SyncAlbumJob represents a sync job that executes pre-generated tasks
-type SyncAlbumJob struct {
-	ID            uuid.UUID
-	albumID       string
-	albumPath     string
-	albumTasks    []Task[entity.Album]
-	mediaTasks    []Task[entity.Media]
-	progressMeter *progressMeter
-	doneCh        chan bool
+// Object contains general metadata about a job that doesn't change during execution
+type Object struct {
+	ID          uuid.UUID         // Unique identifier for the job
+	reason      string            // Reason for job failure or completion details
+	createdAt   time.Time         // When the job was created
+	startedAt   *time.Time        // When the job started execution (nil if not started)
+	completedAt *time.Time        // When the job completed (nil if not completed)
+	total       int               // Total number of tasks in the job
+	opts        map[string]string // Job configuration options and metadata
 }
 
-func NewSyncJob(albumID string, albumPath string, albumTasks []Task[entity.Album], mediaTasks []Task[entity.Media]) (*SyncAlbumJob, error) {
-	job := &SyncAlbumJob{
-		ID:            uuid.New(),
-		albumID:       albumID,
-		albumPath:     albumPath,
-		albumTasks:    albumTasks,
-		mediaTasks:    mediaTasks,
-		progressMeter: newProgressMeter(),
+// SyncJob represents a sync job that executes pre-generated tasks
+type SyncJob struct {
+	Object
+	tasks        *entity.LinkedList[Task[string]] // Queue of tasks to execute
+	doneCh       chan bool                        // Channel to signal job cancellation
+	stopResumeCh chan bool                        // Channel to handle pause/resume operations
+	status       entity.JobStatus                 // Current job status
+	results      []entity.JobResult               // Results from completed tasks
+	logger       *logger.StructuredLogger         // Logger for job operations
+	mu           sync.Mutex                       // Mutex for thread-safe access
+}
+
+func NewSyncJob(tasks *entity.LinkedList[Task[string]], opts map[string]string) (*SyncJob, error) {
+	if opts == nil {
+		opts = make(map[string]string)
+	}
+
+	job := &SyncJob{
+		Object: Object{
+			ID:        uuid.New(),
+			createdAt: time.Now(),
+			total:     tasks.Len(),
+			opts:      opts,
+		},
+		tasks:   tasks,
+		status:  entity.StatusPending,
+		results: []entity.JobResult{},
+		logger:  logger.NewDebugLogger("sync-job"),
 	}
 
 	return job, nil
 }
 
 // Start begins the job execution with pre-generated tasks
-func (j *SyncAlbumJob) Start(ctx context.Context) error {
+func (j *SyncJob) Start(ctx context.Context) error {
 	j.doneCh = make(chan bool)
-	j.progressMeter.Start()
-
+	j.stopResumeCh = make(chan bool)
 	defer func() {
-		j.progressMeter.Stop(entity.StatusCompleted)
+		j.stopResumeCh = nil
+		j.doneCh = nil
 	}()
 
-	// Set total task count from pre-generated tasks
-	j.progressMeter.Total(len(j.albumTasks) + len(j.mediaTasks))
+	// Start the job
+	now := time.Now()
+	j.startedAt = &now
+	j.status = entity.StatusRunning
 
-	zap.S().Debugw("creating albums", "job_id", j.ID, "tasks_count", len(j.albumTasks))
+	defer func() {
+		// Stop the job
+		now := time.Now()
+		j.completedAt = &now
+		j.status = entity.StatusCompleted
+	}()
 
-	// Execute album tasks
-	for _, t := range j.albumTasks {
+	tracer := j.logger.StartOperation("process_tasks").
+		WithString("job_id", j.ID.String()).
+		WithInt("tasks_count", j.tasks.Len()).
+		Build()
+
+	next, _, cancel := entity.TaskIterator(j.iter(ctx, j.tasks))
+	taskIndex := 0
+	for {
 		start := time.Now()
-		r := t(ctx)
-		if r.Err != nil {
-			zap.S().Warnw("failed to create album", "job_id", j.ID, "error", r.Err)
+		result, ok := next()
+
+		if result.Err != nil {
+			j.logger.BusinessLogic("task_failed").
+				WithString("job_id", j.ID.String()).
+				WithInt("task_index", taskIndex).
+				WithString("error", result.Err.Error()).
+				Log()
 		}
+
 		end := time.Now()
 
-		j.progressMeter.Result(entity.JobResult{
-			Result:      fmt.Sprintf("Album %s processed", r.Data.Path),
-			Err:         r.Err,
+		// Record result directly in job
+		j.results = append(j.results, entity.JobResult{
+			Result:      result.Data,
+			Err:         result.Err,
 			StartedAt:   start,
 			CompletedAt: end,
 		})
 
+		if !ok {
+			break
+		}
+
+		taskIndex++
+
 		select {
 		case <-ctx.Done():
+			cancel()
 			return ctx.Err()
 		case <-j.doneCh:
+			cancel()
 			j.doneCh <- true
 			return nil
+		case <-j.stopResumeCh:
+			<-j.stopResumeCh
 		default:
 		}
 	}
 
-	zap.S().Debugw("processing media", "job_id", j.ID, "tasks_count", len(j.mediaTasks))
-
-	// Execute media tasks
-	for _, t := range j.mediaTasks {
-		start := time.Now()
-		r := t(ctx)
-		if r.Err != nil {
-			zap.S().Warnw("failed to process media", "job_id", j.ID, "error", r.Err)
-		}
-		end := time.Now()
-
-		j.progressMeter.Result(entity.JobResult{
-			Result:      fmt.Sprintf("Media %s processed", r.Data.Filepath()),
-			Err:         r.Err,
-			StartedAt:   start,
-			CompletedAt: end,
-		})
-
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-j.doneCh:
-			j.doneCh <- true
-			return nil
-		default:
-		}
-	}
+	tracer.Success().
+		WithInt("completed_tasks", taskIndex).
+		Log()
 
 	return nil
 }
 
-func (j *SyncAlbumJob) GetID() uuid.UUID {
+func (j *SyncJob) GetID() uuid.UUID {
 	return j.ID
 }
 
-func (j *SyncAlbumJob) GetAlbumID() string {
-	return j.albumID
+func (j *SyncJob) Pause() {
+	if j.stopResumeCh == nil {
+		return
+	}
+
+	switch j.status {
+	case entity.StatusPause:
+		j.status = entity.StatusRunning
+	case entity.StatusRunning:
+		j.status = entity.StatusPause
+	}
+	j.stopResumeCh <- true
 }
 
-func (j *SyncAlbumJob) GetAlbumPath() string {
-	return j.albumPath
-}
-
-// Stop cancels the job execution
-func (j *SyncAlbumJob) Stop() error {
-	j.progressMeter.status = entity.StatusStopping
+func (j *SyncJob) Cancel() error {
+	j.status = entity.StatusStopping
 	defer func() {
-		j.progressMeter.Stop(entity.StatusStopped)
+		// Stop the job
+		now := time.Now()
+		j.completedAt = &now
+		j.status = entity.StatusStopped
 	}()
 	if j.doneCh == nil {
 		return nil
@@ -134,78 +167,41 @@ func (j *SyncAlbumJob) Stop() error {
 	j.doneCh <- true
 	<-j.doneCh
 
-	zap.S().Infow("Job stopped", "id", j.ID)
+	j.logger.BusinessLogic("job_cancelled").
+		WithString("job_id", j.ID.String()).
+		Log()
+
 	return nil
 }
 
-func (j *SyncAlbumJob) Status() entity.JobProgress {
-	return j.progressMeter.Status(j.ID, j.albumPath)
-}
-
-type progressMeter struct {
-	createdAt   time.Time
-	startedAt   *time.Time
-	completedAt *time.Time
-	status      entity.JobStatus
-	total       int
-	remaining   int
-	results     []entity.JobResult
-	reason      string
-	mu          sync.Mutex
-}
-
-func newProgressMeter() *progressMeter {
-	return &progressMeter{
-		createdAt: time.Now(),
-		status:    entity.StatusPending,
-		results:   []entity.JobResult{},
-	}
-}
-
-func (j *progressMeter) Start() {
-	now := time.Now()
-	j.startedAt = &now
-	j.status = entity.StatusRunning
-}
-
-func (j *progressMeter) Total(total int) {
-	j.total, j.remaining = total, total
-}
-
-func (j *progressMeter) Stop(s entity.JobStatus) {
-	now := time.Now()
-	j.completedAt = &now
-	j.status = s
-}
-
-func (j *progressMeter) Failed(err error) {
-	now := time.Now()
-	j.completedAt = &now
-	j.reason = err.Error()
-	j.status = entity.StatusFailed
-}
-
-func (j *progressMeter) Result(r entity.JobResult) {
-	j.remaining--
-	j.results = append(j.results, r)
-}
-
-func (j *progressMeter) Status(id uuid.UUID, path string) entity.JobProgress {
+func (j *SyncJob) Status() entity.JobProgress {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 
-	p := entity.JobProgress{
-		Id:          id,
-		Path:        path,
+	return entity.JobProgress{
+		Id:          j.ID,
+		Path:        j.opts["path"],
 		Status:      j.status,
 		CreatedAt:   j.createdAt,
 		Total:       j.total,
-		Remaining:   j.remaining,
+		Remaining:   j.tasks.Len(),
 		StartedAt:   j.startedAt,
 		CompletedAt: j.completedAt,
 		Results:     j.results,
 		Reason:      j.reason,
 	}
+}
 
-	return p
+func (j *SyncJob) Metadata() map[string]string {
+	return j.opts
+}
+
+func (j *SyncJob) iter(ctx context.Context, tasks *entity.LinkedList[Task[string]]) func(yield func(result entity.Result[string]) bool) {
+	return func(yield func(result entity.Result[string]) bool) {
+		for tasks.Len() > 0 {
+			task, _ := tasks.Pop()
+			r := task(ctx)
+			yield(r)
+		}
+	}
 }

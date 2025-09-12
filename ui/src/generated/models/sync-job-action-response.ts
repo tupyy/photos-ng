@@ -45,8 +45,8 @@ export interface SyncJobActionResponse {
     * @enum {string}
     */
 export enum SyncJobActionResponseActionEnum {
-    Stop = 'stop',
-    Resume = 'resume'
+    Pause = 'pause',
+    Cancel = 'cancel'
 }
 
 

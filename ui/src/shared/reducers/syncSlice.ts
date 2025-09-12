@@ -91,37 +91,55 @@ export const fetchSyncJob = createAsyncThunk(
   }
 );
 
-// Async thunk to stop a specific sync job
-export const stopSyncJob = createAsyncThunk(
-  'sync/stopJob',
+// Async thunk to cancel a specific sync job
+export const cancelSyncJob = createAsyncThunk(
+  'sync/cancelJob',
   async (jobId: string, { rejectWithValue }) => {
     try {
-      const response = await syncApi.actionSyncJob(jobId, { action: SyncJobActionRequestActionEnum.Stop });
+      const response = await syncApi.actionSyncJob(jobId, { action: SyncJobActionRequestActionEnum.Cancel });
       return {
         jobId,
-        message: response.data.message || 'Sync job stopped successfully',
+        message: response.data.message || 'Sync job cancelled successfully',
       };
     } catch (error: any) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to stop sync job'
+        error.response?.data?.message || 'Failed to cancel sync job'
       );
     }
   }
 );
 
-// Async thunk to stop all sync jobs
-export const stopAllSyncJobs = createAsyncThunk(
-  'sync/stopAllJobs',
-  async (_, { rejectWithValue }) => {
+// Async thunk to pause/resume a specific sync job
+export const pauseSyncJob = createAsyncThunk(
+  'sync/pauseJob',
+  async (jobId: string, { rejectWithValue }) => {
     try {
-      const response = await syncApi.actionAllSyncJobs({ action: SyncJobActionRequestActionEnum.Stop });
+      const response = await syncApi.actionSyncJob(jobId, { action: SyncJobActionRequestActionEnum.Pause });
       return {
-        message: response.data.message || 'All sync jobs stopped successfully',
-        stoppedCount: response.data.affectedCount || 0,
+        jobId,
+        message: response.data.message || 'Sync job pause/resume toggled successfully',
       };
     } catch (error: any) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to stop sync jobs'
+        error.response?.data?.message || 'Failed to pause/resume sync job'
+      );
+    }
+  }
+);
+
+// Async thunk to cancel all sync jobs
+export const cancelAllSyncJobs = createAsyncThunk(
+  'sync/cancelAllJobs',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await syncApi.actionAllSyncJobs({ action: SyncJobActionRequestActionEnum.Cancel });
+      return {
+        message: response.data.message || 'All sync jobs cancelled successfully',
+        cancelledCount: response.data.affectedCount || 0,
+      };
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to cancel sync jobs'
       );
     }
   }
@@ -229,23 +247,33 @@ const syncSlice = createSlice({
         }
       })
       
-      // Stop sync job
-      .addCase(stopSyncJob.fulfilled, (state, action) => {
+      // Cancel sync job
+      .addCase(cancelSyncJob.fulfilled, (state, action) => {
         // Update the job status in the list (backend will return updated job data via polling)
         // Don't remove the job, just clear any errors
         state.error = null;
       })
-      .addCase(stopSyncJob.rejected, (state, action) => {
+      .addCase(cancelSyncJob.rejected, (state, action) => {
         state.error = action.payload as string;
       })
       
-      // Stop all sync jobs
-      .addCase(stopAllSyncJobs.fulfilled, (state, action) => {
+      // Pause sync job
+      .addCase(pauseSyncJob.fulfilled, (state, action) => {
+        // Update the job status in the list (backend will return updated job data via polling)
+        // Don't remove the job, just clear any errors
+        state.error = null;
+      })
+      .addCase(pauseSyncJob.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
+      
+      // Cancel all sync jobs
+      .addCase(cancelAllSyncJobs.fulfilled, (state, action) => {
         // Jobs will be updated via polling with new status
         // Don't remove jobs, just clear errors
         state.error = null;
       })
-      .addCase(stopAllSyncJobs.rejected, (state, action) => {
+      .addCase(cancelAllSyncJobs.rejected, (state, action) => {
         state.error = action.payload as string;
       })
       
@@ -266,4 +294,14 @@ const syncSlice = createSlice({
 });
 
 export const { clearError, updateJob } = syncSlice.actions;
+
+// Backward compatibility exports
+export const stopSyncJob = cancelSyncJob;
+export const stopAllSyncJobs = cancelAllSyncJobs;
+
+// New cleaner exports
+export const stopJob = cancelSyncJob;
+export const pauseJob = pauseSyncJob;
+export const stopAllJobs = cancelAllSyncJobs;
+
 export default syncSlice.reducer;

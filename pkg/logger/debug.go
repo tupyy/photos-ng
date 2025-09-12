@@ -6,38 +6,80 @@ import (
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 
-// DebugLogger provides debug-only logging for business services
-// IMPORTANT: Never logs errors (that's handled by handlers)
-type DebugLogger struct {
+// StructuredLogger provides structured logging for business services at specified level
+type StructuredLogger struct {
 	logger  *zap.Logger
 	service string
+	level   zapcore.Level
 }
 
-// NewDebugLogger creates a new debug logger for a specific service
-func NewDebugLogger(service string) *DebugLogger {
-	return &DebugLogger{
+// NewStructuredLogger creates a new structured logger for a specific service at the given level
+func NewStructuredLogger(service string, level zapcore.Level) *StructuredLogger {
+	return &StructuredLogger{
 		logger:  zap.L().Named(service),
 		service: service,
+		level:   level,
 	}
 }
 
-// WithContext returns a new DebugLogger with request context
-func (l *DebugLogger) WithContext(ctx context.Context) *DebugLogger {
+// NewDebugLogger creates a new debug-level structured logger for a specific service
+func NewDebugLogger(service string) *StructuredLogger {
+	return NewStructuredLogger(service, zapcore.DebugLevel)
+}
+
+// NewInfoLogger creates a new info-level structured logger for a specific service
+func NewInfoLogger(service string) *StructuredLogger {
+	return NewStructuredLogger(service, zapcore.InfoLevel)
+}
+
+// NewWarnLogger creates a new warn-level structured logger for a specific service
+func NewWarnLogger(service string) *StructuredLogger {
+	return NewStructuredLogger(service, zapcore.WarnLevel)
+}
+
+// NewErrorLogger creates a new error-level structured logger for a specific service
+func NewErrorLogger(service string) *StructuredLogger {
+	return NewStructuredLogger(service, zapcore.ErrorLevel)
+}
+
+// DebugLogger is an alias for backward compatibility
+type DebugLogger = StructuredLogger
+
+// getLogFunc returns the appropriate logging function based on the configured level
+func (l *StructuredLogger) getLogFunc() func(msg string, fields ...zap.Field) {
+	switch l.level {
+	case zapcore.DebugLevel:
+		return l.logger.Debug
+	case zapcore.InfoLevel:
+		return l.logger.Info
+	case zapcore.WarnLevel:
+		return l.logger.Warn
+	case zapcore.ErrorLevel:
+		return l.logger.Error
+	default:
+		return l.logger.Debug
+	}
+}
+
+// WithContext returns a new StructuredLogger with request context
+func (l *StructuredLogger) WithContext(ctx context.Context) *StructuredLogger {
 	// Extract request ID if available
 	if requestID := requestid.FromContext(ctx); requestID != "" {
-		return &DebugLogger{
+		return &StructuredLogger{
 			logger:  l.logger.With(zap.String("request_id", requestID)),
 			service: l.service,
+			level:   l.level,
 		}
 	}
 	return l
 }
 
 // StartOperation begins operation tracing and returns a builder
-func (l *DebugLogger) StartOperation(operation string) *OperationBuilder {
+func (l *StructuredLogger) StartOperation(operation string) *OperationBuilder {
 	return &OperationBuilder{
 		operation: operation,
 		params:    make(map[string]any),
@@ -46,19 +88,17 @@ func (l *DebugLogger) StartOperation(operation string) *OperationBuilder {
 }
 
 // StartOperationWithParams begins operation tracing with map (deprecated, use StartOperation().WithParam())
-func (l *DebugLogger) StartOperationWithParams(operation string, params map[string]any) *OperationTracer {
+func (l *StructuredLogger) StartOperationWithParams(operation string, params map[string]any) *OperationTracer {
 	start := time.Now()
 
-	l.logger.Debug("Operation started",
-		zap.String("operation", operation),
-		zap.Any("params", params),
-	)
+	logFunc := l.getLogFunc()
+	logFunc("Operation started", zap.String("operation", operation), zap.Any("params", params))
 
 	return &OperationTracer{
-		DebugLogger: l,
-		operation:   operation,
-		startTime:   start,
-		params:      params,
+		StructuredLogger: l,
+		operation:        operation,
+		startTime:        start,
+		params:           params,
 	}
 }
 
@@ -66,7 +106,7 @@ func (l *DebugLogger) StartOperationWithParams(operation string, params map[stri
 type OperationBuilder struct {
 	operation string
 	params    map[string]any
-	logger    *DebugLogger
+	logger    *StructuredLogger
 }
 
 // WithParam adds a generic parameter
@@ -110,22 +150,20 @@ func (b *OperationBuilder) WithIntPtr(key string, value *int) *OperationBuilder 
 func (b *OperationBuilder) Build() *OperationTracer {
 	start := time.Now()
 
-	b.logger.logger.Debug("Operation started",
-		zap.String("operation", b.operation),
-		zap.Any("params", b.params),
-	)
+	logFunc := b.logger.getLogFunc()
+	logFunc("Operation started", zap.String("operation", b.operation), zap.Any("params", b.params))
 
 	return &OperationTracer{
-		DebugLogger: b.logger,
-		operation:   b.operation,
-		startTime:   start,
-		params:      b.params,
+		StructuredLogger: b.logger,
+		operation:        b.operation,
+		startTime:        start,
+		params:           b.params,
 	}
 }
 
 // OperationTracer tracks the progress of a business operation
 type OperationTracer struct {
-	*DebugLogger
+	*StructuredLogger
 	operation string
 	startTime time.Time
 	params    map[string]any
@@ -142,12 +180,8 @@ func (ot *OperationTracer) Step(step string) *StepBuilder {
 
 // StepWithData logs a step with map data (deprecated, use Step().WithParam())
 func (ot *OperationTracer) StepWithData(step string, data map[string]any) {
-	ot.logger.Debug("Operation step",
-		zap.String("operation", ot.operation),
-		zap.String("step", step),
-		zap.Float64("elapsed_ms", float64(time.Since(ot.startTime).Nanoseconds())/1e6),
-		zap.Any("data", data),
-	)
+	logFunc := ot.getLogFunc()
+	logFunc("Operation step", zap.String("operation", ot.operation), zap.String("step", step), zap.Float64("elapsed_ms", float64(time.Since(ot.startTime).Nanoseconds())/1e6), zap.Any("data", data))
 }
 
 // Success creates a result builder
@@ -161,11 +195,8 @@ func (ot *OperationTracer) Success() *ResultBuilder {
 // SuccessWithResult logs success with map result (deprecated, use Success().WithParam())
 func (ot *OperationTracer) SuccessWithResult(result map[string]any) {
 	duration := time.Since(ot.startTime)
-	ot.logger.Debug("Operation completed",
-		zap.String("operation", ot.operation),
-		zap.Float64("duration_ms", float64(duration.Nanoseconds())/1e6),
-		zap.Any("result", result),
-	)
+	logFunc := ot.getLogFunc()
+	logFunc("Operation completed", zap.String("operation", ot.operation), zap.Float64("duration_ms", float64(duration.Nanoseconds())/1e6), zap.Any("result", result))
 }
 
 // StepBuilder builds step data fluently
@@ -211,12 +242,8 @@ func (b *StepBuilder) WithDurationMs(key string, value time.Duration) *StepBuild
 
 // Log executes the step logging
 func (b *StepBuilder) Log() {
-	b.tracer.logger.Debug("Operation step",
-		zap.String("operation", b.tracer.operation),
-		zap.String("step", b.step),
-		zap.Float64("elapsed_ms", float64(time.Since(b.tracer.startTime).Nanoseconds())/1e6),
-		zap.Any("data", b.data),
-	)
+	logFunc := b.tracer.getLogFunc()
+	logFunc("Operation step", zap.String("operation", b.tracer.operation), zap.String("step", b.step), zap.Float64("elapsed_ms", float64(time.Since(b.tracer.startTime).Nanoseconds())/1e6), zap.Any("data", b.data))
 }
 
 // ResultBuilder builds result data fluently
@@ -262,47 +289,32 @@ func (b *ResultBuilder) WithDurationMs(key string, value time.Duration) *ResultB
 // Log executes the success logging
 func (b *ResultBuilder) Log() {
 	duration := time.Since(b.tracer.startTime)
-	b.tracer.logger.Debug("Operation completed",
-		zap.String("operation", b.tracer.operation),
-		zap.Float64("duration_ms", float64(duration.Nanoseconds())/1e6),
-		zap.Any("result", b.result),
-	)
+	logFunc := b.tracer.getLogFunc()
+	logFunc("Operation completed", zap.String("operation", b.tracer.operation), zap.Float64("duration_ms", float64(duration.Nanoseconds())/1e6), zap.Any("result", b.result))
 }
 
 // Performance logs a performance metric during the operation
 func (ot *OperationTracer) Performance(metric string, value any) {
-	ot.logger.Debug("Performance metric",
-		zap.String("operation", ot.operation),
-		zap.String("metric", metric),
-		zap.Any("value", value),
-		zap.Float64("elapsed_ms", float64(time.Since(ot.startTime).Nanoseconds())/1e6),
-	)
+	logFunc := ot.getLogFunc()
+	logFunc("Performance metric", zap.String("operation", ot.operation), zap.String("metric", metric), zap.Any("value", value), zap.Float64("elapsed_ms", float64(time.Since(ot.startTime).Nanoseconds())/1e6))
 }
 
 // Convenience methods for common debug scenarios
 
 // DatabaseQuery logs database query performance information
-func (l *DebugLogger) DatabaseQuery(operation string, filters int, duration time.Duration, found bool) {
-	l.logger.Debug("Database query",
-		zap.String("operation", operation),
-		zap.Int("filters", filters),
-		zap.Float64("duration_ms", float64(duration.Nanoseconds())/1e6),
-		zap.Bool("found", found),
-	)
+func (l *StructuredLogger) DatabaseQuery(operation string, filters int, duration time.Duration, found bool) {
+	logFunc := l.getLogFunc()
+	logFunc("Database query", zap.String("operation", operation), zap.Int("filters", filters), zap.Float64("duration_ms", float64(duration.Nanoseconds())/1e6), zap.Bool("found", found))
 }
 
 // FileOperation logs file system operation details
-func (l *DebugLogger) FileOperation(operation, filepath string, size int64, duration time.Duration) {
-	l.logger.Debug("File operation",
-		zap.String("operation", operation),
-		zap.String("filepath", filepath),
-		zap.Int64("size", size),
-		zap.Float64("duration_ms", float64(duration.Nanoseconds())/1e6),
-	)
+func (l *StructuredLogger) FileOperation(operation, filepath string, size int64, duration time.Duration) {
+	logFunc := l.getLogFunc()
+	logFunc("File operation", zap.String("operation", operation), zap.String("filepath", filepath), zap.Int64("size", size), zap.Float64("duration_ms", float64(duration.Nanoseconds())/1e6))
 }
 
 // BusinessLogic creates a business logic data builder
-func (l *DebugLogger) BusinessLogic(description string) *DataBuilder {
+func (l *StructuredLogger) BusinessLogic(description string) *DataBuilder {
 	return &DataBuilder{
 		logger:      l,
 		logType:     "Business logic",
@@ -312,15 +324,13 @@ func (l *DebugLogger) BusinessLogic(description string) *DataBuilder {
 }
 
 // BusinessLogicWithData logs business logic with map data (deprecated, use BusinessLogic().WithParam())
-func (l *DebugLogger) BusinessLogicWithData(description string, data map[string]any) {
-	l.logger.Debug("Business logic",
-		zap.String("description", description),
-		zap.Any("data", data),
-	)
+func (l *StructuredLogger) BusinessLogicWithData(description string, data map[string]any) {
+	logFunc := l.getLogFunc()
+	logFunc("Business logic", zap.String("description", description), zap.Any("data", data))
 }
 
 // Transaction creates a transaction data builder
-func (l *DebugLogger) Transaction(action string) *DataBuilder {
+func (l *StructuredLogger) Transaction(action string) *DataBuilder {
 	return &DataBuilder{
 		logger:  l,
 		logType: "Transaction",
@@ -330,15 +340,13 @@ func (l *DebugLogger) Transaction(action string) *DataBuilder {
 }
 
 // TransactionWithData logs transaction with map data (deprecated, use Transaction().WithParam())
-func (l *DebugLogger) TransactionWithData(action string, data map[string]any) {
-	l.logger.Debug("Transaction",
-		zap.String("action", action),
-		zap.Any("data", data),
-	)
+func (l *StructuredLogger) TransactionWithData(action string, data map[string]any) {
+	logFunc := l.getLogFunc()
+	logFunc("Transaction", zap.String("action", action), zap.Any("data", data))
 }
 
 // Processing creates a processing data builder
-func (l *DebugLogger) Processing(stage, filename string) *DataBuilder {
+func (l *StructuredLogger) Processing(stage, filename string) *DataBuilder {
 	return &DataBuilder{
 		logger:   l,
 		logType:  "Processing",
@@ -349,17 +357,14 @@ func (l *DebugLogger) Processing(stage, filename string) *DataBuilder {
 }
 
 // ProcessingWithData logs processing with map data (deprecated, use Processing().WithParam())
-func (l *DebugLogger) ProcessingWithData(stage string, filename string, data map[string]any) {
-	l.logger.Debug("Processing",
-		zap.String("stage", stage),
-		zap.String("filename", filename),
-		zap.Any("data", data),
-	)
+func (l *StructuredLogger) ProcessingWithData(stage string, filename string, data map[string]any) {
+	logFunc := l.getLogFunc()
+	logFunc("Processing", zap.String("stage", stage), zap.String("filename", filename), zap.Any("data", data))
 }
 
 // DataBuilder builds logging data fluently for convenience methods
 type DataBuilder struct {
-	logger      *DebugLogger
+	logger      *StructuredLogger
 	logType     string
 	description string
 	action      string
@@ -404,22 +409,13 @@ func (b *DataBuilder) WithDurationMs(key string, value time.Duration) *DataBuild
 
 // Log executes the appropriate logging based on type
 func (b *DataBuilder) Log() {
+	logFunc := b.logger.getLogFunc()
 	switch b.logType {
 	case "Business logic":
-		b.logger.logger.Debug("Business logic",
-			zap.String("description", b.description),
-			zap.Any("data", b.data),
-		)
+		logFunc("Business logic", zap.String("description", b.description), zap.Any("data", b.data))
 	case "Transaction":
-		b.logger.logger.Debug("Transaction",
-			zap.String("action", b.action),
-			zap.Any("data", b.data),
-		)
+		logFunc("Transaction", zap.String("action", b.action), zap.Any("data", b.data))
 	case "Processing":
-		b.logger.logger.Debug("Processing",
-			zap.String("stage", b.stage),
-			zap.String("filename", b.filename),
-			zap.Any("data", b.data),
-		)
+		logFunc("Processing", zap.String("stage", b.stage), zap.String("filename", b.filename), zap.Any("data", b.data))
 	}
 }

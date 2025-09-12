@@ -159,6 +159,8 @@ func ConvertJobStatusToAPI(status entity.JobStatus) SyncJobStatus {
 		return Failed
 	case entity.StatusStopped:
 		return Stopped
+	case entity.StatusPause:
+		return Paused
 	default:
 		return Pending
 	}

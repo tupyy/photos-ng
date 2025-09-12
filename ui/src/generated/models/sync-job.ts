@@ -104,6 +104,7 @@ export interface SyncJob {
 export enum SyncJobStatusEnum {
     Pending = 'pending',
     Running = 'running',
+    Paused = 'paused',
     Completed = 'completed',
     Failed = 'failed',
     Stopped = 'stopped'

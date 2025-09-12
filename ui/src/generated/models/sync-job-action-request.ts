@@ -33,8 +33,8 @@ export interface SyncJobActionRequest {
     * @enum {string}
     */
 export enum SyncJobActionRequestActionEnum {
-    Stop = 'stop',
-    Resume = 'resume'
+    Pause = 'pause',
+    Cancel = 'cancel'
 }
 
 

@@ -16,6 +16,7 @@ const (
 	StatusFailed    JobStatus = "failed"
 	StatusStopped   JobStatus = "stopped"
 	StatusStopping  JobStatus = "stopping"
+	StatusPause     JobStatus = "paused"
 )
 
 // JobProgress tracks the progress of a job

@@ -15,6 +15,7 @@ import (
 const (
 	Completed SyncJobStatus = "completed"
 	Failed    SyncJobStatus = "failed"
+	Paused    SyncJobStatus = "paused"
 	Pending   SyncJobStatus = "pending"
 	Running   SyncJobStatus = "running"
 	Stopped   SyncJobStatus = "stopped"
@@ -22,14 +23,14 @@ const (
 
 // Defines values for SyncJobActionRequestAction.
 const (
-	SyncJobActionRequestActionResume SyncJobActionRequestAction = "resume"
-	SyncJobActionRequestActionStop   SyncJobActionRequestAction = "stop"
+	SyncJobActionRequestActionCancel SyncJobActionRequestAction = "cancel"
+	SyncJobActionRequestActionPause  SyncJobActionRequestAction = "pause"
 )
 
 // Defines values for SyncJobActionResponseAction.
 const (
-	SyncJobActionResponseActionResume SyncJobActionResponseAction = "resume"
-	SyncJobActionResponseActionStop   SyncJobActionResponseAction = "stop"
+	SyncJobActionResponseActionCancel SyncJobActionResponseAction = "cancel"
+	SyncJobActionResponseActionPause  SyncJobActionResponseAction = "pause"
 )
 
 // Defines values for TaskResultItemType.
