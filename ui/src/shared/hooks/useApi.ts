@@ -42,6 +42,22 @@ import {
   clearError as clearStatsError,
   resetStats,
 } from '@reducers/statsSlice';
+import {
+  fetchMedia,
+  fetchMediaById,
+  updateMedia,
+  deleteMedia,
+  clearCurrentMedia,
+  clearError as clearMediaError,
+  setFilters as setMediaFilters,
+  clearFilters as clearMediaFilters,
+  toggleMediaSelection,
+  selectAllMedia,
+  clearSelection as clearMediaSelection,
+  setViewMode,
+  invalidateCache as invalidateMediaCache,
+  MediaFilters,
+} from '@reducers/mediaSlice';
 import { CreateAlbumRequest, UpdateAlbumRequest, UpdateMediaRequest } from '@generated/models';
 
 // Custom hook for Albums API
@@ -162,8 +178,52 @@ export const useAlbumsMediaApi = () => {
   };
 };
 
-// Legacy hook for backward compatibility - use useTimelineApi or useAlbumsMediaApi instead
-export const useMediaApi = useTimelineApi;
+// Custom hook for Media API
+export const useMediaApi = () => {
+  const dispatch = useAppDispatch();
+  const mediaState = useAppSelector((state) => state.media);
+
+  return {
+    // State
+    ...mediaState,
+
+    // Actions
+    fetchMedia: useCallback(
+      (params?: Partial<MediaFilters> & { forceRefresh?: boolean }) => dispatch(fetchMedia(params || {})),
+      [dispatch]
+    ),
+    fetchMediaById: useCallback(
+      (params: { id: string; forceRefresh?: boolean }) => dispatch(fetchMediaById(params)),
+      [dispatch]
+    ),
+    updateMedia: useCallback(
+      (id: string, mediaData: UpdateMediaRequest) => dispatch(updateMedia({ id, mediaData })),
+      [dispatch]
+    ),
+    deleteMedia: useCallback(
+      (id: string) => dispatch(deleteMedia(id)),
+      [dispatch]
+    ),
+    clearCurrentMedia: useCallback(() => dispatch(clearCurrentMedia()), [dispatch]),
+    clearError: useCallback(() => dispatch(clearMediaError()), [dispatch]),
+    setFilters: useCallback(
+      (filters: Partial<MediaFilters>) => dispatch(setMediaFilters(filters)),
+      [dispatch]
+    ),
+    clearFilters: useCallback(() => dispatch(clearMediaFilters()), [dispatch]),
+    toggleMediaSelection: useCallback(
+      (mediaId: string) => dispatch(toggleMediaSelection(mediaId)),
+      [dispatch]
+    ),
+    selectAllMedia: useCallback(() => dispatch(selectAllMedia()), [dispatch]),
+    clearSelection: useCallback(() => dispatch(clearMediaSelection()), [dispatch]),
+    setViewMode: useCallback(
+      (viewMode: 'grid' | 'list') => dispatch(setViewMode(viewMode)),
+      [dispatch]
+    ),
+    invalidateCache: useCallback(() => dispatch(invalidateMediaCache()), [dispatch]),
+  };
+};
 
 // Custom hook for Stats API
 export const useStatsApi = () => {
