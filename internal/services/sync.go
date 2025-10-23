@@ -17,7 +17,7 @@ type SyncService struct {
 	mediaService *MediaService
 	fsDatastore  *fs.Datastore
 	scheduler    *Scheduler
-	debug        *logger.DebugLogger
+	logger       *logger.StructuredLogger
 }
 
 // NewSyncService creates a new sync service that manages the job scheduler
@@ -27,48 +27,44 @@ func NewSyncService(albumService *AlbumService, mediaService *MediaService, fsDa
 		mediaService: mediaService,
 		fsDatastore:  fsDatastore,
 		scheduler:    GetScheduler(),
-		debug:        logger.NewDebugLogger("sync_service"),
+		logger:       logger.New("sync_service"),
 	}
 }
 
 // StartSync starts a new sync job for the given album path
 // Returns the job ID and any error that occurred during job creation
 func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, error) {
-	debug := s.debug.WithContext(ctx)
-	tracer := debug.StartOperation("start_sync").
+	logger := s.logger.WithContext(ctx).Operation("start_sync").
 		WithString(AlbumPath, albumPath).
 		Build()
 
 	// Create a root album entity for the sync operation
-	tracer.Step("create_album_entity").
+	logger.Step("create_album_entity").
 		WithString(AlbumPath, albumPath).
 		Log()
 
 	album := entity.NewAlbum(strings.TrimSuffix(albumPath, "/"))
 
-	debug.BusinessLogic("album entity created for sync").
+	logger.Step("album entity created for sync").
 		WithString(AlbumID, album.ID).
 		WithString(AlbumPath, album.Path).
 		Log()
 
 	// Generate sync jobs using JobGenerator
-	tracer.Step("generate_sync_jobs").
+	logger.Step("generate_sync_jobs").
 		WithString(AlbumID, album.ID).
 		Log()
 
-	start := time.Now()
 	generator := NewJobGenerator(s.albumService, s.mediaService, s.fsDatastore)
 	syncJobs, err := generator.Generate(ctx, albumPath)
-	jobGenerationDuration := time.Since(start)
 	if err != nil {
 		// Return ServiceError (handlers will log the error)
 		return "", NewSyncJobError(ctx, "generate_jobs", "", err).
 			WithContext(AlbumPath, albumPath)
 	}
 
-	tracer.Performance("job_generation", jobGenerationDuration)
 
-	debug.BusinessLogic("sync jobs generated").
+	logger.Step("sync jobs generated").
 		WithString(AlbumID, album.ID).
 		WithInt("job_count", len(syncJobs)).
 		Log()
@@ -79,12 +75,11 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 	}
 
 	// Add all jobs to scheduler and log each one
-	tracer.Step("schedule_jobs").
+	logger.Step("schedule_jobs").
 		WithInt("job_count", len(syncJobs)).
 		WithString("scheduler", "background").
 		Log()
 
-	start = time.Now()
 	for i, syncJob := range syncJobs {
 		if err := s.scheduler.Add(syncJob); err != nil {
 			// Return ServiceError (handlers will log the error)
@@ -95,22 +90,20 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 
 		jobID := syncJob.GetID().String()
 
-		debug.BusinessLogic("sync job scheduled").
+		logger.Step("sync job scheduled").
 			WithString(JobID, jobID).
 			WithInt("job_index", i).
 			Log()
 	}
-	schedulingDuration := time.Since(start)
 
-	tracer.Performance("scheduling", schedulingDuration)
 
-	debug.BusinessLogic("all sync jobs scheduled successfully").
+	logger.Step("all sync jobs scheduled successfully").
 		WithInt("total_jobs", len(syncJobs)).
 		WithString(AlbumPath, albumPath).
 		WithString(AlbumID, album.ID).
 		Log()
 
-	tracer.Success().
+	logger.Success().
 		WithInt("total_jobs", len(syncJobs)).
 		WithString(AlbumPath, albumPath).
 		Log()
@@ -122,8 +115,7 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 // GetJobStatus returns the status of a job by ID
 func (s *SyncService) GetJobStatus(jobID string) (*entity.JobProgress, error) {
 	ctx := context.Background()
-	debug := s.debug.WithContext(ctx)
-	tracer := debug.StartOperation("get_sync_job_status").
+	logger := s.logger.WithContext(ctx).Operation("get_sync_job_status").
 		WithString(JobID, jobID).
 		Build()
 
@@ -134,18 +126,15 @@ func (s *SyncService) GetJobStatus(jobID string) (*entity.JobProgress, error) {
 	}
 
 	// Scheduler query with debug timing
-	tracer.Step("scheduler_lookup").
+	logger.Step("scheduler_lookup").
 		WithString(JobID, jobID).
 		Log()
 
-	start := time.Now()
 	syncJob := s.scheduler.Get(jobID)
-	lookupDuration := time.Since(start)
 
-	debug.BusinessLogic("scheduler job lookup").
+	logger.Step("scheduler job lookup").
 		WithString(JobID, jobID).
 		WithBool("found", syncJob != nil).
-		WithParam("duration", lookupDuration).
 		Log()
 
 	if syncJob == nil {
@@ -156,7 +145,7 @@ func (s *SyncService) GetJobStatus(jobID string) (*entity.JobProgress, error) {
 
 	status := syncJob.Status()
 
-	tracer.Success().
+	logger.Success().
 		WithString(JobID, jobID).
 		WithParam("status", status.Status).
 		WithInt("total", status.Total).
@@ -189,8 +178,7 @@ func (s *SyncService) ListJobStatusesByStatus(status entity.JobStatus) []entity.
 // StopJob stops a specific job
 func (s *SyncService) StopJob(jobID string) error {
 	ctx := context.Background()
-	debug := s.debug.WithContext(ctx)
-	tracer := debug.StartOperation("stop_sync_job").
+	logger := s.logger.WithContext(ctx).Operation("stop_sync_job").
 		WithString(JobID, jobID).
 		Build()
 
@@ -201,7 +189,7 @@ func (s *SyncService) StopJob(jobID string) error {
 	}
 
 	// Scheduler lookup
-	tracer.Step("scheduler_lookup").
+	logger.Step("scheduler_lookup").
 		WithString(JobID, jobID).
 		Log()
 
@@ -209,11 +197,11 @@ func (s *SyncService) StopJob(jobID string) error {
 		return NewSyncJobError(ctx, "stop_sync_job", jobID, err)
 	}
 
-	debug.BusinessLogic("sync job stopped successfully").
+	logger.Step("sync job stopped successfully").
 		WithString(JobID, jobID).
 		Log()
 
-	tracer.Success().
+	logger.Success().
 		WithString(JobID, jobID).
 		Log()
 
@@ -223,8 +211,7 @@ func (s *SyncService) StopJob(jobID string) error {
 // PauseJob pauses or resumes a specific job
 func (s *SyncService) PauseJob(jobID string) error {
 	ctx := context.Background()
-	debug := s.debug.WithContext(ctx)
-	tracer := debug.StartOperation("pause_sync_job").
+	logger := s.logger.WithContext(ctx).Operation("pause_sync_job").
 		WithString(JobID, jobID).
 		Build()
 
@@ -235,7 +222,7 @@ func (s *SyncService) PauseJob(jobID string) error {
 	}
 
 	// Scheduler lookup
-	tracer.Step("scheduler_lookup").
+	logger.Step("scheduler_lookup").
 		WithString(JobID, jobID).
 		Log()
 
@@ -243,11 +230,11 @@ func (s *SyncService) PauseJob(jobID string) error {
 		return NewSyncJobError(ctx, "pause_sync_job", jobID, err)
 	}
 
-	debug.BusinessLogic("sync job pause/resume toggled successfully").
+	logger.Step("sync job pause/resume toggled successfully").
 		WithString(JobID, jobID).
 		Log()
 
-	tracer.Success().
+	logger.Success().
 		WithString(JobID, jobID).
 		Log()
 
@@ -257,24 +244,23 @@ func (s *SyncService) PauseJob(jobID string) error {
 // StopAllJobs stops all running jobs
 func (s *SyncService) StopAllJobs() error {
 	ctx := context.Background()
-	debug := s.debug.WithContext(ctx)
-	tracer := debug.StartOperation("stop_all_sync_jobs").Build()
+	logger := s.logger.WithContext(ctx).Operation("stop_all_sync_jobs").Build()
 
 	// Get all active jobs (running and pending)
-	tracer.Step("get_active_jobs").Log()
+	logger.Step("get_active_jobs").Log()
 
 	runningJobs := s.scheduler.GetByStatus(entity.StatusRunning)
 	pendingJobs := s.scheduler.GetByStatus(entity.StatusPending)
 	activeJobs := append(runningJobs, pendingJobs...)
 
-	debug.BusinessLogic("found active jobs to stop").
+	logger.Step("found active jobs to stop").
 		WithInt("running_count", len(runningJobs)).
 		WithInt("pending_count", len(pendingJobs)).
 		WithInt("total_active", len(activeJobs)).
 		Log()
 
 	if len(activeJobs) == 0 {
-		tracer.Success().
+		logger.Success().
 			WithInt("stopped_count", 0).
 			WithInt("active_count", 0).
 			Log()
@@ -282,14 +268,13 @@ func (s *SyncService) StopAllJobs() error {
 	}
 
 	// Stop each job
-	tracer.Step("stop_jobs").
+	logger.Step("stop_jobs").
 		WithInt("job_count", len(activeJobs)).
 		Log()
 
 	var errors []error
 	successCount := 0
 
-	start := time.Now()
 	for _, syncJob := range activeJobs {
 		if err := s.scheduler.StopJob(syncJob.GetID().String()); err != nil {
 			// Collect error for return (handlers will log the error)
@@ -298,15 +283,12 @@ func (s *SyncService) StopAllJobs() error {
 			successCount++
 		}
 	}
-	stopDuration := time.Since(start)
 
-	tracer.Performance("stop_all_duration", stopDuration)
 
-	debug.BusinessLogic("bulk job stop completed").
+	logger.Step("bulk job stop completed").
 		WithInt("total_jobs", len(activeJobs)).
 		WithInt("success_count", successCount).
 		WithInt("failed_count", len(errors)).
-		WithParam("duration", stopDuration).
 		Log()
 
 	if len(errors) > 0 {
@@ -315,7 +297,7 @@ func (s *SyncService) StopAllJobs() error {
 			WithContext("total_count", len(activeJobs))
 	}
 
-	tracer.Success().
+	logger.Success().
 		WithInt("stopped_count", len(activeJobs)).
 		Log()
 
@@ -325,11 +307,10 @@ func (s *SyncService) StopAllJobs() error {
 // ClearFinishedJobs removes all completed, stopped, and failed jobs
 func (s *SyncService) ClearFinishedJobs() error {
 	ctx := context.Background()
-	debug := s.debug.WithContext(ctx)
-	tracer := debug.StartOperation("clear_finished_sync_jobs").Build()
+	logger := s.logger.WithContext(ctx).Operation("clear_finished_sync_jobs").Build()
 
 	// Get all finished jobs (completed, stopped, failed)
-	tracer.Step("get_finished_jobs").Log()
+	logger.Step("get_finished_jobs").Log()
 
 	completedJobs := s.scheduler.GetByStatus(entity.StatusCompleted)
 	stoppedJobs := s.scheduler.GetByStatus(entity.StatusStopped)
@@ -338,7 +319,7 @@ func (s *SyncService) ClearFinishedJobs() error {
 	finishedJobs := append(completedJobs, stoppedJobs...)
 	finishedJobs = append(finishedJobs, failedJobs...)
 
-	debug.BusinessLogic("found finished jobs to clear").
+	logger.Step("found finished jobs to clear").
 		WithInt("completed_count", len(completedJobs)).
 		WithInt("stopped_count", len(stoppedJobs)).
 		WithInt("failed_count", len(failedJobs)).
@@ -346,21 +327,20 @@ func (s *SyncService) ClearFinishedJobs() error {
 		Log()
 
 	if len(finishedJobs) == 0 {
-		tracer.Success().
+		logger.Success().
 			WithInt("cleared_count", 0).
 			Log()
 		return nil
 	}
 
 	// Remove each finished job from scheduler
-	tracer.Step("clear_jobs").
+	logger.Step("clear_jobs").
 		WithInt("job_count", len(finishedJobs)).
 		Log()
 
 	var errors []error
 	successCount := 0
 
-	start := time.Now()
 	for _, syncJob := range finishedJobs {
 		if err := s.scheduler.Remove(syncJob.GetID().String()); err != nil {
 			// Collect error for return (handlers will log the error)
@@ -369,15 +349,12 @@ func (s *SyncService) ClearFinishedJobs() error {
 			successCount++
 		}
 	}
-	clearDuration := time.Since(start)
 
-	tracer.Performance("clear_all_duration", clearDuration)
 
-	debug.BusinessLogic("bulk job clear completed").
+	logger.Step("bulk job clear completed").
 		WithInt("total_jobs", len(finishedJobs)).
 		WithInt("success_count", successCount).
 		WithInt("failed_count", len(errors)).
-		WithParam("duration", clearDuration).
 		Log()
 
 	if len(errors) > 0 {
@@ -386,7 +363,7 @@ func (s *SyncService) ClearFinishedJobs() error {
 			WithContext("total_count", len(finishedJobs))
 	}
 
-	tracer.Success().
+	logger.Success().
 		WithInt("cleared_count", len(finishedJobs)).
 		Log()
 
@@ -396,35 +373,30 @@ func (s *SyncService) ClearFinishedJobs() error {
 // Shutdown gracefully shuts down the sync service
 func (s *SyncService) Shutdown() {
 	ctx := context.Background()
-	debug := s.debug.WithContext(ctx)
-	tracer := debug.StartOperation("shutdown").Build()
+	logger := s.logger.WithContext(ctx).Operation("shutdown").Build()
 
-	debug.BusinessLogic("shutting down sync service").Log()
+	logger.Step("shutting down sync service").Log()
 
 	// Stop all running jobs
-	tracer.Step("stop_all_jobs").Log()
+	logger.Step("stop_all_jobs").Log()
 
-	start := time.Now()
 	if err := s.StopAllJobs(); err != nil {
-		debug.BusinessLogic("errors occurred while stopping jobs during shutdown").
+		logger.Step("errors occurred while stopping jobs during shutdown").
 			WithString("error", err.Error()).
 			Log()
 	}
-	stopJobsDuration := time.Since(start)
 
 	// Stop the scheduler
-	tracer.Step("stop_scheduler").Log()
+	logger.Step("stop_scheduler").Log()
 
 	schedStart := time.Now()
 	s.scheduler.Stop()
-	stopSchedulerDuration := time.Since(schedStart)
+	_  = time.Since(schedStart)
 
-	debug.BusinessLogic("sync service shutdown complete").
-		WithParam("stop_jobs_duration", stopJobsDuration).
-		WithParam("stop_scheduler_duration", stopSchedulerDuration).
+	logger.Step("sync service shutdown complete").
 		Log()
 
-	tracer.Success().
+	logger.Success().
 		WithBool("shutdown_completed", true).
 		Log()
 }

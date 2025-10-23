@@ -51,7 +51,7 @@ func NewSyncJob(tasks *entity.LinkedList[Task[string]], opts map[string]string) 
 		tasks:   tasks,
 		status:  entity.StatusPending,
 		results: []entity.JobResult{},
-		logger:  logger.NewDebugLogger("sync-job"),
+		logger:  logger.New("sync-job"),
 	}
 
 	return job, nil
@@ -78,7 +78,7 @@ func (j *SyncJob) Start(ctx context.Context) error {
 		j.status = entity.StatusCompleted
 	}()
 
-	tracer := j.logger.StartOperation("process_tasks").
+	tracer := j.logger.Operation("process_tasks").
 		WithString(JobID, j.ID.String()).
 		WithInt("tasks_count", j.tasks.Len()).
 		Build()
@@ -90,11 +90,11 @@ func (j *SyncJob) Start(ctx context.Context) error {
 		result, ok := next()
 
 		if result.Err != nil {
-			j.logger.BusinessLogic("task_failed").
+			j.logger.Operation("task_failed").
 				WithString(JobID, j.ID.String()).
 				WithInt("task_index", taskIndex).
 				WithString("error", result.Err.Error()).
-				Log()
+				Build().Success().Log()
 		}
 
 		end := time.Now()
@@ -167,9 +167,9 @@ func (j *SyncJob) Cancel() error {
 	j.doneCh <- true
 	<-j.doneCh
 
-	j.logger.BusinessLogic("job_cancelled").
+	j.logger.Operation("job_cancelled").
 		WithString(JobID, j.ID.String()).
-		Log()
+		Build().Success().Log()
 
 	return nil
 }

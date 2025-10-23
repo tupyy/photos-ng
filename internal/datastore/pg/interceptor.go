@@ -3,9 +3,9 @@ package pg
 import (
 	"context"
 
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/logger"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"go.uber.org/zap"
 )
 
 // Querier holds common methods for connections and pools, equivalent to
@@ -187,23 +187,35 @@ func (i InterceptorPooler) Close() {
 
 type logInterceptor struct {
 	delegate Querier
+	logger   *logger.StructuredLogger
 }
 
 func newLogInterceptor() logInterceptor {
-	return logInterceptor{}
+	return logInterceptor{
+		logger: logger.New("pg_interceptor"),
+	}
 }
 
-func (logInterceptor) InterceptExec(ctx context.Context, delegate Querier, sql string, arguments ...any) (pgconn.CommandTag, error) {
-	zap.S().Debugw("exec", "sql", sql, "args", arguments)
+func (l logInterceptor) InterceptExec(ctx context.Context, delegate Querier, sql string, arguments ...any) (pgconn.CommandTag, error) {
+	l.logger.WithContext(ctx).Debug("pg_exec").
+		WithString("sql", sql).
+		WithParam("args", arguments).
+		Build().Success().Log()
 	return delegate.Exec(ctx, sql, arguments...)
 }
 
-func (logInterceptor) InterceptQuery(ctx context.Context, delegate Querier, sql string, args ...any) (pgx.Rows, error) {
-	zap.S().Debugw("exec", "sql", sql, "args", args)
+func (l logInterceptor) InterceptQuery(ctx context.Context, delegate Querier, sql string, args ...any) (pgx.Rows, error) {
+	l.logger.WithContext(ctx).Debug("pg_query").
+		WithString("sql", sql).
+		WithParam("args", args).
+		Build().Success().Log()
 	return delegate.Query(ctx, sql, args...)
 }
 
-func (logInterceptor) InterceptQueryRow(ctx context.Context, delegate Querier, sql string, optionsAndArgs ...any) pgx.Row {
-	zap.S().Debugw("exec", "sql", sql, "args", optionsAndArgs)
+func (l logInterceptor) InterceptQueryRow(ctx context.Context, delegate Querier, sql string, optionsAndArgs ...any) pgx.Row {
+	l.logger.WithContext(ctx).Debug("pg_query_row").
+		WithString("sql", sql).
+		WithParam("args", optionsAndArgs).
+		Build().Success().Log()
 	return delegate.QueryRow(ctx, sql, optionsAndArgs...)
 }

@@ -18,24 +18,23 @@ import (
 
 // MediaService provides business logic for media operations
 type MediaService struct {
-	dt    *pg.Datastore
-	fs    *fs.Datastore
-	debug *logger.DebugLogger
+	dt     *pg.Datastore
+	fs     *fs.Datastore
+	logger *logger.StructuredLogger
 }
 
 // NewMediaService creates a new instance of MediaService with the provided datastores
 func NewMediaService(dt *pg.Datastore, fsDatastore *fs.Datastore) *MediaService {
 	return &MediaService{
-		dt:    dt,
-		fs:    fsDatastore,
-		debug: logger.NewDebugLogger("media_service"),
+		dt:     dt,
+		fs:     fsDatastore,
+		logger: logger.New("media_service"),
 	}
 }
 
 // GetMedia retrieves a list of media items based on the provided filter criteria
 func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]entity.Media, *PaginationCursor, error) {
-	debug := m.debug.WithContext(ctx)
-	tracer := debug.StartOperation("get_media").
+	logger := m.logger.WithContext(ctx).Debug("get_media").
 		WithStringPtr(AlbumID, filter.AlbumID).
 		WithParam("start_date", filter.StartDate).
 		WithParam("end_date", filter.EndDate).
@@ -53,31 +52,26 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 			// Update cursor with actual timestamp from database
 			originalTime := filter.Cursor.CapturedAt
 			filter.Cursor.CapturedAt = actualMedia[0].CapturedAt
-			debug.BusinessLogic("cursor timestamp corrected").
+			logger.Step("cursor timestamp corrected").
 				WithString("cursor_id", filter.Cursor.ID).
 				WithParam("original_time", originalTime).
 				WithParam("corrected_time", filter.Cursor.CapturedAt).
 				Log()
 		} else {
-			debug.BusinessLogic("cursor media not found").
+			logger.Step("cursor media not found").
 				WithString("cursor_id", filter.Cursor.ID).
 				Log()
 		}
 	}
 
 	// Database query with debug timing
-	tracer.Step("database_query").
+	logger.Step("database_query").
 		WithString("query_type", "list_media").
 		WithInt("filters", len(filter.QueriesFn())).
 		Log()
 
-	start := time.Now()
 	media, err := m.dt.QueryMedia(ctx, filter.QueriesFn()...)
-	queryDuration := time.Since(start)
-
 	// Debug performance info (not error logging)
-	debug.DatabaseQuery("query_media", len(filter.QueriesFn()), queryDuration, len(media) > 0)
-
 	if err != nil {
 		// Return ServiceError (handlers will log the error)
 		return nil, nil, NewDatabaseWriteError(ctx, "get_media", err).
@@ -86,7 +80,7 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 
 	// Reverse results for backward direction to maintain DESC timeline order
 	if filter.Direction == "backward" {
-		tracer.Step("reverse_results").
+		logger.Step("reverse_results").
 			WithInt("total_items", len(media)).
 			WithString("direction", "backward").
 			Log()
@@ -94,7 +88,7 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 		// Reverse the slice to maintain chronological order (newest first)
 		slices.Reverse(media)
 
-		debug.BusinessLogic("reversed results for backward navigation").
+		logger.Step("reversed results for backward navigation").
 			WithInt("total_items", len(media)).
 			Log()
 	}
@@ -102,7 +96,7 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 	// Apply date filtering in-memory for now
 	// TODO: Move this to database-level filtering
 	if filter.StartDate != nil || filter.EndDate != nil {
-		tracer.Step("date_filtering").
+		logger.Step("date_filtering").
 			WithInt("total_before_filter", len(media)).
 			WithBool("has_start_date", filter.StartDate != nil).
 			WithBool("has_end_date", filter.EndDate != nil).
@@ -119,7 +113,7 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 			filteredMedia = append(filteredMedia, item)
 		}
 
-		debug.BusinessLogic("applied date filtering").
+		logger.Step("applied date filtering").
 			WithInt("total_before", len(media)).
 			WithInt("total_after", len(filteredMedia)).
 			WithInt("filtered_out", len(media)-len(filteredMedia)).
@@ -140,7 +134,7 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 		media = media[:originalLimit]
 	}
 
-	tracer.Success().
+	logger.Success().
 		WithInt(MediaReturned, len(media)).
 		WithBool(DateFiltered, filter.StartDate != nil || filter.EndDate != nil).
 		WithBool("has_next_cursor", nextCursor != nil).
@@ -151,8 +145,7 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 
 // GetMediaByID retrieves a specific media item by its ID
 func (m *MediaService) GetMediaByID(ctx context.Context, id string) (*entity.Media, error) {
-	debug := m.debug.WithContext(ctx)
-	tracer := debug.StartOperation("get_media_by_id").
+	logger := m.logger.WithContext(ctx).Debug("get_media_by_id").
 		WithString(MediaID, id).
 		Build()
 
@@ -163,18 +156,13 @@ func (m *MediaService) GetMediaByID(ctx context.Context, id string) (*entity.Med
 	}
 
 	// Database query with debug timing
-	tracer.Step("database_query").
+	logger.Step("database_query").
 		WithString("query_type", "single_media").
 		WithInt("filters", 2).
 		Log()
 
-	start := time.Now()
 	media, err := m.dt.QueryMedia(ctx, pg.FilterByMediaId(id), pg.Limit(1))
-	queryDuration := time.Since(start)
-
 	// Debug performance info (not error logging)
-	debug.DatabaseQuery("query_media", 2, queryDuration, len(media) > 0)
-
 	if err != nil {
 		// Return ServiceError (handlers will log the error)
 		return nil, NewDatabaseWriteError(ctx, "get_media", err).
@@ -190,13 +178,13 @@ func (m *MediaService) GetMediaByID(ctx context.Context, id string) (*entity.Med
 	processedMedia := media[0]
 
 	// Populate the content function using the filesystem datastore
-	tracer.Step("content_function_setup").
+	logger.Step("content_function_setup").
 		WithString(Filepath, processedMedia.Filepath()).
 		Log()
 
 	processedMedia.Content = m.fs.Read(ctx, processedMedia.Filepath())
 
-	tracer.Success().
+	logger.Success().
 		WithString(MediaID, processedMedia.ID).
 		WithString(Filename, processedMedia.Filename).
 		WithString(Filepath, processedMedia.Filepath()).
@@ -207,8 +195,7 @@ func (m *MediaService) GetMediaByID(ctx context.Context, id string) (*entity.Med
 
 // WriteMedia creates or updates a media item and writes its content to disk
 func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*entity.Media, error) {
-	debug := m.debug.WithContext(ctx)
-	tracer := debug.StartOperation("write_media").
+	logger := m.logger.WithContext(ctx).Debug("write_media").
 		WithString(MediaID, media.ID).
 		WithString(Filename, media.Filename).
 		WithString(AlbumID, media.Album.ID).
@@ -216,7 +203,7 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 		Build()
 
 	// Check if the media already exists
-	tracer.Step("existence_check").
+	logger.Step("existence_check").
 		WithString("checking", "media_exists").
 		Log()
 
@@ -224,7 +211,7 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 	if err != nil {
 		switch err.(type) {
 		case *NotFoundError:
-			debug.BusinessLogic("media does not exist, proceeding with creation").
+			logger.Step("media does not exist, proceeding with creation").
 				WithString(MediaID, media.ID).
 				Log()
 		default:
@@ -234,11 +221,10 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 	}
 
 	// Content reading with logging
-	tracer.Step("content_reading").
+	logger.Step("content_reading").
 		WithString(Filename, media.Filename).
 		Log()
 
-	start := time.Now()
 	content, err := media.Content()
 	if err != nil {
 		return nil, NewMediaProcessingError(ctx, "read_content", media.Filename, err)
@@ -246,15 +232,12 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 
 	// Read all content into memory to compute hash and write to disk
 	contentBytes, err := io.ReadAll(content)
-	contentReadDuration := time.Since(start)
 	if err != nil {
 		return nil, NewMediaProcessingError(ctx, "read_content_bytes", media.Filename, err)
 	}
 
-	debug.FileOperation("read_content", media.Filename, int64(len(contentBytes)), contentReadDuration)
-
 	// Compute SHA256 hash
-	tracer.Step("hash_computation").
+	logger.Step("hash_computation").
 		WithInt("content_size", len(contentBytes)).
 		Log()
 
@@ -262,11 +245,7 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 	hashStr := fmt.Sprintf("%x", hash)
 
 	if oldMedia != nil && hashStr == oldMedia.Hash {
-		debug.BusinessLogic("media content unchanged, skipping processing").
-			WithString(Hash, hashStr).
-			WithString(Filename, media.Filename).
-			Log()
-		tracer.Success().
+		logger.Success().
 			WithString(MediaID, oldMedia.ID).
 			WithString(Filename, oldMedia.Filename).
 			WithString(Hash, hashStr).
@@ -277,22 +256,21 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 	}
 
 	// Transaction with detailed step logging
-	tracer.Step("transaction_start").
+	logger.Step("transaction_start").
 		WithInt("content_size", len(contentBytes)).
 		WithString(Hash, hashStr).
 		WithBool("is_update", oldMedia != nil).
 		Log()
 
-	debug.Transaction("starting").
+	logger.Step("starting").
 		WithString("operation", "write_media").
 		Log()
 
-	txStart := time.Now()
 	err = m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
 		media.Hash = hashStr
 
 		// Step 1: Initialize processing service
-		tracer.Step("processing_init").
+		logger.Step("processing_init").
 			WithString(Filename, media.Filename).
 			Log()
 
@@ -302,7 +280,7 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 		}
 
 		// Step 2: Process media (thumbnail + EXIF)
-		tracer.Step("media_processing").
+		logger.Step("media_processing").
 			WithString(Filename, media.Filename).
 			WithInt("content_size", len(contentBytes)).
 			Log()
@@ -314,7 +292,8 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 			return NewMediaProcessingError(ctx, "generate_thumbnail", media.Filename, err)
 		}
 
-		debug.Processing("media_processing", media.Filename).
+		logger.Step("media_processing").
+			WithString("filename", media.Filename).
 			WithInt("content_size", len(contentBytes)).
 			WithInt("exif_fields", len(exif)).
 			WithParam("duration", processingDuration).
@@ -328,65 +307,60 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 		media.Thumbnail = thumbnail
 		media.Exif = exif
 
-		debug.Processing("thumbnail_generated", media.Filename).
+		logger.Step("thumbnail_generated").
+			WithString("filename", media.Filename).
 			WithInt("thumbnail_size", len(thumbnail)).
 			WithInt("exif_fields", len(exif)).
 			Log()
 
 		// Step 4: Extract capture time
 		if captureAt, err := media.GetCapturedTime(); err != nil {
-			debug.Processing("capture_time_extraction_failed", media.Filename).
+			logger.Step("capture_time_extraction_failed").
+				WithString("filename", media.Filename).
 				WithString("error", err.Error()).
 				Log()
 		} else {
 			media.CapturedAt = captureAt
-			debug.Processing("capture_time_extracted", media.Filename).
+			logger.Step("capture_time_extracted").
+				WithString("filename", media.Filename).
 				WithParam(CapturedAt, captureAt).
 				Log()
 		}
 
 		// Step 5: Write file to disk
-		tracer.Step("filesystem_write").
+		logger.Step("filesystem_write").
 			WithString(Filepath, media.Filepath()).
 			Log()
 
-		fsStart := time.Now()
 		if err := m.fs.Write(ctx, media.Filepath(), bytes.NewReader(contentBytes)); err != nil {
 			return NewFilesystemError(ctx, "write_media", "filesystem_write", media.Filepath(), err)
 		}
-		debug.FileOperation("write_file", media.Filepath(), int64(len(contentBytes)), time.Since(fsStart))
 
 		// Step 6: Write to database
-		tracer.Step("database_write").
+		logger.Step("database_write").
 			WithString("table", "media").
 			Log()
 
-		dbStart := time.Now()
 		if err := writer.WriteMedia(ctx, media); err != nil {
 			return NewDatabaseWriteError(ctx, "write_media", err).
 				WithMediaID(media.ID).
 				WithFilename(media.Filename)
 		}
-		tracer.Performance("database_write", time.Since(dbStart))
 
 		return nil
 	})
-	transactionDuration := time.Since(txStart)
-
-	tracer.Performance("transaction_duration", transactionDuration)
-
 	if err != nil {
 		return nil, NewInternalError(ctx, "write_media", "transaction", err).
 			WithMediaID(media.ID).
 			WithFilename(media.Filename)
 	}
 
-	debug.Transaction("completed").
+	logger.Step("completed").
 		WithString("operation", "write_media").
 		WithBool("success", true).
 		Log()
 
-	tracer.Success().
+	logger.Success().
 		WithString(MediaID, media.ID).
 		WithString(Filename, media.Filename).
 		WithString(Hash, hashStr).
@@ -401,8 +375,7 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 
 // UpdateMedia updates an existing media item using an entity.Media
 func (m *MediaService) UpdateMedia(ctx context.Context, media entity.Media) (*entity.Media, error) {
-	debug := m.debug.WithContext(ctx)
-	tracer := debug.StartOperation("update_media").
+	logger := m.logger.WithContext(ctx).Debug("update_media").
 		WithString(MediaID, media.ID).
 		WithString(Filename, media.Filename).
 		Build()
@@ -410,40 +383,35 @@ func (m *MediaService) UpdateMedia(ctx context.Context, media entity.Media) (*en
 	// Clear the content function to avoid writing file content during update
 	media.Content = nil
 
-	debug.BusinessLogic("metadata-only update, content function cleared").
+	logger.Step("metadata-only update, content function cleared").
 		WithString(MediaID, media.ID).
 		WithString(Filename, media.Filename).
 		Log()
 
 	// Database transaction with debug timing
-	tracer.Step("database_update").
+	logger.Step("database_update").
 		WithString("table", "media").
 		Log()
 
-	debug.Transaction("starting").
+	logger.Step("starting").
 		WithString("operation", "update_media").
 		Log()
 
-	start := time.Now()
 	err := m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
 		return writer.WriteMedia(ctx, media)
 	})
-	transactionDuration := time.Since(start)
-
-	tracer.Performance("transaction_duration", transactionDuration)
-
 	if err != nil {
 		return nil, NewDatabaseWriteError(ctx, "update_media", err).
 			WithMediaID(media.ID).
 			WithFilename(media.Filename)
 	}
 
-	debug.Transaction("completed").
+	logger.Step("completed").
 		WithString("operation", "update_media").
 		WithBool("success", true).
 		Log()
 
-	tracer.Success().
+	logger.Success().
 		WithString(MediaID, media.ID).
 		WithString(Filename, media.Filename).
 		Log()
@@ -453,13 +421,12 @@ func (m *MediaService) UpdateMedia(ctx context.Context, media entity.Media) (*en
 
 // DeleteMedia deletes a media item by ID
 func (m *MediaService) DeleteMedia(ctx context.Context, id string) error {
-	debug := m.debug.WithContext(ctx)
-	tracer := debug.StartOperation("delete_media").
+	logger := m.logger.WithContext(ctx).Debug("delete_media").
 		WithString(MediaID, id).
 		Build()
 
 	// Check if media exists
-	tracer.Step("validate_exists").
+	logger.Step("validate_exists").
 		WithString(MediaID, id).
 		Log()
 
@@ -469,66 +436,57 @@ func (m *MediaService) DeleteMedia(ctx context.Context, id string) error {
 			WithMediaID(id)
 	}
 
-	debug.BusinessLogic("media found, proceeding with deletion").
+	logger.Step("media found, proceeding with deletion").
 		WithString(MediaID, media.ID).
 		WithString(Filename, media.Filename).
 		WithString(Filepath, media.Filepath()).
 		Log()
 
 	// Delete the media from the datastore using a write transaction
-	tracer.Step("transaction_start").
+	logger.Step("transaction_start").
 		WithString(Filepath, media.Filepath()).
 		WithParam("operations", []string{"filesystem_delete", "database_delete"}).
 		Log()
 
-	debug.Transaction("starting").
+	logger.Step("starting").
 		WithString("operation", "delete_media").
 		Log()
 
-	start := time.Now()
 	err = m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
 		// Remove the file from album folders
-		tracer.Step("filesystem_delete").
+		logger.Step("filesystem_delete").
 			WithString(Filepath, media.Filepath()).
 			Log()
 
-		fsStart := time.Now()
 		if err := m.fs.DeleteMedia(ctx, media.Filepath()); err != nil {
 			return NewFilesystemError(ctx, "delete_media", "filesystem_delete", media.Filepath(), err)
 		}
-		debug.FileOperation("delete_media", media.Filepath(), 0, time.Since(fsStart))
 
 		// Delete the media from the database
-		tracer.Step("database_delete").
+		logger.Step("database_delete").
 			WithString("table", "media").
 			WithString(MediaID, id).
 			Log()
 
-		dbStart := time.Now()
 		if err := writer.DeleteMedia(ctx, id); err != nil {
 			return NewDatabaseWriteError(ctx, "delete_media", err).
 				WithMediaID(id)
 		}
-		tracer.Performance("database_delete", time.Since(dbStart))
 
 		return nil
 	})
-	transactionDuration := time.Since(start)
-
-	tracer.Performance("transaction_duration", transactionDuration)
-
 	if err != nil {
 		return NewInternalError(ctx, "delete_media", "transaction", err).
 			WithMediaID(id).
 			WithFilepath(media.Filepath())
 	}
 
-	debug.Transaction("completed").
+	logger.Step("completed").
 		WithString("operation", "delete_media").
 		WithBool("success", true).
 		Log()
 
-	tracer.Success().
+	logger.Success().
 		WithString(MediaID, id).
 		WithString(Filepath, media.Filepath()).
 		WithBool("filesystem_deleted", true).
