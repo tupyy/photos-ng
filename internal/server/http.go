@@ -2,16 +2,18 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
 	"time"
 
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/server/middlewares"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/server/middlewares"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
 )
 
 const (
@@ -84,6 +86,9 @@ func NewHttpServer(cfg *HttpServerConfig) *HttpServer {
 // Run starts the HTTP server and handles graceful shutdown when the context is cancelled.
 func (r *HttpServer) Start(ctx context.Context) error {
 	if err := r.srv.ListenAndServe(); err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
 		zap.S().Named("http").Errorw("failed to start server", "error", err)
 		return err
 	}
@@ -91,9 +96,7 @@ func (r *HttpServer) Start(ctx context.Context) error {
 	return nil
 }
 
-func (r *HttpServer) Stop(ctx context.Context, doneCh chan any) {
-	if err := r.srv.Shutdown(ctx); err != nil {
-		zap.S().Errorw("server shutdown", "error", err)
-	}
-	doneCh <- struct{}{}
+func (r *HttpServer) Stop(ctx context.Context) error {
+	zap.S().Named("http").Info("server shutting down...")
+	return r.srv.Shutdown(ctx)
 }

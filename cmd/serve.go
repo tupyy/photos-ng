@@ -3,7 +3,8 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"sync"
+	"os"
+	"os/signal"
 	"time"
 
 	httpv1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
@@ -31,7 +32,7 @@ const (
 
 type Server interface {
 	Start(context.Context) error
-	Stop(context.Context, chan any)
+	Stop(context.Context) error
 }
 
 // NewServeCommand creates a new cobra command for starting both HTTP and gRPC servers.
@@ -67,13 +68,18 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 			httpHandler := v1http.NewHandler(dt, fs.NewFsDatastore(config.DataRootFolder))
 			grpcHandler := v1grpc.NewHandler(dt, fs.NewFsDatastore(config.DataRootFolder))
 
-			var wg sync.WaitGroup
 			errCh := make(chan error, 2)
+			servers := make([]Server, 0, 2)
+			stopServers := func() {
+				for _, s := range servers {
+					if err := s.Stop(context.Background()); err != nil {
+						zap.S().Error(err)
+					}
+				}
+			}
 
-			// Start HTTP server
-			wg.Add(1)
+			doneCh := make(chan any)
 			go func() {
-				defer wg.Done()
 				zap.S().Infof("Starting HTTP server on port %d", config.HttpPort)
 				cfg := server.NewHttpServerConfigWithOptionsAndDefaults(
 					server.WithGraceTimeout(1*time.Second),
@@ -86,15 +92,16 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 					server.WithStaticsFolder(config.StaticsFolder),
 				)
 
-				if err := server.NewHttpServer(cfg).Start(ctx); err != nil {
+				srv := server.NewHttpServer(cfg)
+				servers = append(servers, srv)
+
+				if err := srv.Start(ctx); err != nil {
 					errCh <- fmt.Errorf("HTTP server error: %w", err)
 				}
+				doneCh <- struct{}{}
 			}()
 
-			// Start gRPC server
-			wg.Add(1)
 			go func() {
-				defer wg.Done()
 				cfg := server.NewGrpcServerConfigWithOptionsAndDefaults(
 					server.WithGrpcHandler(grpcHandler),
 					server.WithGrpcPort(config.GrpcPort),
@@ -104,28 +111,41 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 				if err != nil {
 					errCh <- fmt.Errorf("GRPC server error: %w", err)
 				}
+
+				servers = append(servers, srv)
+
+				zap.S().Infof("starting gRPC server on port %d", config.GrpcPort)
+
 				if err := srv.Start(ctx); err != nil {
 					errCh <- fmt.Errorf("GRPC server error: %w", err)
 				}
-				zap.S().Infof("Starting gRPC server on port %d", config.GrpcPort)
+				doneCh <- struct{}{}
 			}()
 
-			go func() {
-				wg.Wait()
-				close(errCh)
-			}()
-
-			select {
-			case err := <-errCh:
-				if err != nil {
-					cancel()
-					return err
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			go func(ctx context.Context) {
+				select {
+				case <-ctx.Done():
+					break
+				case <-c:
+					break
 				}
-			case <-ctx.Done():
-				zap.S().Info("Servers shutting down...")
+				stopServers()
+			}(ctx)
+
+			<-doneCh
+
+			cancel()
+			close(errCh)
+
+			// drain err channel if any
+			for err := range errCh {
+				zap.S().Error(err)
 			}
 
 			dt.Close()
+			zap.S().Info("Servers shutting down...")
 
 			return nil
 		},
