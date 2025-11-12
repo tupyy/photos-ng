@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -132,14 +131,7 @@ func (o *OIDCAuthenticator) Authenticate(ctx context.Context, token string) (*en
 }
 
 func getWellknownData(wellknownURL string) (map[string]any, error) {
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
-	resp, err := client.Get(wellknownURL)
+	resp, err := http.Get(wellknownURL)
 	if err != nil {
 		return nil, err
 	}
