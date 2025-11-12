@@ -12,8 +12,9 @@ type Config struct {
 	StaticsFolder  string `debugmap:"visible"`
 
 	// Log
-	LogFormat string `debugmap:"visible"`
-	LogLevel  string `debugmap:"visible"`
+	LogFormat      string         `debugmap:"visible"`
+	LogLevel       string         `debugmap:"visible"`
+	Authentication Authentication `debugmap:"visible"`
 }
 
 //go:generate go run github.com/ecordell/optgen -output zz_generated.db_configuration.go . Database
@@ -22,4 +23,10 @@ type Database struct {
 	SSL                bool   `debugmap:"visible"`
 	MaxOpenConnections int    `debugmap:"visible" default:"10"`
 	Debug              bool   `debugmap:"visible" default:"false"`
+}
+
+//go:generate go run github.com/ecordell/optgen -output zz_generated.auth_configuration.go . Authentication
+type Authentication struct {
+	Enabled      bool   `debugmap:"visible"`
+	WellknownURL string `debugmap:"visible"`
 }

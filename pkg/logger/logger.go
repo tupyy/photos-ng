@@ -7,7 +7,8 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/config"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/context/requestid"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/context/user"
 )
 
 // SetupLogger initializes and configures a zap logger based on the provided configuration.
@@ -63,32 +64,27 @@ func New(service string) *StructuredLogger {
 	}
 }
 
-// getLogFunc returns the appropriate logging function based on the configured level
-func (l *StructuredLogger) getLogFunc() func(msg string, fields ...zap.Field) {
-	switch l.level {
-	case zapcore.DebugLevel:
-		return l.logger.Debug
-	case zapcore.InfoLevel:
-		return l.logger.Info
-	case zapcore.WarnLevel:
-		return l.logger.Warn
-	case zapcore.ErrorLevel:
-		return l.logger.Error
-	default:
-		return l.logger.Debug
-	}
-}
-
 // WithContext returns a new StructuredLogger with request context
 func (l *StructuredLogger) WithContext(ctx context.Context) *StructuredLogger {
+	fields := make([]zap.Field, 0, 2)
+
 	// Extract request ID if available
 	if requestID := requestid.FromContext(ctx); requestID != "" {
+		fields = append(fields, zap.String("request_id", requestID))
+	}
+
+	if user := user.FromContext(ctx); user != nil {
+		fields = append(fields, zap.String("username", user.Username))
+	}
+
+	if len(fields) > 0 {
 		return &StructuredLogger{
-			logger:  l.logger.With(zap.String("request_id", requestID)),
+			logger:  l.logger.With(fields...),
 			service: l.service,
 			level:   l.level,
 		}
 	}
+
 	return l
 }
 

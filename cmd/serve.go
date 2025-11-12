@@ -2,10 +2,18 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"os"
-	"os/signal"
+	"sync"
 	"time"
+
+	"github.com/ecordell/optgen/helpers"
+	"github.com/fatih/color"
+	"github.com/gin-gonic/gin"
+	"github.com/jzelinskie/cobrautil/v2"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"go.uber.org/zap"
 
 	httpv1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/config"
@@ -15,13 +23,6 @@ import (
 	v1http "git.tls.tupangiu.ro/cosmin/photos-ng/internal/handlers/v1/http"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/server"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/logger"
-	"github.com/ecordell/optgen/helpers"
-	"github.com/fatih/color"
-	"github.com/gin-gonic/gin"
-	"github.com/jzelinskie/cobrautil/v2"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	"go.uber.org/zap"
 )
 
 type ApiVersion string
@@ -32,7 +33,7 @@ const (
 
 type Server interface {
 	Start(context.Context) error
-	Stop(context.Context) error
+	Stop(context.Context, chan any)
 }
 
 // NewServeCommand creates a new cobra command for starting both HTTP and gRPC servers.
@@ -68,18 +69,13 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 			httpHandler := v1http.NewHandler(dt, fs.NewFsDatastore(config.DataRootFolder))
 			grpcHandler := v1grpc.NewHandler(dt, fs.NewFsDatastore(config.DataRootFolder))
 
+			var wg sync.WaitGroup
 			errCh := make(chan error, 2)
-			servers := make([]Server, 0, 2)
-			stopServers := func() {
-				for _, s := range servers {
-					if err := s.Stop(context.Background()); err != nil {
-						zap.S().Error(err)
-					}
-				}
-			}
 
-			doneCh := make(chan any)
+			// Start HTTP server
+			wg.Add(1)
 			go func() {
+				defer wg.Done()
 				zap.S().Infof("Starting HTTP server on port %d", config.HttpPort)
 				cfg := server.NewHttpServerConfigWithOptionsAndDefaults(
 					server.WithGraceTimeout(1*time.Second),
@@ -92,16 +88,26 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 					server.WithStaticsFolder(config.StaticsFolder),
 				)
 
-				srv := server.NewHttpServer(cfg)
-				servers = append(servers, srv)
+				if config.Authentication.Enabled {
+					cfg = cfg.WithOptions(server.WithAuthentication(server.Authentication{
+						WellknownURL: config.Authentication.WellknownURL,
+					}))
+				}
 
+				srv, err := server.NewHttpServer(cfg)
+				if err != nil {
+					errCh <- fmt.Errorf("HTTP server error: %w", err)
+					return
+				}
 				if err := srv.Start(ctx); err != nil {
 					errCh <- fmt.Errorf("HTTP server error: %w", err)
 				}
-				doneCh <- struct{}{}
 			}()
 
+			// Start gRPC server
+			wg.Add(1)
 			go func() {
+				defer wg.Done()
 				cfg := server.NewGrpcServerConfigWithOptionsAndDefaults(
 					server.WithGrpcHandler(grpcHandler),
 					server.WithGrpcPort(config.GrpcPort),
@@ -111,41 +117,28 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 				if err != nil {
 					errCh <- fmt.Errorf("GRPC server error: %w", err)
 				}
-
-				servers = append(servers, srv)
-
-				zap.S().Infof("starting gRPC server on port %d", config.GrpcPort)
-
 				if err := srv.Start(ctx); err != nil {
 					errCh <- fmt.Errorf("GRPC server error: %w", err)
 				}
-				doneCh <- struct{}{}
+				zap.S().Infof("Starting gRPC server on port %d", config.GrpcPort)
 			}()
 
-			c := make(chan os.Signal, 1)
-			signal.Notify(c, os.Interrupt)
-			go func(ctx context.Context) {
-				select {
-				case <-ctx.Done():
-					break
-				case <-c:
-					break
+			go func() {
+				wg.Wait()
+				close(errCh)
+			}()
+
+			select {
+			case err := <-errCh:
+				if err != nil {
+					cancel()
+					return err
 				}
-				stopServers()
-			}(ctx)
-
-			<-doneCh
-
-			cancel()
-			close(errCh)
-
-			// drain err channel if any
-			for err := range errCh {
-				zap.S().Error(err)
+			case <-ctx.Done():
+				zap.S().Info("Servers shutting down...")
 			}
 
 			dt.Close()
-			zap.S().Info("Servers shutting down...")
 
 			return nil
 		},
@@ -162,6 +155,12 @@ func validateConfig(config *config.Config) error {
 	if config.DataRootFolder == "" {
 		return fmt.Errorf("data root folder cannot be empty")
 	}
+
+	if config.Authentication.Enabled {
+		if config.Authentication.WellknownURL == "" {
+			return errors.New("wellknown_url cannot be empty")
+		}
+	}
 	return nil
 }
 
@@ -173,6 +172,9 @@ func registerFlags(cmd *cobra.Command, config *config.Config) {
 
 	serverFlagSet := nfs.FlagSet(color.New(color.FgCyan, color.Bold).Sprint("server"))
 	registerServerFlags(serverFlagSet, config)
+
+	authenticationFlagSet := nfs.FlagSet(color.New(color.FgBlue, color.Bold).Sprint("authentication"))
+	registerAuthenticationFlags(authenticationFlagSet, config)
 
 	nfs.AddFlagSets(cmd)
 }
@@ -189,4 +191,9 @@ func registerServerFlags(flagSet *pflag.FlagSet, config *config.Config) {
 	flagSet.StringVar(&config.Mode, "server-mode", config.Mode, "server mod: dev or prod")
 	flagSet.StringVar(&config.StaticsFolder, "statics-folder", config.StaticsFolder, "path to statics")
 	flagSet.StringVar(&config.DataRootFolder, "data-root-folder", config.DataRootFolder, "path to the root folder container media")
+}
+
+func registerAuthenticationFlags(flagSet *pflag.FlagSet, config *config.Config) {
+	flagSet.BoolVar(&config.Authentication.Enabled, "authentication-enabled", config.Authentication.Enabled, "enable OIDC authentication (default false)")
+	flagSet.StringVar(&config.Authentication.WellknownURL, "authentication-wellknown-endpoint", config.Authentication.WellknownURL, "OIDC provider wellknown endpoing address")
 }

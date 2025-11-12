@@ -37,6 +37,11 @@ func (r *HttpServerConfig) ToOption() HttpServerConfigOption {
 		to.GraceTimeout = r.GraceTimeout
 		to.Port = r.Port
 		to.RegisterHandlersFn = r.RegisterHandlersFn
+		to.GinMode = r.GinMode
+		to.ApiVersion = r.ApiVersion
+		to.Mode = r.Mode
+		to.StaticsFolder = r.StaticsFolder
+		to.Authentication = r.Authentication
 	}
 }
 
@@ -97,5 +102,11 @@ func WithMode(mode string) HttpServerConfigOption {
 func WithStaticsFolder(staticsFolder string) HttpServerConfigOption {
 	return func(r *HttpServerConfig) {
 		r.StaticsFolder = staticsFolder
+	}
+}
+
+func WithAuthentication(authentication Authentication) HttpServerConfigOption {
+	return func(r *HttpServerConfig) {
+		r.Authentication = &authentication
 	}
 }

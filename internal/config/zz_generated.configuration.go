@@ -42,6 +42,7 @@ func (c *Config) ToOption() ConfigOption {
 		to.StaticsFolder = c.StaticsFolder
 		to.LogFormat = c.LogFormat
 		to.LogLevel = c.LogLevel
+		to.Authentication = c.Authentication
 	}
 }
 
@@ -57,6 +58,7 @@ func (c *Config) DebugMap() map[string]any {
 	debugMap["StaticsFolder"] = helpers.DebugValue(c.StaticsFolder, false)
 	debugMap["LogFormat"] = helpers.DebugValue(c.LogFormat, false)
 	debugMap["LogLevel"] = helpers.DebugValue(c.LogLevel, false)
+	debugMap["Authentication"] = helpers.DebugValue(c.Authentication, false)
 	return debugMap
 }
 
@@ -136,5 +138,12 @@ func WithLogFormat(logFormat string) ConfigOption {
 func WithLogLevel(logLevel string) ConfigOption {
 	return func(c *Config) {
 		c.LogLevel = logLevel
+	}
+}
+
+// WithAuthentication returns an option that can set Authentication on a Config
+func WithAuthentication(authentication Authentication) ConfigOption {
+	return func(c *Config) {
+		c.Authentication = authentication
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/context/requestid"
 	"github.com/gin-gonic/gin"
 )
 

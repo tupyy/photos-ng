@@ -5,7 +5,7 @@ import (
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/context/requestid"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -25,7 +25,6 @@ func getHTTPStatusFromError(err error) int {
 		return http.StatusInternalServerError
 	}
 }
-
 
 // errorResponse creates a standardized error response with requestId included in details
 func errorResponse(c *gin.Context, message string) v1.Error {
@@ -76,5 +75,3 @@ func logError(requestID, message string, err error, additionalFields ...any) {
 
 	zap.S().Errorw(message, fields...)
 }
-
-

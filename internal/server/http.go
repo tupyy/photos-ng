@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -12,8 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/auth"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/server/middlewares"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/context/requestid"
 )
 
 const (
@@ -29,6 +29,11 @@ type HttpServerConfig struct {
 	ApiVersion         string
 	Mode               string
 	StaticsFolder      string
+	Authentication     *Authentication
+}
+
+type Authentication struct {
+	WellknownURL string
 }
 
 type HttpServer struct {
@@ -38,7 +43,7 @@ type HttpServer struct {
 }
 
 // NewHttpServer creates a new runnable server instance with the provided configuration.
-func NewHttpServer(cfg *HttpServerConfig) *HttpServer {
+func NewHttpServer(cfg *HttpServerConfig) (*HttpServer, error) {
 	gin.SetMode(cfg.GinMode)
 	engine := gin.New()
 
@@ -54,7 +59,7 @@ func NewHttpServer(cfg *HttpServerConfig) *HttpServer {
 			if c.Request.URL.Path[:4] == "/api" {
 				requestID := requestid.FromGin(c)
 				c.JSON(404, gin.H{
-					"error": "API endpoint not found",
+					"error":      "API endpoint not found",
 					"request_id": requestID,
 				})
 				return
@@ -66,12 +71,22 @@ func NewHttpServer(cfg *HttpServerConfig) *HttpServer {
 	// for each api version register handlers
 	for apiVersion, registerHandlersFn := range cfg.RegisterHandlersFn {
 		router := engine.Group(apiVersion)
+
+		if cfg.Authentication != nil {
+			authenticator, err := auth.NewAuthenticator(cfg.Authentication.WellknownURL)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create authenticator: %w", err)
+			}
+
+			router.Use(authenticator.Middleware())
+		}
 		router.Use(
 			middlewares.Headers(),
 			middlewares.RequestID(),
 			middlewares.Logger(),
 			ginzap.RecoveryWithZap(zap.S().Desugar(), true),
 		)
+
 		registerHandlersFn(router)
 	}
 
@@ -80,15 +95,12 @@ func NewHttpServer(cfg *HttpServerConfig) *HttpServer {
 		Handler: engine,
 	}
 
-	return &HttpServer{srv: srv, cfg: cfg}
+	return &HttpServer{srv: srv, cfg: cfg}, nil
 }
 
-// Run starts the HTTP server and handles graceful shutdown when the context is cancelled.
+// Start starts the HTTP server and handles graceful shutdown when the context is cancelled.
 func (r *HttpServer) Start(ctx context.Context) error {
 	if err := r.srv.ListenAndServe(); err != nil {
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
-		}
 		zap.S().Named("http").Errorw("failed to start server", "error", err)
 		return err
 	}
@@ -96,7 +108,9 @@ func (r *HttpServer) Start(ctx context.Context) error {
 	return nil
 }
 
-func (r *HttpServer) Stop(ctx context.Context) error {
-	zap.S().Named("http").Info("server shutting down...")
-	return r.srv.Shutdown(ctx)
+func (r *HttpServer) Stop(ctx context.Context, doneCh chan any) {
+	if err := r.srv.Shutdown(ctx); err != nil {
+		zap.S().Errorw("server shutdown", "error", err)
+	}
+	doneCh <- struct{}{}
 }

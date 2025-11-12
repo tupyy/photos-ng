@@ -6,6 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/context/user"
 )
 
 // Logger returns a gin middleware that logs HTTP requests using zap logger.
@@ -17,6 +19,7 @@ func Logger() gin.HandlerFunc {
 		path := c.Request.URL.Path
 		query := c.Request.URL.RawQuery
 		requestID := GetRequestIDFromGin(c)
+		usr := user.FromGin(c)
 
 		// Log request start with requestId and current fields (except status)
 		startFields := []zapcore.Field{
@@ -28,6 +31,11 @@ func Logger() gin.HandlerFunc {
 			zap.String("user-agent", c.Request.UserAgent()),
 			zap.String("time", start.Format(time.RFC3339)),
 		}
+
+		if usr != nil {
+			startFields = append(startFields, zap.String("username", usr.Username))
+		}
+
 		zap.S().Named("http").Desugar().Info("Request started", startFields...)
 
 		c.Next()
@@ -46,6 +54,10 @@ func Logger() gin.HandlerFunc {
 			zap.String("user-agent", c.Request.UserAgent()),
 			zap.Duration("latency", latency),
 			zap.String("time", end.Format(time.RFC3339)),
+		}
+
+		if usr != nil {
+			endFields = append(endFields, zap.String("username", usr.Username))
 		}
 
 		if len(c.Errors) > 0 {

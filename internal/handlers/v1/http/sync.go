@@ -8,7 +8,7 @@ import (
 
 	v1 "git.tls.tupangiu.ro/cosmin/photos-ng/api/v1/http"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/requestid"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/context/requestid"
 )
 
 // Note: Sync jobs are now managed by the SyncService which uses the job scheduler
@@ -91,7 +91,6 @@ func (s *Handler) StopSyncJob(c *gin.Context, id string) {
 	}
 	c.JSON(http.StatusOK, response)
 }
-
 
 // ActionAllSyncJobs performs action on all sync jobs
 func (s *Handler) ActionAllSyncJobs(c *gin.Context) {
