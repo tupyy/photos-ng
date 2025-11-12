@@ -58,8 +58,8 @@ func (g *GrpcServer) Start(ctx context.Context) error {
 	return nil
 }
 
-func (g *GrpcServer) Stop(ctx context.Context) error {
-	zap.S().Named("grpc").Info("server shutting down...")
+func (g *GrpcServer) Stop(ctx context.Context, doneCh chan any) {
+	zap.S().Named("grpc").Info("gRPC server shutting down...")
 	g.srv.GracefulStop()
-	return nil
+	doneCh <- struct{}{}
 }
