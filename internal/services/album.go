@@ -11,7 +11,7 @@ import (
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/logger"
 )
 
-// AlbumService provides business logic for album operations
+// AlbumService provides business logic for album operations without authorization
 type AlbumService struct {
 	dt     *pg.Datastore
 	fs     *fs.Datastore
@@ -46,48 +46,11 @@ func (a *AlbumService) List(ctx context.Context, opts *ListOptions) ([]entity.Al
 			AtStep("query_albums")
 	}
 
-	// Apply pagination at the application level
-	logger.Step("pagination").
-		WithInt("total_albums", len(allAlbums)).
-		WithInt("start", opts.Offset).
-		WithInt("end", opts.Offset+opts.Limit).
-		Log()
-
-	startIdx := opts.Offset
-	endIdx := opts.Offset + opts.Limit
-
-	// Handle bounds
-	if startIdx >= len(allAlbums) {
-		logger.Step("pagination out of bounds, returning empty result").
-			WithInt("start_index", startIdx).
-			WithInt("total_albums", len(allAlbums)).
-			Log()
-		logger.Success().
-			WithInt(AlbumsReturned, 0).
-			WithInt(TotalAlbums, len(allAlbums)).
-			Log()
-		return []entity.Album{}, nil
-	}
-	if endIdx > len(allAlbums) || opts.Limit <= 0 {
-		endIdx = len(allAlbums)
-		logger.Step("pagination end adjusted to total albums").
-			WithInt("original_end", opts.Offset+opts.Limit).
-			WithInt("adjusted_end", endIdx).
-			WithInt("total_albums", len(allAlbums)).
-			Log()
-	}
-
-	// Return the paginated slice
-	paginatedAlbums := allAlbums[startIdx:endIdx]
-
 	logger.Success().
-		WithInt(AlbumsReturned, len(paginatedAlbums)).
 		WithInt(TotalAlbums, len(allAlbums)).
-		WithInt(StartIndex, startIdx).
-		WithInt(EndIndex, endIdx).
 		Log()
 
-	return paginatedAlbums, nil
+	return allAlbums, nil
 }
 
 func (a *AlbumService) Count(ctx context.Context, hasParent bool) (int, error) {
@@ -146,7 +109,6 @@ func (a *AlbumService) Get(ctx context.Context, id string) (*entity.Album, error
 	return album, nil
 }
 
-// CreateAlbum creates a new album using an entity.Album
 func (a *AlbumService) Create(ctx context.Context, album entity.Album) (*entity.Album, error) {
 	logger := a.logger.WithContext(ctx).Debug("create_album").
 		WithString(AlbumID, album.ID).
@@ -158,20 +120,18 @@ func (a *AlbumService) Create(ctx context.Context, album entity.Album) (*entity.
 		WithString("checking", "album_exists").
 		Log()
 
-	isAlbumExists := true
-	if _, err := a.Get(ctx, album.ID); err != nil {
-		switch err.(type) {
-		case *NotFoundError:
-			isAlbumExists = false
-			logger.Step("album does not exist, proceeding with creation").
-				WithString(AlbumID, album.ID).
-				Log()
-		default:
-			return nil, NewInternalError(ctx, "create_album", "check_album_exists", err).
-				WithAlbumID(album.ID)
-		}
-	} else {
+	_, err := a.Get(ctx, album.ID)
+	if err == nil {
 		return nil, NewAlbumExistsError(ctx, album.ID, album.Path)
+	}
+	switch err.(type) {
+	case *NotFoundError:
+		logger.Step("album does not exist, proceeding with creation").
+			WithString(AlbumID, album.ID).
+			Log()
+	default:
+		return nil, NewInternalError(ctx, "create_album", "check_album_exists", err).
+			WithAlbumID(album.ID)
 	}
 
 	if album.ParentId != nil {
@@ -190,15 +150,8 @@ func (a *AlbumService) Create(ctx context.Context, album entity.Album) (*entity.
 			}
 		}
 
-		// Path computation business logic
-		originalPath := album.Path
 		if !strings.HasPrefix(album.Path, parent.Path+"/") && album.Path != parent.Path {
 			album.Path = path.Join(parent.Path, album.Path)
-			logger.Step("album path computed for parent relationship").
-				WithString("original_path", originalPath).
-				WithString("computed_path", album.Path).
-				WithString("parent_path", parent.Path).
-				Log()
 		}
 		album.ID = entity.GenerateId(album.Path)
 	}
@@ -207,14 +160,13 @@ func (a *AlbumService) Create(ctx context.Context, album entity.Album) (*entity.
 	logger.Step("transaction_start").
 		WithString("final_album_id", album.ID).
 		WithString("final_album_path", album.Path).
-		WithBool("is_new_album", !isAlbumExists).
 		Log()
 
 	logger.Step("starting").
 		WithString("operation", "create_album").
 		Log()
 
-	err := a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
+	err = a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
 		// Write the album to database
 		logger.Step("database_write").
 			WithString("table", "albums").
@@ -227,14 +179,12 @@ func (a *AlbumService) Create(ctx context.Context, album entity.Album) (*entity.
 		}
 
 		// If it's a new album, create the folder on disk
-		if !isAlbumExists {
-			logger.Step("filesystem_create").
-				WithString("folder_path", album.Path).
-				Log()
+		logger.Step("filesystem_create").
+			WithString("folder_path", album.Path).
+			Log()
 
-			if err := a.fs.CreateFolder(ctx, album.Path); err != nil {
-				return NewFilesystemError(ctx, "create_album", "filesystem_create", album.Path, err)
-			}
+		if err := a.fs.CreateFolder(ctx, album.Path); err != nil {
+			return NewFilesystemError(ctx, "create_album", "filesystem_create", album.Path, err)
 		}
 
 		return nil
@@ -245,21 +195,14 @@ func (a *AlbumService) Create(ctx context.Context, album entity.Album) (*entity.
 			WithAlbumPath(album.Path)
 	}
 
-	logger.Step("completed").
-		WithString("operation", "create_album").
-		WithBool("success", true).
-		Log()
-
 	logger.Success().
 		WithString(AlbumID, album.ID).
 		WithString(AlbumPath, album.Path).
-		WithBool(WasExisting, isAlbumExists).
 		Log()
 
 	return &album, nil
 }
 
-// UpdateAlbum updates an existing album
 func (a *AlbumService) Update(ctx context.Context, album entity.Album) (*entity.Album, error) {
 	logger := a.logger.WithContext(ctx).Debug("update_album").
 		WithString(AlbumID, album.ID).
@@ -267,15 +210,9 @@ func (a *AlbumService) Update(ctx context.Context, album entity.Album) (*entity.
 		WithStringPtr("thumbnail", album.Thumbnail).
 		Build()
 
-	// Validate album exists
-	logger.Step("validate_exists").
-		WithString(AlbumID, album.ID).
-		Log()
-
 	existingAlbum, err := a.Get(ctx, album.ID)
 	if err != nil {
-		return nil, NewInternalError(ctx, "update_album", "validate_exists", err).
-			WithAlbumID(album.ID)
+		return nil, err
 	}
 
 	logger.Step("applying updates to existing album").
@@ -288,9 +225,7 @@ func (a *AlbumService) Update(ctx context.Context, album entity.Album) (*entity.
 
 	// if thumbnail is present, check if the media belongs to the album
 	if album.Thumbnail != nil {
-		logger.Step("validate_thumbnail").
-			WithString("thumbnail_id", *album.Thumbnail).
-			Log()
+		logger.Step("albums has thumbnail. check if media is present in db").WithString("thumbnail_id", *album.Thumbnail).Log()
 
 		media, err := a.dt.QueryMedia(ctx, pg.FilterByMediaId(*album.Thumbnail), pg.Limit(1))
 		if err != nil {
@@ -306,22 +241,8 @@ func (a *AlbumService) Update(ctx context.Context, album entity.Album) (*entity.
 				WithContext("thumbnail_id", *album.Thumbnail)
 		}
 
-		logger.Step("thumbnail validation successful").
-			WithString("thumbnail_id", *album.Thumbnail).
-			WithBool("media_found", true).
-			Log()
-
 		existingAlbum.Thumbnail = album.Thumbnail
 	}
-
-	// Write the album in the datastore using a write transaction
-	logger.Step("database_update").
-		WithString("table", "albums").
-		Log()
-
-	logger.Step("starting").
-		WithString("operation", "update_album").
-		Log()
 
 	err = a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
 		return writer.WriteAlbum(ctx, *existingAlbum)
@@ -330,11 +251,6 @@ func (a *AlbumService) Update(ctx context.Context, album entity.Album) (*entity.
 		return nil, NewDatabaseWriteError(ctx, "update_album", err).
 			WithAlbumID(album.ID)
 	}
-
-	logger.Step("completed").
-		WithString("operation", "update_album").
-		WithBool("success", true).
-		Log()
 
 	logger.Success().
 		WithString(AlbumID, album.ID).
@@ -350,24 +266,15 @@ func (a *AlbumService) Delete(ctx context.Context, id string) error {
 		WithString(AlbumID, id).
 		Build()
 
-	// Check if album exists
-	logger.Step("validate_exists").
-		WithString(AlbumID, id).
-		Log()
-
 	album, err := a.Get(ctx, id)
 	if err != nil {
 		return NewInternalError(ctx, "delete_album", "validate_exists", err).
 			WithAlbumID(id)
 	}
 
-	logger.Step("album found, proceeding with deletion").
-		WithString(AlbumID, album.ID).
-		WithString(AlbumPath, album.Path).
-		Log()
+	logger.Step("album found, proceeding with deletion").WithString(AlbumID, album.ID).WithString(AlbumPath, album.Path).Log()
 
 	err = a.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
-		// Delete the album folder from the file system
 		logger.Step("filesystem_delete").
 			WithString("folder_path", album.Path).
 			Log()
@@ -376,11 +283,7 @@ func (a *AlbumService) Delete(ctx context.Context, id string) error {
 			return NewFilesystemError(ctx, "delete_album", "filesystem_delete", album.Path, err)
 		}
 
-		// Delete the album from the database
-		logger.Step("database_delete").
-			WithString("table", "albums").
-			WithString(AlbumID, id).
-			Log()
+		logger.Step("database_delete").WithString("table", "albums").WithString(AlbumID, id).Log()
 
 		if err := writer.DeleteAlbum(ctx, id); err != nil {
 			return NewDatabaseWriteError(ctx, "delete_album", err).
@@ -394,11 +297,6 @@ func (a *AlbumService) Delete(ctx context.Context, id string) error {
 			WithAlbumID(id).
 			WithAlbumPath(album.Path)
 	}
-
-	logger.Step("completed").
-		WithString("operation", "delete_album").
-		WithBool("success", true).
-		Log()
 
 	logger.Success().
 		WithString(AlbumID, id).

@@ -4,6 +4,7 @@ package pg
 
 import (
 	"context"
+	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
 
@@ -256,6 +257,20 @@ func (d *Datastore) Stats(ctx context.Context) (entity.Stats, error) {
 	return stats, nil
 }
 
+func (d *Datastore) ReadToken(ctx context.Context) (string, error) {
+	sql, args, err := selectTokenStmt.ToSql()
+	if err != nil {
+		return "", err
+	}
+
+	var token string
+	if err := d.pool.QueryRow(ctx, sql, args...).Scan(&token); err != nil {
+		return "", fmt.Errorf("failed to read token: %w", err)
+	}
+
+	return token, nil
+}
+
 // WriteTx executes a write transaction with the provided user function.
 // It manages transaction lifecycle and provides a Writer interface for data modifications.
 func (d *Datastore) WriteTx(ctx context.Context, txFn TxUserFunc) error {
@@ -278,6 +293,40 @@ func (d *Datastore) WriteTx(ctx context.Context, txFn TxUserFunc) error {
 	return nil
 }
 
-func (dt *Datastore) Close() {
-	dt.pool.Close()
+func (d *Datastore) ExecWithSharedLock(ctx context.Context, fn func(context.Context) error) error {
+	return d.execWithLock(ctx, true, fn)
+}
+
+func (d *Datastore) ExecWithGlobalLock(ctx context.Context, fn func(context.Context) error) error {
+	return d.execWithLock(ctx, false, fn)
+}
+
+func (d *Datastore) execWithLock(ctx context.Context, isShared bool, fn func(context.Context) error) error {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		tx.Rollback(ctx)
+	}()
+
+	writer := &Writer{tx: tx}
+	if err := writer.acquireLock(ctx, isShared); err != nil {
+		return err
+	}
+
+	if err := fn(ctx); err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *Datastore) Close() {
+	d.pool.Close()
 }

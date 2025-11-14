@@ -12,6 +12,7 @@ import (
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/services"
+	"github.com/authzed/authzed-go/v1"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -39,7 +40,20 @@ func NewHandler(dt *pg.Datastore, fsDatastore *fs.Datastore) *Handler {
 	}
 }
 
-// Album operations implementation
+func NewHandlerWithAuthorization(spiceDBClient *authzed.Client, dt *pg.Datastore, fs *fs.Datastore) *Handler {
+	albumSrv := services.NewAlbumService(dt, fs)
+	mediaSrv := services.NewMediaService(dt, fs)
+	syncSrv := services.NewSyncService(albumSrv, mediaSrv, fs)
+	statsSrv := services.NewStatsService(dt)
+
+	return &Handler{
+		albumSrv: albumSrv,
+		mediaSrv: mediaSrv,
+		statsSrv: statsSrv,
+		syncSrv:  syncSrv,
+	}
+}
+
 func (s *Handler) ListAlbums(ctx context.Context, req *v1grpc.ListAlbumsRequest) (*v1grpc.ListAlbumsResponse, error) {
 	// Set default values for pagination
 	limit := 20
@@ -392,7 +406,10 @@ func (s *Handler) StartSyncJob(ctx context.Context, req *v1grpc.StartSyncRequest
 }
 
 func (s *Handler) ListSyncJobs(ctx context.Context, req *v1grpc.ListSyncJobsRequest) (*v1grpc.ListSyncJobsResponse, error) {
-	jobs := s.syncSrv.ListJobStatuses()
+	jobs, err := s.syncSrv.ListJobStatuses(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	grpcJobs := make([]*v1grpc.SyncJob, 0, len(jobs))
 	for _, job := range jobs {
@@ -405,7 +422,7 @@ func (s *Handler) ListSyncJobs(ctx context.Context, req *v1grpc.ListSyncJobsRequ
 }
 
 func (s *Handler) GetSyncJob(ctx context.Context, req *v1grpc.GetSyncJobRequest) (*v1grpc.SyncJob, error) {
-	job, err := s.syncSrv.GetJobStatus(req.Id)
+	job, err := s.syncSrv.GetJobStatus(ctx, req.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -414,7 +431,7 @@ func (s *Handler) GetSyncJob(ctx context.Context, req *v1grpc.GetSyncJobRequest)
 }
 
 func (s *Handler) StopSyncJob(ctx context.Context, req *v1grpc.StopSyncJobRequest) (*v1grpc.StopSyncJobResponse, error) {
-	err := s.syncSrv.StopJob(req.Id)
+	err := s.syncSrv.StopJob(ctx, req.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -432,11 +449,17 @@ func (s *Handler) ActionAllSyncJobs(ctx context.Context, req *v1grpc.ActionAllSy
 	switch req.Action {
 	case v1grpc.SyncJobAction_SYNC_JOB_ACTION_STOP:
 		// Get count of active jobs before stopping
-		runningJobs := s.syncSrv.ListJobStatusesByStatus(entity.StatusRunning)
-		pendingJobs := s.syncSrv.ListJobStatusesByStatus(entity.StatusPending)
+		runningJobs, err := s.syncSrv.ListJobStatusesByStatus(ctx, entity.StatusRunning)
+		if err != nil {
+			return nil, err
+		}
+		pendingJobs, err := s.syncSrv.ListJobStatusesByStatus(ctx, entity.StatusPending)
+		if err != nil {
+			return nil, err
+		}
 		affectedCount = int32(len(runningJobs) + len(pendingJobs))
 
-		err := s.syncSrv.StopAllJobs()
+		err = s.syncSrv.StopAllJobs(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -463,7 +486,7 @@ func (s *Handler) ActionSyncJob(ctx context.Context, req *v1grpc.ActionSyncJobRe
 
 	switch req.Action {
 	case v1grpc.SyncJobAction_SYNC_JOB_ACTION_STOP:
-		err := s.syncSrv.StopJob(req.Id)
+		err := s.syncSrv.StopJob(ctx, req.Id)
 		if err != nil {
 			return nil, err
 		}
@@ -487,12 +510,21 @@ func (s *Handler) ActionSyncJob(ctx context.Context, req *v1grpc.ActionSyncJobRe
 
 func (s *Handler) ClearFinishedSyncJobs(ctx context.Context, req *v1grpc.ClearFinishedSyncJobsRequest) (*v1grpc.ClearFinishedSyncJobsResponse, error) {
 	// Get count of finished jobs before clearing
-	completedJobs := s.syncSrv.ListJobStatusesByStatus(entity.StatusCompleted)
-	stoppedJobs := s.syncSrv.ListJobStatusesByStatus(entity.StatusStopped)
-	failedJobs := s.syncSrv.ListJobStatusesByStatus(entity.StatusFailed)
+	completedJobs, err := s.syncSrv.ListJobStatusesByStatus(ctx, entity.StatusCompleted)
+	if err != nil {
+		return nil, err
+	}
+	stoppedJobs, err := s.syncSrv.ListJobStatusesByStatus(ctx, entity.StatusStopped)
+	if err != nil {
+		return nil, err
+	}
+	failedJobs, err := s.syncSrv.ListJobStatusesByStatus(ctx, entity.StatusFailed)
+	if err != nil {
+		return nil, err
+	}
 	clearedCount := int32(len(completedJobs) + len(stoppedJobs) + len(failedJobs))
 
-	err := s.syncSrv.ClearFinishedJobs()
+	err = s.syncSrv.ClearFinishedJobs(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +536,7 @@ func (s *Handler) ClearFinishedSyncJobs(ctx context.Context, req *v1grpc.ClearFi
 }
 
 func (s *Handler) StopAllSyncJobs(ctx context.Context, req *v1grpc.StopAllSyncJobsRequest) (*v1grpc.StopAllSyncJobsResponse, error) {
-	err := s.syncSrv.StopAllJobs()
+	err := s.syncSrv.StopAllJobs(ctx)
 	if err != nil {
 		return nil, err
 	}

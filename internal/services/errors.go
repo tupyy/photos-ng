@@ -6,6 +6,8 @@ import (
 	"maps"
 	"strings"
 	"time"
+
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 )
 
 // ServiceError provides structured error context for business operations
@@ -53,7 +55,7 @@ func (e *ServiceError) buildMessage() []string {
 
 	// Add key context values to message
 	for key, value := range e.Context {
-			parts = append(parts, key, fmt.Sprintf("%v", value))
+		parts = append(parts, key, fmt.Sprintf("%v", value))
 	}
 
 	if e.RequestID != "" {
@@ -226,7 +228,15 @@ func NewSyncJobError(ctx context.Context, step, jobID string, cause error) *Inte
 	}
 }
 
-// Specific error types for HTTP status mapping
+func NewRelationshipError(ctx context.Context, step string, cause error) *InternalError {
+	return &InternalError{
+		ServiceError: NewServiceErrorWithContext(ctx, "relationship").
+			AtStep(step).
+			WithCondition("create_relationship_failed").
+			WithCause(cause),
+	}
+}
+
 type NotFoundError struct {
 	*ServiceError
 }
@@ -243,7 +253,10 @@ type InternalError struct {
 	*ServiceError
 }
 
-// Type-specific constructors
+type ForbiddenAccessError struct {
+	*ServiceError
+}
+
 func NewNotFoundError(ctx context.Context, operation, condition string) *NotFoundError {
 	return &NotFoundError{
 		ServiceError: NewServiceErrorWithContext(ctx, operation).WithCondition(condition),
@@ -265,5 +278,11 @@ func NewValidationError(ctx context.Context, operation, condition string) *Valid
 func NewInternalError(ctx context.Context, operation, condition string, cause error) *InternalError {
 	return &InternalError{
 		ServiceError: NewServiceErrorWithContext(ctx, operation).WithCondition(condition).WithCause(cause),
+	}
+}
+
+func NewForbiddenAccessError(ctx context.Context, operation string, resource entity.Resource, permission entity.Permission) *ForbiddenAccessError {
+	return &ForbiddenAccessError{
+		ServiceError: NewServiceErrorWithContext(ctx, operation).WithCause(fmt.Errorf("invalid permission %s to resource %s of kind %s", resource.ID, resource.Kind, permission.String())),
 	}
 }

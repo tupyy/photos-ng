@@ -43,6 +43,7 @@ func (c *Config) ToOption() ConfigOption {
 		to.LogFormat = c.LogFormat
 		to.LogLevel = c.LogLevel
 		to.Authentication = c.Authentication
+		to.Authorization = c.Authorization
 	}
 }
 
@@ -59,6 +60,7 @@ func (c *Config) DebugMap() map[string]any {
 	debugMap["LogFormat"] = helpers.DebugValue(c.LogFormat, false)
 	debugMap["LogLevel"] = helpers.DebugValue(c.LogLevel, false)
 	debugMap["Authentication"] = helpers.DebugValue(c.Authentication, false)
+	debugMap["Authorization"] = helpers.DebugValue(c.Authorization, false)
 	return debugMap
 }
 
@@ -145,5 +147,12 @@ func WithLogLevel(logLevel string) ConfigOption {
 func WithAuthentication(authentication Authentication) ConfigOption {
 	return func(c *Config) {
 		c.Authentication = authentication
+	}
+}
+
+// WithAuthorization returns an option that can set Authorization on a Config
+func WithAuthorization(authorization Authorization) ConfigOption {
+	return func(c *Config) {
+		c.Authorization = authorization
 	}
 }

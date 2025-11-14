@@ -43,7 +43,12 @@ func (s *Handler) StartSyncJob(c *gin.Context) {
 // Returns HTTP 200 with list of sync jobs on success.
 func (s *Handler) ListSyncJobs(c *gin.Context) {
 	// Get all job statuses from the SyncService
-	statuses := s.syncSrv.ListJobStatuses()
+	statuses, err := s.syncSrv.ListJobStatuses(c.Request.Context())
+	if err != nil {
+		logError(requestid.FromGin(c), "ListSyncJobs", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
+		return
+	}
 
 	// Convert to API response format
 	var apiJobs []v1.SyncJob
@@ -62,7 +67,7 @@ func (s *Handler) ListSyncJobs(c *gin.Context) {
 // Returns HTTP 404 if job not found, HTTP 200 with job details on success.
 func (s *Handler) GetSyncJob(c *gin.Context, id string) {
 	// Get job status from SyncService
-	status, err := s.syncSrv.GetJobStatus(id)
+	status, err := s.syncSrv.GetJobStatus(c.Request.Context(), id)
 	if err != nil {
 		logError(requestid.FromGin(c), "GetSyncJob", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -78,7 +83,7 @@ func (s *Handler) GetSyncJob(c *gin.Context, id string) {
 // StopSyncJob stops a specific sync job by ID
 func (s *Handler) StopSyncJob(c *gin.Context, id string) {
 	// Stop the job using SyncService
-	err := s.syncSrv.StopJob(id)
+	err := s.syncSrv.StopJob(c.Request.Context(), id)
 	if err != nil {
 		logError(requestid.FromGin(c), "StopSyncJob", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -108,12 +113,22 @@ func (s *Handler) ActionAllSyncJobs(c *gin.Context) {
 	switch request.Action {
 	case v1.SyncJobActionRequestActionCancel:
 		// Get running jobs count before stopping
-		runningJobStatuses := s.syncSrv.ListJobStatusesByStatus(entity.StatusRunning)
-		pendingJobStatuses := s.syncSrv.ListJobStatusesByStatus(entity.StatusPending)
+		runningJobStatuses, err := s.syncSrv.ListJobStatusesByStatus(c.Request.Context(), entity.StatusRunning)
+		if err != nil {
+			logError(requestid.FromGin(c), "ActionAllSyncJobs", err)
+			c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
+			return
+		}
+		pendingJobStatuses, err := s.syncSrv.ListJobStatusesByStatus(c.Request.Context(), entity.StatusPending)
+		if err != nil {
+			logError(requestid.FromGin(c), "ActionAllSyncJobs", err)
+			c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
+			return
+		}
 		affectedCount = len(runningJobStatuses) + len(pendingJobStatuses)
 
 		// Stop all jobs using SyncService
-		err := s.syncSrv.StopAllJobs()
+		err = s.syncSrv.StopAllJobs(c.Request.Context())
 		if err != nil {
 			logError(requestid.FromGin(c), "ActionAllSyncJobs", err)
 			c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -156,7 +171,7 @@ func (s *Handler) ActionSyncJob(c *gin.Context, id string) {
 	switch request.Action {
 	case v1.SyncJobActionRequestActionCancel:
 		// Stop the job using SyncService
-		err := s.syncSrv.StopJob(id)
+		err := s.syncSrv.StopJob(c.Request.Context(), id)
 		if err != nil {
 			logError(requestid.FromGin(c), "ActionSyncJob", err)
 			c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -168,7 +183,7 @@ func (s *Handler) ActionSyncJob(c *gin.Context, id string) {
 
 	case v1.SyncJobActionRequestActionPause:
 		// Pause/resume the job using SyncService
-		err := s.syncSrv.PauseJob(id)
+		err := s.syncSrv.PauseJob(c.Request.Context(), id)
 		if err != nil {
 			logError(requestid.FromGin(c), "ActionSyncJob", err)
 			c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -194,13 +209,30 @@ func (s *Handler) ActionSyncJob(c *gin.Context, id string) {
 // ClearFinishedSyncJobs clears all finished sync jobs (completed, stopped, failed)
 func (s *Handler) ClearFinishedSyncJobs(c *gin.Context) {
 	// Get finished jobs count before clearing
-	finishedJobStatuses := append(s.syncSrv.ListJobStatusesByStatus(entity.StatusCompleted),
-		append(s.syncSrv.ListJobStatusesByStatus(entity.StatusStopped),
-			s.syncSrv.ListJobStatusesByStatus(entity.StatusFailed)...)...)
+	completedJobs, err := s.syncSrv.ListJobStatusesByStatus(c.Request.Context(), entity.StatusCompleted)
+	if err != nil {
+		logError(requestid.FromGin(c), "ClearFinishedSyncJobs", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
+		return
+	}
+	stoppedJobs, err := s.syncSrv.ListJobStatusesByStatus(c.Request.Context(), entity.StatusStopped)
+	if err != nil {
+		logError(requestid.FromGin(c), "ClearFinishedSyncJobs", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
+		return
+	}
+	failedJobs, err := s.syncSrv.ListJobStatusesByStatus(c.Request.Context(), entity.StatusFailed)
+	if err != nil {
+		logError(requestid.FromGin(c), "ClearFinishedSyncJobs", err)
+		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
+		return
+	}
+
+	finishedJobStatuses := append(completedJobs, append(stoppedJobs, failedJobs...)...)
 	clearedCount := len(finishedJobStatuses)
 
 	// Clear all finished jobs using SyncService
-	err := s.syncSrv.ClearFinishedJobs()
+	err = s.syncSrv.ClearFinishedJobs(c.Request.Context())
 	if err != nil {
 		logError(requestid.FromGin(c), "ClearFinishedSyncJobs", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))

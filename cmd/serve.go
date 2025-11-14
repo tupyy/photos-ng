@@ -24,6 +24,7 @@ import (
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/server"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/datastore"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/logger"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/spicedb"
 )
 
 type ApiVersion string
@@ -60,7 +61,7 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 			}
 
 			// init datastore
-			pgDatastore, err := datastore.NewPostgresDatastore(ctx, config.Database.URI)
+			pgDatastore, err := datastore.NewConnPool(ctx, config.Database.URI)
 			if err != nil {
 				return err
 			}
@@ -69,6 +70,15 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 			// Create v1 handlers for http and grpc
 			httpHandler := v1http.NewHandler(pg.NewPostgresDatastore(pgDatastore), fs.NewFsDatastore(config.DataRootFolder))
 			grpcHandler := v1grpc.NewHandler(pg.NewPostgresDatastore(pgDatastore), fs.NewFsDatastore(config.DataRootFolder))
+
+			if config.Authorization.Enabled {
+				spiceClient, err := spicedb.InitSpiceDBClient(config.Authorization.SpiceDBURL, config.Authorization.PresharedKey)
+				if err != nil {
+					return err
+				}
+				httpHandler = v1http.NewHandlerWithAuthorization(spiceClient, pg.NewPostgresDatastore(pgDatastore), fs.NewFsDatastore(config.DataRootFolder))
+				grpcHandler = v1grpc.NewHandlerWithAuthorization(spiceClient, pg.NewPostgresDatastore(pgDatastore), fs.NewFsDatastore(config.DataRootFolder))
+			}
 
 			var wg sync.WaitGroup
 			errCh := make(chan error, 2)
@@ -160,6 +170,15 @@ func validateConfig(config *config.Config) error {
 			return errors.New("wellknown_url cannot be empty")
 		}
 	}
+
+	if config.Authorization.Enabled {
+		if config.Authorization.SpiceDBURL == "" {
+			return errors.New("spicedb url cannot be empty")
+		}
+		if config.Authorization.PresharedKey == "" {
+			return errors.New("preshared key cannot be empty")
+		}
+	}
 	return nil
 }
 
@@ -174,6 +193,9 @@ func registerFlags(cmd *cobra.Command, config *config.Config) {
 
 	authenticationFlagSet := nfs.FlagSet(color.New(color.FgBlue, color.Bold).Sprint("authentication"))
 	registerAuthenticationFlags(authenticationFlagSet, config)
+
+	authorizationFlatSet := nfs.FlagSet(color.New(color.FgBlue, color.Bold).Sprint("authorization"))
+	registerAuthorizationFlags(authorizationFlatSet, config)
 
 	nfs.AddFlagSets(cmd)
 }
@@ -195,4 +217,10 @@ func registerServerFlags(flagSet *pflag.FlagSet, config *config.Config) {
 func registerAuthenticationFlags(flagSet *pflag.FlagSet, config *config.Config) {
 	flagSet.BoolVar(&config.Authentication.Enabled, "authentication-enabled", config.Authentication.Enabled, "enable OIDC authentication (default false)")
 	flagSet.StringVar(&config.Authentication.WellknownURL, "authentication-wellknown-endpoint", config.Authentication.WellknownURL, "OIDC provider wellknown endpoing address")
+}
+
+func registerAuthorizationFlags(flagSet *pflag.FlagSet, config *config.Config) {
+	flagSet.BoolVar(&config.Authorization.Enabled, "authorization-enabled", config.Authorization.Enabled, "enable authorization")
+	flagSet.StringVar(&config.Authorization.SpiceDBURL, "authorization-spicedb-url", config.Authorization.SpiceDBURL, "SpiceDB url")
+	flagSet.StringVar(&config.Authorization.PresharedKey, "authorization-spicedb-preshared-key", config.Authorization.PresharedKey, "SpiceDB preshared key")
 }

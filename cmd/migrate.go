@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/config"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg/migrations"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/logger"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/migrations"
 	"github.com/fatih/color"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jzelinskie/cobrautil/v2"
