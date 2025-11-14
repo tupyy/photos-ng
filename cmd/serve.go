@@ -22,6 +22,7 @@ import (
 	v1grpc "git.tls.tupangiu.ro/cosmin/photos-ng/internal/handlers/v1/grpc"
 	v1http "git.tls.tupangiu.ro/cosmin/photos-ng/internal/handlers/v1/http"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/server"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/datastore"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/logger"
 )
 
@@ -59,15 +60,15 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 			}
 
 			// init datastore
-			dt, err := pg.NewPostgresDatastore(ctx, config.Database.URI)
+			pgDatastore, err := datastore.NewPostgresDatastore(ctx, config.Database.URI)
 			if err != nil {
 				return err
 			}
-			defer dt.Close()
+			defer pgDatastore.Close()
 
 			// Create v1 handlers for http and grpc
-			httpHandler := v1http.NewHandler(dt, fs.NewFsDatastore(config.DataRootFolder))
-			grpcHandler := v1grpc.NewHandler(dt, fs.NewFsDatastore(config.DataRootFolder))
+			httpHandler := v1http.NewHandler(pg.NewPostgresDatastore(pgDatastore), fs.NewFsDatastore(config.DataRootFolder))
+			grpcHandler := v1grpc.NewHandler(pg.NewPostgresDatastore(pgDatastore), fs.NewFsDatastore(config.DataRootFolder))
 
 			var wg sync.WaitGroup
 			errCh := make(chan error, 2)
@@ -137,8 +138,6 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 			case <-ctx.Done():
 				zap.S().Info("Servers shutting down...")
 			}
-
-			dt.Close()
 
 			return nil
 		},

@@ -5,10 +5,11 @@ package pg
 import (
 	"context"
 
+	sq "github.com/Masterminds/squirrel"
+
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg/models"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
-	sq "github.com/Masterminds/squirrel"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/datastore"
 )
 
 type QueryOption func(original sq.SelectBuilder) sq.SelectBuilder
@@ -16,29 +17,13 @@ type QueryOption func(original sq.SelectBuilder) sq.SelectBuilder
 type TxUserFunc func(context.Context, *Writer) error
 
 type Datastore struct {
-	pool ConnPooler
+	pool datastore.ConnPooler
 }
 
 // NewPostgresDatastore creates a new Postgres datastore instance with the given configuration options.
 // It establishes a connection pool and sets up query interceptors for logging and monitoring.
-func NewPostgresDatastore(ctx context.Context, url string, options ...Option) (*Datastore, error) {
-	pgOptions := newPostgresConfig(options)
-
-	pgxConfig, err := pgOptions.PgxConfig(url)
-	if err != nil {
-		return nil, err
-	}
-
-	pgPool, err := pgxpool.NewWithConfig(ctx, pgxConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := pgPool.Ping(ctx); err != nil {
-		return nil, err
-	}
-
-	return &Datastore{pool: MustNewInterceptorPooler(pgPool, newLogInterceptor())}, nil
+func NewPostgresDatastore(pool datastore.ConnPooler) *Datastore {
+	return &Datastore{pool: pool}
 }
 
 func (d *Datastore) QueryAlbum(ctx context.Context, opts ...QueryOption) (*entity.Album, error) {
@@ -216,24 +201,24 @@ func (d *Datastore) QueryMedia(ctx context.Context, opts ...QueryOption) ([]enti
 func (d *Datastore) CountAlbums(ctx context.Context, opts ...QueryOption) (int, error) {
 	// Start with base count query
 	query := psql.Select("COUNT(*)").From(albumsTable)
-	
+
 	// Apply query options (filters)
 	for _, opt := range opts {
 		query = opt(query)
 	}
-	
+
 	// Build and execute the query
 	sql, args, err := query.ToSql()
 	if err != nil {
 		return 0, err
 	}
-	
+
 	var count int
 	err = d.pool.QueryRow(ctx, sql, args...).Scan(&count)
 	if err != nil {
 		return 0, err
 	}
-	
+
 	return count, nil
 }
 

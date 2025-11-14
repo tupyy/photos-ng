@@ -1,4 +1,4 @@
-package pg
+package datastore
 
 import (
 	"context"
@@ -6,7 +6,30 @@ import (
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/logger"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// NewPostgresDatastore creates a new Postgres datastore instance with the given configuration options.
+// It establishes a connection pool and sets up query interceptors for logging and monitoring.
+func NewPostgresDatastore(ctx context.Context, url string, options ...Option) (ConnPooler, error) {
+	pgOptions := newPostgresConfig(options)
+
+	pgxConfig, err := pgOptions.PgxConfig(url)
+	if err != nil {
+		return nil, err
+	}
+
+	pgPool, err := pgxpool.NewWithConfig(ctx, pgxConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := pgPool.Ping(ctx); err != nil {
+		return nil, err
+	}
+
+	return MustNewInterceptorPooler(pgPool, newLogInterceptor()), nil
+}
 
 // Querier holds common methods for connections and pools, equivalent to
 // Querier (which is deprecated for pgx v5)
