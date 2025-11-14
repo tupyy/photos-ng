@@ -6,7 +6,7 @@
 PODMAN ?= podman
 APP_IMAGE = photos-ng:latest
 REGISTRY = quay.io/ctupangiu/photos-ng
-REMOTE_TAG ?= latest
+LATEST_TAG ?= latest
 
 POSTGRES_IMAGE ?= docker.io/library/postgres:17
 GIT_COMMIT=$(shell git rev-list -1 HEAD --abbrev-commit)
@@ -114,13 +114,12 @@ db.migrate:
 podman.build: ## Build the Finante application container
 	podman build -f Containerfile --build-arg GIT_SHA=$(GIT_COMMIT) -t $(APP_IMAGE) .
 
-# Tag image for remote registry
-podman.tag: ## Tag the local image for remote registry
-	podman tag $(APP_IMAGE) $(REGISTRY):$(REMOTE_TAG)
-
 # Push image to remote registry
-podman.push: podman.tag ## Push the container image to quay.io/ctupangiu/finance
-	podman push $(REGISTRY):$(REMOTE_TAG)
+podman.push: podman.build
+	podman tag $(APP_IMAGE) $(REGISTRY):$(GIT_COMMIT)
+	podman push $(REGISTRY):$(GIT_COMMIT)
+	podman tag $(APP_IMAGE) $(REGISTRY):$(LATEST_TAG)
+	podman push $(REGISTRY):$(LATEST_TAG)
 
 # Build and push in one command
 deploy.image: podman.build podman.push ## Build and push the container image to remote registry

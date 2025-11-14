@@ -64,45 +64,6 @@ func New(service string) *StructuredLogger {
 	}
 }
 
-// NewDebugLogger creates a new debug-level structured logger for a specific service
-func NewDebugLogger(service string) *StructuredLogger {
-	return NewStructuredLogger(service, zapcore.DebugLevel)
-}
-
-// NewInfoLogger creates a new info-level structured logger for a specific service
-func NewInfoLogger(service string) *StructuredLogger {
-	return NewStructuredLogger(service, zapcore.InfoLevel)
-}
-
-// NewWarnLogger creates a new warn-level structured logger for a specific service
-func NewWarnLogger(service string) *StructuredLogger {
-	return NewStructuredLogger(service, zapcore.WarnLevel)
-}
-
-// NewErrorLogger creates a new error-level structured logger for a specific service
-func NewErrorLogger(service string) *StructuredLogger {
-	return NewStructuredLogger(service, zapcore.ErrorLevel)
-}
-
-// DebugLogger is an alias for backward compatibility
-type DebugLogger = StructuredLogger
-
-// getLogFunc returns the appropriate logging function based on the configured level
-func (l *StructuredLogger) getLogFunc() func(msg string, fields ...zap.Field) {
-	switch l.level {
-	case zapcore.DebugLevel:
-		return l.logger.Debug
-	case zapcore.InfoLevel:
-		return l.logger.Info
-	case zapcore.WarnLevel:
-		return l.logger.Warn
-	case zapcore.ErrorLevel:
-		return l.logger.Error
-	default:
-		return l.logger.Debug
-	}
-}
-
 // WithContext returns a new StructuredLogger with request context
 func (l *StructuredLogger) WithContext(ctx context.Context) *StructuredLogger {
 	fields := make([]zap.Field, 0, 2)
