@@ -57,22 +57,20 @@ func (s *Handler) ListAlbums(ctx context.Context, req *v1grpc.ListAlbumsRequest)
 	}
 
 	// Create album service options
-	opts := services.NewAlbumOptionsWithOptions(
+	opts := services.NewListOptionsWithOptions(
 		services.WithLimit(limit),
 		services.WithOffset(offset),
 		services.WithHasParent(hasParent),
 	)
 
-	albums, err := s.albumSrv.GetAlbums(ctx, opts)
+	albums, err := s.albumSrv.List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get total count for pagination (without limit/offset)
-	totalOpts := services.NewAlbumOptionsWithOptions(
-		services.WithHasParent(hasParent),
-	)
-	allAlbums, err := s.albumSrv.GetAlbums(ctx, totalOpts)
+	totalOpts := services.NewListOptionsWithOptions()
+	allAlbums, err := s.albumSrv.List(ctx, totalOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +95,7 @@ func (s *Handler) ListAlbums(ctx context.Context, req *v1grpc.ListAlbumsRequest)
 }
 
 func (s *Handler) GetAlbum(ctx context.Context, req *v1grpc.GetAlbumRequest) (*v1grpc.Album, error) {
-	album, err := s.albumSrv.GetAlbum(ctx, req.Id)
+	album, err := s.albumSrv.Get(ctx, req.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +110,7 @@ func (s *Handler) CreateAlbum(ctx context.Context, req *v1grpc.CreateAlbumReques
 	album := req.Entity()
 
 	// Create album using service
-	createdAlbum, err := s.albumSrv.CreateAlbum(ctx, album)
+	createdAlbum, err := s.albumSrv.Create(ctx, album)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +122,7 @@ func (s *Handler) CreateAlbum(ctx context.Context, req *v1grpc.CreateAlbumReques
 
 func (s *Handler) UpdateAlbum(ctx context.Context, req *v1grpc.UpdateAlbumByIdRequest) (*v1grpc.Album, error) {
 	// Get existing album
-	album, err := s.albumSrv.GetAlbum(ctx, req.Id)
+	album, err := s.albumSrv.Get(ctx, req.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +131,7 @@ func (s *Handler) UpdateAlbum(ctx context.Context, req *v1grpc.UpdateAlbumByIdRe
 	req.Update.ApplyTo(album)
 
 	// Update album using service
-	updatedAlbum, err := s.albumSrv.UpdateAlbum(ctx, *album)
+	updatedAlbum, err := s.albumSrv.Update(ctx, *album)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +142,7 @@ func (s *Handler) UpdateAlbum(ctx context.Context, req *v1grpc.UpdateAlbumByIdRe
 }
 
 func (s *Handler) DeleteAlbum(ctx context.Context, req *v1grpc.DeleteAlbumRequest) (*emptypb.Empty, error) {
-	err := s.albumSrv.DeleteAlbum(ctx, req.Id)
+	err := s.albumSrv.Delete(ctx, req.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +213,7 @@ func (s *Handler) ListMedia(req *v1grpc.ListMediaRequest, stream v1grpc.PhotosNG
 	// Note: Sorting is fixed to captured_at DESC, id DESC for cursor pagination
 
 	// Fetch media using the service
-	mediaItems, nextCursor, err := s.mediaSrv.GetMedia(stream.Context(), opt)
+	mediaItems, nextCursor, err := s.mediaSrv.List(stream.Context(), opt)
 	if err != nil {
 		return err
 	}
@@ -240,7 +238,7 @@ func (s *Handler) ListMedia(req *v1grpc.ListMediaRequest, stream v1grpc.PhotosNG
 }
 
 func (s *Handler) GetMedia(ctx context.Context, req *v1grpc.GetMediaRequest) (*v1grpc.Media, error) {
-	media, err := s.mediaSrv.GetMediaByID(ctx, req.Id)
+	media, err := s.mediaSrv.Get(ctx, req.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +248,7 @@ func (s *Handler) GetMedia(ctx context.Context, req *v1grpc.GetMediaRequest) (*v
 
 func (s *Handler) UpdateMedia(ctx context.Context, req *v1grpc.UpdateMediaByIdRequest) (*v1grpc.Media, error) {
 	// Get existing media
-	media, err := s.mediaSrv.GetMediaByID(ctx, req.Id)
+	media, err := s.mediaSrv.Get(ctx, req.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +257,7 @@ func (s *Handler) UpdateMedia(ctx context.Context, req *v1grpc.UpdateMediaByIdRe
 	req.Update.ApplyTo(media)
 
 	// Update media using service
-	updatedMedia, err := s.mediaSrv.UpdateMedia(ctx, *media)
+	updatedMedia, err := s.mediaSrv.Update(ctx, *media)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +266,7 @@ func (s *Handler) UpdateMedia(ctx context.Context, req *v1grpc.UpdateMediaByIdRe
 }
 
 func (s *Handler) DeleteMedia(ctx context.Context, req *v1grpc.DeleteMediaRequest) (*emptypb.Empty, error) {
-	err := s.mediaSrv.DeleteMedia(ctx, req.Id)
+	err := s.mediaSrv.Delete(ctx, req.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +276,7 @@ func (s *Handler) DeleteMedia(ctx context.Context, req *v1grpc.DeleteMediaReques
 
 func (s *Handler) GetMediaThumbnail(ctx context.Context, req *v1grpc.GetMediaThumbnailRequest) (*v1grpc.BinaryDataResponse, error) {
 	// Get media to access thumbnail
-	media, err := s.mediaSrv.GetMediaByID(ctx, req.Id)
+	media, err := s.mediaSrv.Get(ctx, req.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +295,7 @@ func (s *Handler) GetMediaThumbnail(ctx context.Context, req *v1grpc.GetMediaThu
 
 func (s *Handler) GetMediaContent(req *v1grpc.GetMediaContentRequest, stream v1grpc.PhotosNGService_GetMediaContentServer) error {
 	// Get media
-	media, err := s.mediaSrv.GetMediaByID(stream.Context(), req.Id)
+	media, err := s.mediaSrv.Get(stream.Context(), req.Id)
 	if err != nil {
 		return err
 	}
@@ -363,7 +361,7 @@ func (s *Handler) GetMediaContent(req *v1grpc.GetMediaContentRequest, stream v1g
 
 func (s *Handler) UploadMedia(ctx context.Context, req *v1grpc.UploadMediaRequest) (*v1grpc.Media, error) {
 	// Get album for the upload
-	album, err := s.albumSrv.GetAlbum(ctx, req.AlbumId)
+	album, err := s.albumSrv.Get(ctx, req.AlbumId)
 	if err != nil {
 		return nil, err
 	}
@@ -517,7 +515,6 @@ func (s *Handler) StopAllSyncJobs(ctx context.Context, req *v1grpc.StopAllSyncJo
 	}, nil
 }
 
-// Stats operations implementation
 func (s *Handler) GetStats(ctx context.Context, req *v1grpc.GetStatsRequest) (*v1grpc.StatsResponse, error) {
 	stats, err := s.statsSrv.GetStats(ctx)
 	if err != nil {

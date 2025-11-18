@@ -9,87 +9,87 @@ import (
 	helpers "github.com/ecordell/optgen/helpers"
 )
 
-type AlbumOptionsOption func(a *AlbumOptions)
+type ListOptionsOption func(l *ListOptions)
 
-// NewAlbumOptionsWithOptions creates a new AlbumOptions with the passed in options set
-func NewAlbumOptionsWithOptions(opts ...AlbumOptionsOption) *AlbumOptions {
-	a := &AlbumOptions{}
+// NewListOptionsWithOptions creates a new ListOptions with the passed in options set
+func NewListOptionsWithOptions(opts ...ListOptionsOption) *ListOptions {
+	l := &ListOptions{}
 	for _, o := range opts {
-		o(a)
+		o(l)
 	}
-	return a
+	return l
 }
 
-// NewAlbumOptionsWithOptionsAndDefaults creates a new AlbumOptions with the passed in options set starting from the defaults
-func NewAlbumOptionsWithOptionsAndDefaults(opts ...AlbumOptionsOption) *AlbumOptions {
-	a := &AlbumOptions{}
-	defaults.MustSet(a)
+// NewListOptionsWithOptionsAndDefaults creates a new ListOptions with the passed in options set starting from the defaults
+func NewListOptionsWithOptionsAndDefaults(opts ...ListOptionsOption) *ListOptions {
+	l := &ListOptions{}
+	defaults.MustSet(l)
 	for _, o := range opts {
-		o(a)
+		o(l)
 	}
-	return a
+	return l
 }
 
-// ToOption returns a new AlbumOptionsOption that sets the values from the passed in AlbumOptions
-func (a *AlbumOptions) ToOption() AlbumOptionsOption {
-	return func(to *AlbumOptions) {
-		to.Limit = a.Limit
-		to.Offset = a.Offset
-		to.ParentID = a.ParentID
-		to.HasParent = a.HasParent
+// ToOption returns a new ListOptionsOption that sets the values from the passed in ListOptions
+func (l *ListOptions) ToOption() ListOptionsOption {
+	return func(to *ListOptions) {
+		to.Limit = l.Limit
+		to.Offset = l.Offset
+		to.ParentID = l.ParentID
+		to.HasParent = l.HasParent
 	}
 }
 
-// DebugMap returns a map form of AlbumOptions for debugging
-func (a *AlbumOptions) DebugMap() map[string]any {
+// DebugMap returns a map form of ListOptions for debugging
+func (l *ListOptions) DebugMap() map[string]any {
 	debugMap := map[string]any{}
-	debugMap["Limit"] = helpers.DebugValue(a.Limit, false)
-	debugMap["Offset"] = helpers.DebugValue(a.Offset, false)
-	debugMap["ParentID"] = helpers.DebugValue(a.ParentID, false)
-	debugMap["HasParent"] = helpers.DebugValue(a.HasParent, false)
+	debugMap["Limit"] = helpers.DebugValue(l.Limit, false)
+	debugMap["Offset"] = helpers.DebugValue(l.Offset, false)
+	debugMap["ParentID"] = helpers.DebugValue(l.ParentID, false)
+	debugMap["HasParent"] = helpers.DebugValue(l.HasParent, false)
 	return debugMap
 }
 
-// AlbumOptionsWithOptions configures an existing AlbumOptions with the passed in options set
-func AlbumOptionsWithOptions(a *AlbumOptions, opts ...AlbumOptionsOption) *AlbumOptions {
+// ListOptionsWithOptions configures an existing ListOptions with the passed in options set
+func ListOptionsWithOptions(l *ListOptions, opts ...ListOptionsOption) *ListOptions {
 	for _, o := range opts {
-		o(a)
+		o(l)
 	}
-	return a
+	return l
 }
 
-// WithOptions configures the receiver AlbumOptions with the passed in options set
-func (a *AlbumOptions) WithOptions(opts ...AlbumOptionsOption) *AlbumOptions {
+// WithOptions configures the receiver ListOptions with the passed in options set
+func (l *ListOptions) WithOptions(opts ...ListOptionsOption) *ListOptions {
 	for _, o := range opts {
-		o(a)
+		o(l)
 	}
-	return a
+	return l
 }
 
-// WithLimit returns an option that can set Limit on a AlbumOptions
-func WithLimit(limit int) AlbumOptionsOption {
-	return func(a *AlbumOptions) {
-		a.Limit = limit
-	}
-}
-
-// WithOffset returns an option that can set Offset on a AlbumOptions
-func WithOffset(offset int) AlbumOptionsOption {
-	return func(a *AlbumOptions) {
-		a.Offset = offset
+// WithLimit returns an option that can set Limit on a ListOptions
+func WithLimit(limit int) ListOptionsOption {
+	return func(l *ListOptions) {
+		l.Limit = limit
 	}
 }
 
-// WithParentID returns an option that can set ParentID on a AlbumOptions
-func WithParentID(parentID *string) AlbumOptionsOption {
-	return func(a *AlbumOptions) {
-		a.ParentID = parentID
+// WithOffset returns an option that can set Offset on a ListOptions
+func WithOffset(offset int) ListOptionsOption {
+	return func(l *ListOptions) {
+		l.Offset = offset
 	}
 }
 
-// WithHasParent returns an option that can set HasParent on a AlbumOptions
-func WithHasParent(hasParent bool) AlbumOptionsOption {
-	return func(a *AlbumOptions) {
-		a.HasParent = hasParent
+// WithParentID returns an option that can set ParentID on a ListOptions
+func WithParentID(parentID *string) ListOptionsOption {
+	return func(l *ListOptions) {
+		l.ParentID = parentID
+	}
+}
+
+// WithHasParent returns an option that can set HasParent on a ListOptions
+func WithHasParent(hasParent bool) ListOptionsOption {
+	return func(l *ListOptions) {
+		l.HasParent = hasParent
 	}
 }

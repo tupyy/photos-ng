@@ -73,12 +73,12 @@ func (g *JobGenerator) processNodeForJobs(ctx context.Context, node *entity.Fold
 
 		// Create linked list with album tasks at the beginning
 		taskList := entity.NewLinkedList[Task[string]]()
-		
+
 		// Add album tasks first
 		for _, task := range albumTasks {
 			taskList.PushBack(task)
 		}
-		
+
 		// Add media tasks after
 		for _, task := range mediaTasks {
 			taskList.PushBack(task)
@@ -136,7 +136,7 @@ func (g *JobGenerator) createAlbumTaskWithParent(albumPath string, parent *entit
 			album.ParentId = &parent.ID
 		}
 
-		createdAlbum, err := g.albumSrv.CreateAlbum(ctx, album)
+		createdAlbum, err := g.albumSrv.Create(ctx, album)
 		if err != nil {
 			return entity.NewResultWithError[string](err)
 		}

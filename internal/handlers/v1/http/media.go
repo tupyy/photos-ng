@@ -66,7 +66,7 @@ func (s *Handler) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 	// Note: Sorting is fixed to captured_at DESC, id DESC for cursor pagination
 
 	// Create media service and get media
-	mediaItems, nextCursor, err := s.mediaSrv.GetMedia(c.Request.Context(), opt)
+	mediaItems, nextCursor, err := s.mediaSrv.List(c.Request.Context(), opt)
 	if err != nil {
 		logError(requestid.FromGin(c), "ListMedia", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -101,7 +101,7 @@ func (s *Handler) ListMedia(c *gin.Context, params v1.ListMediaParams) {
 // or HTTP 200 with the media data on success.
 func (s *Handler) GetMedia(c *gin.Context, id string) {
 	// Create media service and get the media
-	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
+	media, err := s.mediaSrv.Get(c.Request.Context(), id)
 	if err != nil {
 		logError(requestid.FromGin(c), "GetMedia", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -122,7 +122,7 @@ func (s *Handler) UpdateMedia(c *gin.Context, id string) {
 	}
 
 	// Get the existing media and apply updates
-	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
+	media, err := s.mediaSrv.Get(c.Request.Context(), id)
 	if err != nil {
 		logError(requestid.FromGin(c), "UpdateMedia", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -133,7 +133,7 @@ func (s *Handler) UpdateMedia(c *gin.Context, id string) {
 	request.ApplyTo(media)
 
 	// Update the media
-	updatedMedia, err := s.mediaSrv.UpdateMedia(c.Request.Context(), *media)
+	updatedMedia, err := s.mediaSrv.Update(c.Request.Context(), *media)
 	if err != nil {
 		logError(requestid.FromGin(c), "GetMedia", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -147,7 +147,7 @@ func (s *Handler) UpdateMedia(c *gin.Context, id string) {
 // or HTTP 204 on successful deletion.
 func (s *Handler) DeleteMedia(c *gin.Context, id string) {
 	// Create media service and delete the media
-	err := s.mediaSrv.DeleteMedia(c.Request.Context(), id)
+	err := s.mediaSrv.Delete(c.Request.Context(), id)
 	if err != nil {
 		logError(requestid.FromGin(c), "DeleteMedia", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -161,7 +161,7 @@ func (s *Handler) DeleteMedia(c *gin.Context, id string) {
 // or the binary media content with appropriate content-type on success.
 func (s *Handler) GetMediaContent(c *gin.Context, id string) {
 	// Get the media from service
-	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
+	media, err := s.mediaSrv.Get(c.Request.Context(), id)
 	if err != nil {
 		logError(requestid.FromGin(c), "GetMediaContent", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -196,7 +196,7 @@ func (s *Handler) GetMediaContent(c *gin.Context, id string) {
 // or the binary thumbnail data on success.
 func (s *Handler) GetMediaThumbnail(c *gin.Context, id string) {
 	// Get the media from service
-	media, err := s.mediaSrv.GetMediaByID(c.Request.Context(), id)
+	media, err := s.mediaSrv.Get(c.Request.Context(), id)
 	if err != nil {
 		logError(requestid.FromGin(c), "GetMediaThumbnail", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -254,7 +254,7 @@ func (s *Handler) UploadMedia(c *gin.Context) {
 	defer file.Close()
 
 	// Get the album to ensure it exists
-	album, err := s.albumSrv.GetAlbum(c.Request.Context(), albumId)
+	album, err := s.albumSrv.Get(c.Request.Context(), albumId)
 	if err != nil {
 		logError(requestid.FromGin(c), "UploadMedia", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))

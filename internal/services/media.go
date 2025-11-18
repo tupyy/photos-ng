@@ -23,7 +23,6 @@ type MediaService struct {
 	logger *logger.StructuredLogger
 }
 
-// NewMediaService creates a new instance of MediaService with the provided datastores
 func NewMediaService(dt *pg.Datastore, fsDatastore *fs.Datastore) *MediaService {
 	return &MediaService{
 		dt:     dt,
@@ -32,8 +31,7 @@ func NewMediaService(dt *pg.Datastore, fsDatastore *fs.Datastore) *MediaService 
 	}
 }
 
-// GetMedia retrieves a list of media items based on the provided filter criteria
-func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]entity.Media, *PaginationCursor, error) {
+func (m *MediaService) List(ctx context.Context, filter *MediaOptions) ([]entity.Media, *PaginationCursor, error) {
 	logger := m.logger.WithContext(ctx).Debug("get_media").
 		WithStringPtr(AlbumID, filter.AlbumID).
 		WithParam("start_date", filter.StartDate).
@@ -71,9 +69,7 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 		Log()
 
 	media, err := m.dt.QueryMedia(ctx, filter.QueriesFn()...)
-	// Debug performance info (not error logging)
 	if err != nil {
-		// Return ServiceError (handlers will log the error)
 		return nil, nil, NewDatabaseWriteError(ctx, "get_media", err).
 			AtStep("query_media")
 	}
@@ -143,8 +139,7 @@ func (m *MediaService) GetMedia(ctx context.Context, filter *MediaOptions) ([]en
 	return media, nextCursor, nil
 }
 
-// GetMediaByID retrieves a specific media item by its ID
-func (m *MediaService) GetMediaByID(ctx context.Context, id string) (*entity.Media, error) {
+func (m *MediaService) Get(ctx context.Context, id string) (*entity.Media, error) {
 	logger := m.logger.WithContext(ctx).Debug("get_media_by_id").
 		WithString(MediaID, id).
 		Build()
@@ -162,22 +157,18 @@ func (m *MediaService) GetMediaByID(ctx context.Context, id string) (*entity.Med
 		Log()
 
 	media, err := m.dt.QueryMedia(ctx, pg.FilterByMediaId(id), pg.Limit(1))
-	// Debug performance info (not error logging)
 	if err != nil {
-		// Return ServiceError (handlers will log the error)
 		return nil, NewDatabaseWriteError(ctx, "get_media", err).
 			WithMediaID(id).
 			AtStep("query_media")
 	}
 
 	if len(media) == 0 {
-		// Return ServiceError (handlers will log the error)
 		return nil, NewMediaNotFoundError(ctx, id)
 	}
 
 	processedMedia := media[0]
 
-	// Populate the content function using the filesystem datastore
 	logger.Step("content_function_setup").
 		WithString(Filepath, processedMedia.Filepath()).
 		Log()
@@ -202,12 +193,11 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 		WithString("album_path", media.Album.Path).
 		Build()
 
-	// Check if the media already exists
 	logger.Step("existence_check").
 		WithString("checking", "media_exists").
 		Log()
 
-	oldMedia, err := m.GetMediaByID(ctx, media.ID)
+	oldMedia, err := m.Get(ctx, media.ID)
 	if err != nil {
 		switch err.(type) {
 		case *NotFoundError:
@@ -220,7 +210,6 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 		}
 	}
 
-	// Content reading with logging
 	logger.Step("content_reading").
 		WithString(Filename, media.Filename).
 		Log()
@@ -230,13 +219,11 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 		return nil, NewMediaProcessingError(ctx, "read_content", media.Filename, err)
 	}
 
-	// Read all content into memory to compute hash and write to disk
 	contentBytes, err := io.ReadAll(content)
 	if err != nil {
 		return nil, NewMediaProcessingError(ctx, "read_content_bytes", media.Filename, err)
 	}
 
-	// Compute SHA256 hash
 	logger.Step("hash_computation").
 		WithInt("content_size", len(contentBytes)).
 		Log()
@@ -255,7 +242,6 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 		return oldMedia, nil
 	}
 
-	// Transaction with detailed step logging
 	logger.Step("transaction_start").
 		WithInt("content_size", len(contentBytes)).
 		WithString(Hash, hashStr).
@@ -269,7 +255,6 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 	err = m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
 		media.Hash = hashStr
 
-		// Step 1: Initialize processing service
 		logger.Step("processing_init").
 			WithString(Filename, media.Filename).
 			Log()
@@ -279,7 +264,6 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 			return NewMediaProcessingError(ctx, "init_processing", media.Filename, err)
 		}
 
-		// Step 2: Process media (thumbnail + EXIF)
 		logger.Step("media_processing").
 			WithString(Filename, media.Filename).
 			WithInt("content_size", len(contentBytes)).
@@ -299,7 +283,6 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 			WithParam("duration", processingDuration).
 			Log()
 
-		// Step 3: Read thumbnail
 		thumbnail, err := io.ReadAll(r)
 		if err != nil {
 			return NewMediaProcessingError(ctx, "read_thumbnail", media.Filename, err)
@@ -313,7 +296,6 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 			WithInt("exif_fields", len(exif)).
 			Log()
 
-		// Step 4: Extract capture time
 		if captureAt, err := media.GetCapturedTime(); err != nil {
 			logger.Step("capture_time_extraction_failed").
 				WithString("filename", media.Filename).
@@ -327,7 +309,6 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 				Log()
 		}
 
-		// Step 5: Write file to disk
 		logger.Step("filesystem_write").
 			WithString(Filepath, media.Filepath()).
 			Log()
@@ -336,7 +317,6 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 			return NewFilesystemError(ctx, "write_media", "filesystem_write", media.Filepath(), err)
 		}
 
-		// Step 6: Write to database
 		logger.Step("database_write").
 			WithString("table", "media").
 			Log()
@@ -373,8 +353,7 @@ func (m *MediaService) WriteMedia(ctx context.Context, media entity.Media) (*ent
 	return &media, nil
 }
 
-// UpdateMedia updates an existing media item using an entity.Media
-func (m *MediaService) UpdateMedia(ctx context.Context, media entity.Media) (*entity.Media, error) {
+func (m *MediaService) Update(ctx context.Context, media entity.Media) (*entity.Media, error) {
 	logger := m.logger.WithContext(ctx).Debug("update_media").
 		WithString(MediaID, media.ID).
 		WithString(Filename, media.Filename).
@@ -388,7 +367,6 @@ func (m *MediaService) UpdateMedia(ctx context.Context, media entity.Media) (*en
 		WithString(Filename, media.Filename).
 		Log()
 
-	// Database transaction with debug timing
 	logger.Step("database_update").
 		WithString("table", "media").
 		Log()
@@ -419,18 +397,16 @@ func (m *MediaService) UpdateMedia(ctx context.Context, media entity.Media) (*en
 	return &media, nil
 }
 
-// DeleteMedia deletes a media item by ID
-func (m *MediaService) DeleteMedia(ctx context.Context, id string) error {
+func (m *MediaService) Delete(ctx context.Context, id string) error {
 	logger := m.logger.WithContext(ctx).Debug("delete_media").
 		WithString(MediaID, id).
 		Build()
 
-	// Check if media exists
 	logger.Step("validate_exists").
 		WithString(MediaID, id).
 		Log()
 
-	media, err := m.GetMediaByID(ctx, id)
+	media, err := m.Get(ctx, id)
 	if err != nil {
 		return NewInternalError(ctx, "delete_media", "validate_exists", err).
 			WithMediaID(id)
@@ -442,7 +418,6 @@ func (m *MediaService) DeleteMedia(ctx context.Context, id string) error {
 		WithString(Filepath, media.Filepath()).
 		Log()
 
-	// Delete the media from the datastore using a write transaction
 	logger.Step("transaction_start").
 		WithString(Filepath, media.Filepath()).
 		WithParam("operations", []string{"filesystem_delete", "database_delete"}).
@@ -453,7 +428,6 @@ func (m *MediaService) DeleteMedia(ctx context.Context, id string) error {
 		Log()
 
 	err = m.dt.WriteTx(ctx, func(ctx context.Context, writer *pg.Writer) error {
-		// Remove the file from album folders
 		logger.Step("filesystem_delete").
 			WithString(Filepath, media.Filepath()).
 			Log()
@@ -462,7 +436,6 @@ func (m *MediaService) DeleteMedia(ctx context.Context, id string) error {
 			return NewFilesystemError(ctx, "delete_media", "filesystem_delete", media.Filepath(), err)
 		}
 
-		// Delete the media from the database
 		logger.Step("database_delete").
 			WithString("table", "media").
 			WithString(MediaID, id).
@@ -497,7 +470,6 @@ func (m *MediaService) DeleteMedia(ctx context.Context, id string) error {
 }
 
 func (m *MediaService) GetContentFn(ctx context.Context, media entity.Media) entity.MediaContentFn {
-	// Construct the full file path from media filename and album path
 	filepath := path.Join(media.Album.Path, media.Filename)
 	return m.fs.Read(ctx, filepath)
 }

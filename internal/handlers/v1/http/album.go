@@ -29,23 +29,20 @@ func (s *Handler) ListAlbums(c *gin.Context, params v1.ListAlbumsParams) {
 	}
 
 	// Create album service and filter
-	opts := services.NewAlbumOptionsWithOptions(
+	opts := services.NewListOptionsWithOptions(
 		services.WithLimit(limit),
 		services.WithOffset(offset),
 		services.WithHasParent(hasParent),
 	)
 
-	albums, err := s.albumSrv.GetAlbums(c.Request.Context(), opts)
+	albums, err := s.albumSrv.List(c.Request.Context(), opts)
 	if err != nil {
 		logError(requestid.FromGin(c), "ListAlbums", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
 		return
 	}
 
-	countOpt := services.NewAlbumOptionsWithOptions(
-		services.WithHasParent(hasParent),
-	)
-	count, err := s.albumSrv.CountAlbums(c.Request.Context(), countOpt)
+	count, err := s.albumSrv.Count(c.Request.Context(), hasParent)
 	if err != nil {
 		logError(requestid.FromGin(c), "ListAlbums", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -82,7 +79,7 @@ func (s *Handler) CreateAlbum(c *gin.Context) {
 	}
 
 	// Convert request to entity and create the album
-	createdAlbum, err := s.albumSrv.CreateAlbum(c.Request.Context(), request.Entity())
+	createdAlbum, err := s.albumSrv.Create(c.Request.Context(), request.Entity())
 	if err != nil {
 		logError(requestid.FromGin(c), "CreateAlbum", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -98,7 +95,7 @@ func (s *Handler) CreateAlbum(c *gin.Context) {
 // or HTTP 200 with the album data on success.
 func (s *Handler) GetAlbum(c *gin.Context, id string) {
 	// Create album service and get the album
-	album, err := s.albumSrv.GetAlbum(c.Request.Context(), id)
+	album, err := s.albumSrv.Get(c.Request.Context(), id)
 	if err != nil {
 		logError(requestid.FromGin(c), "GetAlbum", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -121,7 +118,7 @@ func (s *Handler) UpdateAlbum(c *gin.Context, id string) {
 	}
 
 	// Get the existing album and apply updates
-	album, err := s.albumSrv.GetAlbum(c.Request.Context(), id)
+	album, err := s.albumSrv.Get(c.Request.Context(), id)
 	if err != nil {
 		logError(requestid.FromGin(c), "UpdateAlbum", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -132,7 +129,7 @@ func (s *Handler) UpdateAlbum(c *gin.Context, id string) {
 	request.ApplyTo(album)
 
 	// Update the album
-	updatedAlbum, err := s.albumSrv.UpdateAlbum(c.Request.Context(), *album)
+	updatedAlbum, err := s.albumSrv.Update(c.Request.Context(), *album)
 	if err != nil {
 		logError(requestid.FromGin(c), "UpdateAlbum", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))
@@ -148,7 +145,7 @@ func (s *Handler) UpdateAlbum(c *gin.Context, id string) {
 // or HTTP 204 on successful deletion.
 func (s *Handler) DeleteAlbum(c *gin.Context, id string) {
 	// Create album service and delete the album
-	err := s.albumSrv.DeleteAlbum(c.Request.Context(), id)
+	err := s.albumSrv.Delete(c.Request.Context(), id)
 	if err != nil {
 		logError(requestid.FromGin(c), "DeleteAlbum", err)
 		c.JSON(getHTTPStatusFromError(err), errorResponse(c, err.Error()))

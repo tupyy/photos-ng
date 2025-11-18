@@ -35,12 +35,12 @@ func DecodeCursor(encoded string) (*PaginationCursor, error) {
 	if encoded == "" {
 		return nil, nil
 	}
-	
+
 	data, err := base64.URLEncoding.DecodeString(encoded)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Parse into temporary struct with string fields to handle date-only formats
 	var temp struct {
 		CapturedAt string `json:"captured_at"`
@@ -49,7 +49,7 @@ func DecodeCursor(encoded string) (*PaginationCursor, error) {
 	if err := json.Unmarshal(data, &temp); err != nil {
 		return nil, err
 	}
-	
+
 	// Parse the timestamp - try RFC3339 first, then date-only
 	var capturedAt time.Time
 	if capturedAt, err = time.Parse(time.RFC3339, temp.CapturedAt); err != nil {
@@ -58,7 +58,7 @@ func DecodeCursor(encoded string) (*PaginationCursor, error) {
 			return nil, err
 		}
 	}
-	
+
 	return &PaginationCursor{
 		CapturedAt: capturedAt,
 		ID:         temp.ID,
@@ -123,10 +123,10 @@ func (mf *MediaOptions) QueriesFn() []pg.QueryOption {
 	return qf
 }
 
-// AlbumOptions represents optionsing criteria for album queries
+// ListOptions represents optionsing criteria for album queries
 //
-//go:generate go run github.com/ecordell/optgen -output zz_generated.album_options.go . AlbumOptions
-type AlbumOptions struct {
+//go:generate go run github.com/ecordell/optgen -output zz_generated.album_options.go . ListOptions
+type ListOptions struct {
 	Limit     int     `debugmap:"visible"`
 	Offset    int     `debugmap:"visible"`
 	ParentID  *string `debugmap:"visible"`
@@ -136,7 +136,7 @@ type AlbumOptions struct {
 // QueriesFn returns a slice of query options based on the album filter criteria
 // Note: Pagination (Limit/Offset) is removed because it interferes with JOIN queries
 // and causes incorrect media counts. Album pagination should be handled at the application level.
-func (af *AlbumOptions) QueriesFn() []pg.QueryOption {
+func (af *ListOptions) QueriesFn() []pg.QueryOption {
 	qf := []pg.QueryOption{}
 
 	// Note: Pagination removed due to JOIN query issues

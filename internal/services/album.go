@@ -27,9 +27,7 @@ func NewAlbumService(dt *pg.Datastore, fsDatastore *fs.Datastore) *AlbumService 
 	}
 }
 
-// GetAlbums retrieves a list of albums based on the provided filter criteria
-// Handles pagination at the application level to avoid issues with JOIN queries
-func (a *AlbumService) GetAlbums(ctx context.Context, opts *AlbumOptions) ([]entity.Album, error) {
+func (a *AlbumService) List(ctx context.Context, opts *ListOptions) ([]entity.Album, error) {
 	logger := a.logger.WithContext(ctx).Debug("get_albums").
 		WithInt("limit", opts.Limit).
 		WithInt("offset", opts.Offset).
@@ -92,19 +90,16 @@ func (a *AlbumService) GetAlbums(ctx context.Context, opts *AlbumOptions) ([]ent
 	return paginatedAlbums, nil
 }
 
-// CountAlbums returns the total count of albums matching the provided filter criteria
-func (a *AlbumService) CountAlbums(ctx context.Context, opts *AlbumOptions) (int, error) {
+func (a *AlbumService) Count(ctx context.Context, hasParent bool) (int, error) {
 	logger := a.logger.WithContext(ctx).Debug("count_albums").
-		WithBool("has_parent", opts.HasParent).
-		WithInt("filter_count", len(opts.QueriesFn())).
+		WithBool("has_parent", hasParent).
 		Build()
 
 	logger.Step("database_count").
 		WithString("query_type", "count_albums").
-		WithInt("filters", len(opts.QueriesFn())).
 		Log()
 
-	count, err := a.dt.CountAlbums(ctx, opts.QueriesFn()...)
+	count, err := a.dt.CountAlbums(ctx, pg.FilterAlbumWithParents(hasParent))
 	if err != nil {
 		return 0, NewDatabaseWriteError(ctx, "count_albums", err).
 			AtStep("count_albums")
@@ -117,8 +112,7 @@ func (a *AlbumService) CountAlbums(ctx context.Context, opts *AlbumOptions) (int
 	return count, nil
 }
 
-// GetAlbum retrieves a specific album by its ID
-func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, error) {
+func (a *AlbumService) Get(ctx context.Context, id string) (*entity.Album, error) {
 	logger := a.logger.WithContext(ctx).Debug("get_album").
 		WithString(AlbumID, id).
 		Build()
@@ -153,7 +147,7 @@ func (a *AlbumService) GetAlbum(ctx context.Context, id string) (*entity.Album, 
 }
 
 // CreateAlbum creates a new album using an entity.Album
-func (a *AlbumService) CreateAlbum(ctx context.Context, album entity.Album) (*entity.Album, error) {
+func (a *AlbumService) Create(ctx context.Context, album entity.Album) (*entity.Album, error) {
 	logger := a.logger.WithContext(ctx).Debug("create_album").
 		WithString(AlbumID, album.ID).
 		WithString(AlbumPath, album.Path).
@@ -165,7 +159,7 @@ func (a *AlbumService) CreateAlbum(ctx context.Context, album entity.Album) (*en
 		Log()
 
 	isAlbumExists := true
-	if _, err := a.GetAlbum(ctx, album.ID); err != nil {
+	if _, err := a.Get(ctx, album.ID); err != nil {
 		switch err.(type) {
 		case *NotFoundError:
 			isAlbumExists = false
@@ -185,7 +179,7 @@ func (a *AlbumService) CreateAlbum(ctx context.Context, album entity.Album) (*en
 			WithString("parent_id", *album.ParentId).
 			Log()
 
-		parent, err := a.GetAlbum(ctx, *album.ParentId)
+		parent, err := a.Get(ctx, *album.ParentId)
 		if err != nil {
 			switch err.(type) {
 			case *NotFoundError:
@@ -266,7 +260,7 @@ func (a *AlbumService) CreateAlbum(ctx context.Context, album entity.Album) (*en
 }
 
 // UpdateAlbum updates an existing album
-func (a *AlbumService) UpdateAlbum(ctx context.Context, album entity.Album) (*entity.Album, error) {
+func (a *AlbumService) Update(ctx context.Context, album entity.Album) (*entity.Album, error) {
 	logger := a.logger.WithContext(ctx).Debug("update_album").
 		WithString(AlbumID, album.ID).
 		WithStringPtr("description", album.Description).
@@ -278,7 +272,7 @@ func (a *AlbumService) UpdateAlbum(ctx context.Context, album entity.Album) (*en
 		WithString(AlbumID, album.ID).
 		Log()
 
-	existingAlbum, err := a.GetAlbum(ctx, album.ID)
+	existingAlbum, err := a.Get(ctx, album.ID)
 	if err != nil {
 		return nil, NewInternalError(ctx, "update_album", "validate_exists", err).
 			WithAlbumID(album.ID)
@@ -351,8 +345,7 @@ func (a *AlbumService) UpdateAlbum(ctx context.Context, album entity.Album) (*en
 	return existingAlbum, nil
 }
 
-// DeleteAlbum deletes an album by ID
-func (a *AlbumService) DeleteAlbum(ctx context.Context, id string) error {
+func (a *AlbumService) Delete(ctx context.Context, id string) error {
 	logger := a.logger.WithContext(ctx).Debug("delete_album").
 		WithString(AlbumID, id).
 		Build()
@@ -362,7 +355,7 @@ func (a *AlbumService) DeleteAlbum(ctx context.Context, id string) error {
 		WithString(AlbumID, id).
 		Log()
 
-	album, err := a.GetAlbum(ctx, id)
+	album, err := a.Get(ctx, id)
 	if err != nil {
 		return NewInternalError(ctx, "delete_album", "validate_exists", err).
 			WithAlbumID(id)
