@@ -1,0 +1,37 @@
+definition user {}
+
+definition role {
+	relation member: user
+}
+
+definition datastore {
+    relation admin: user | role#member
+	relation creator: user | role#member
+	relation viewer: user | role#member
+	relation editor: user | role#member
+	permission create = creator + admin
+	permission view = viewer + creator + admin
+	permission edit = editor + creator + admin
+	permission delete = admin
+    permission sync = admin
+    permission can_set_permissions = admin
+}
+
+definition album {
+	relation datastore: datastore
+	relation parent: album
+	relation owner: user
+	relation editor: user
+	relation viewer: user
+	permission view = owner + viewer + editor + parent->view + datastore->view
+	permission edit = owner + editor + parent->edit + datastore->edit
+	permission delete = owner + parent->delete + datastore->delete
+    permission sync = owner + parent->sync + datastore->sync 
+    permission can_set_permissions = parent->can_set_permissions + datastore->can_set_permissions
+}
+
+definition media {
+	relation parent: album
+	permission view = parent->view
+	permission delete = parent->delete
+}

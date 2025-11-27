@@ -15,6 +15,7 @@ type Config struct {
 	LogFormat      string         `debugmap:"visible"`
 	LogLevel       string         `debugmap:"visible"`
 	Authentication Authentication `debugmap:"visible"`
+	Authorization  Authorization  `debugmap:"visible"`
 }
 
 //go:generate go run github.com/ecordell/optgen -output zz_generated.db_configuration.go . Database
@@ -29,4 +30,10 @@ type Database struct {
 type Authentication struct {
 	Enabled      bool   `debugmap:"visible"`
 	WellknownURL string `debugmap:"visible"`
+}
+
+type Authorization struct {
+	Enabled      bool   `debugmap:"visible"`
+	SpiceDBURL   string `debugmap:"visible" default:"localhost:50051"`
+	PresharedKey string `debugmap:"visible" default:"foobar"`
 }

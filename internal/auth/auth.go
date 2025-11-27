@@ -17,11 +17,8 @@ import (
 )
 
 const (
-	alg               = "RS256"
-	sessionKey string = "sessionKey"
-	stateKey   string = "state"
-	tokenIDKey string = "tokenID"
-	userKey    string = "user"
+	alg            = "ES256"
+	userKey string = "user"
 )
 
 type userClaims struct {

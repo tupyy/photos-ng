@@ -36,6 +36,7 @@ func main() {
 
 	rootCmd.AddCommand(cmd.NewServeCommand(cfg))
 	rootCmd.AddCommand(cmd.NewMigrateCommand(cfg))
+	rootCmd.AddCommand(cmd.NewAuthzMigrateCommand(cfg))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

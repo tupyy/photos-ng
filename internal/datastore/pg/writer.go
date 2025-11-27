@@ -3,6 +3,8 @@ package pg
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"hash/fnv"
 	"time"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
@@ -129,4 +131,45 @@ func (w *Writer) DeleteMedia(ctx context.Context, id string) error {
 	// Execute the query
 	_, err = w.tx.Exec(ctx, sql, args...)
 	return err
+}
+
+func (w *Writer) WriteToken(ctx context.Context, token string) error {
+	stmt := tokenWriteStmt.
+		Values(1, token).
+		Suffix("ON CONFLICT (id) DO UPDATE SET token = excluded.token;")
+
+	sql, args, err := stmt.ToSql()
+	if err != nil {
+		return err
+	}
+
+	_, err = w.tx.Exec(ctx, sql, args...)
+	return err
+}
+
+func (w *Writer) AcquireGlobalLock(ctx context.Context) error {
+	return w.acquireLock(ctx, false)
+}
+
+func (w *Writer) AcquireSharedLock(ctx context.Context) error {
+	return w.acquireLock(ctx, true)
+}
+
+// AcquireLock attempts to acquire either a shared or global advisory lock
+func (w *Writer) acquireLock(ctx context.Context, isShared bool) error {
+	h := fnv.New32a()
+	h.Write([]byte(lockKey))
+	lockID := int32(h.Sum32())
+
+	lockStmt := globalLockStmt
+	if isShared {
+		lockStmt = sharedLockStmt
+	}
+
+	_, err := w.tx.Exec(ctx, fmt.Sprintf(lockStmt, lockID))
+	if err != nil {
+		return fmt.Errorf("lock query failed: %w", err)
+	}
+
+	return nil
 }

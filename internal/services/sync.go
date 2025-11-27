@@ -11,7 +11,7 @@ import (
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/logger"
 )
 
-// SyncService manages sync operations using a single scheduler instance
+// SyncService manages sync operations using a single scheduler instance without authorization
 type SyncService struct {
 	albumService *AlbumService
 	mediaService *MediaService
@@ -63,7 +63,6 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 			WithContext(AlbumPath, albumPath)
 	}
 
-
 	logger.Step("sync jobs generated").
 		WithString(AlbumID, album.ID).
 		WithInt("job_count", len(syncJobs)).
@@ -96,7 +95,6 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 			Log()
 	}
 
-
 	logger.Step("all sync jobs scheduled successfully").
 		WithInt("total_jobs", len(syncJobs)).
 		WithString(AlbumPath, albumPath).
@@ -113,8 +111,7 @@ func (s *SyncService) StartSync(ctx context.Context, albumPath string) (string, 
 }
 
 // GetJobStatus returns the status of a job by ID
-func (s *SyncService) GetJobStatus(jobID string) (*entity.JobProgress, error) {
-	ctx := context.Background()
+func (s *SyncService) GetJobStatus(ctx context.Context, jobID string) (*entity.JobProgress, error) {
 	logger := s.logger.WithContext(ctx).Operation("get_sync_job_status").
 		WithString(JobID, jobID).
 		Build()
@@ -156,28 +153,27 @@ func (s *SyncService) GetJobStatus(jobID string) (*entity.JobProgress, error) {
 }
 
 // ListJobStatuses returns statuses of all jobs
-func (s *SyncService) ListJobStatuses() []entity.JobProgress {
+func (s *SyncService) ListJobStatuses(_ context.Context) ([]entity.JobProgress, error) {
 	jobs := s.scheduler.GetAll()
 	statuses := make([]entity.JobProgress, len(jobs))
 	for i, syncJob := range jobs {
 		statuses[i] = syncJob.Status()
 	}
-	return statuses
+	return statuses, nil
 }
 
 // ListJobStatusesByStatus returns job statuses filtered by status
-func (s *SyncService) ListJobStatusesByStatus(status entity.JobStatus) []entity.JobProgress {
+func (s *SyncService) ListJobStatusesByStatus(_ context.Context, status entity.JobStatus) ([]entity.JobProgress, error) {
 	jobs := s.scheduler.GetByStatus(status)
 	statuses := make([]entity.JobProgress, len(jobs))
 	for i, syncJob := range jobs {
 		statuses[i] = syncJob.Status()
 	}
-	return statuses
+	return statuses, nil
 }
 
 // StopJob stops a specific job
-func (s *SyncService) StopJob(jobID string) error {
-	ctx := context.Background()
+func (s *SyncService) StopJob(ctx context.Context, jobID string) error {
 	logger := s.logger.WithContext(ctx).Operation("stop_sync_job").
 		WithString(JobID, jobID).
 		Build()
@@ -209,8 +205,7 @@ func (s *SyncService) StopJob(jobID string) error {
 }
 
 // PauseJob pauses or resumes a specific job
-func (s *SyncService) PauseJob(jobID string) error {
-	ctx := context.Background()
+func (s *SyncService) PauseJob(ctx context.Context, jobID string) error {
 	logger := s.logger.WithContext(ctx).Operation("pause_sync_job").
 		WithString(JobID, jobID).
 		Build()
@@ -242,8 +237,7 @@ func (s *SyncService) PauseJob(jobID string) error {
 }
 
 // StopAllJobs stops all running jobs
-func (s *SyncService) StopAllJobs() error {
-	ctx := context.Background()
+func (s *SyncService) StopAllJobs(ctx context.Context) error {
 	logger := s.logger.WithContext(ctx).Operation("stop_all_sync_jobs").Build()
 
 	// Get all active jobs (running and pending)
@@ -284,7 +278,6 @@ func (s *SyncService) StopAllJobs() error {
 		}
 	}
 
-
 	logger.Step("bulk job stop completed").
 		WithInt("total_jobs", len(activeJobs)).
 		WithInt("success_count", successCount).
@@ -305,8 +298,7 @@ func (s *SyncService) StopAllJobs() error {
 }
 
 // ClearFinishedJobs removes all completed, stopped, and failed jobs
-func (s *SyncService) ClearFinishedJobs() error {
-	ctx := context.Background()
+func (s *SyncService) ClearFinishedJobs(ctx context.Context) error {
 	logger := s.logger.WithContext(ctx).Operation("clear_finished_sync_jobs").Build()
 
 	// Get all finished jobs (completed, stopped, failed)
@@ -350,7 +342,6 @@ func (s *SyncService) ClearFinishedJobs() error {
 		}
 	}
 
-
 	logger.Step("bulk job clear completed").
 		WithInt("total_jobs", len(finishedJobs)).
 		WithInt("success_count", successCount).
@@ -380,7 +371,7 @@ func (s *SyncService) Shutdown() {
 	// Stop all running jobs
 	logger.Step("stop_all_jobs").Log()
 
-	if err := s.StopAllJobs(); err != nil {
+	if err := s.StopAllJobs(ctx); err != nil {
 		logger.Step("errors occurred while stopping jobs during shutdown").
 			WithString("error", err.Error()).
 			Log()
@@ -391,7 +382,7 @@ func (s *SyncService) Shutdown() {
 
 	schedStart := time.Now()
 	s.scheduler.Stop()
-	_  = time.Since(schedStart)
+	_ = time.Since(schedStart)
 
 	logger.Step("sync service shutdown complete").
 		Log()

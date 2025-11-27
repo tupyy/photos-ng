@@ -30,10 +30,16 @@ type HttpServerConfig struct {
 	Mode               string
 	StaticsFolder      string
 	Authentication     *Authentication
+	Authorization      *Authorization
 }
 
 type Authentication struct {
 	WellknownURL string
+}
+
+type Authorization struct {
+	SpiceDBURL   string
+	PresharedKey string
 }
 
 type HttpServer struct {

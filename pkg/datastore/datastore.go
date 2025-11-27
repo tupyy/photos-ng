@@ -9,9 +9,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// NewPostgresDatastore creates a new Postgres datastore instance with the given configuration options.
+// NewConnPool creates a new Postgres datastore instance with the given configuration options.
 // It establishes a connection pool and sets up query interceptors for logging and monitoring.
-func NewPostgresDatastore(ctx context.Context, url string, options ...Option) (ConnPooler, error) {
+func NewConnPool(ctx context.Context, url string, options ...Option) (ConnPooler, error) {
 	pgOptions := newPostgresConfig(options)
 
 	pgxConfig, err := pgOptions.PgxConfig(url)

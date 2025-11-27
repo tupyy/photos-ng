@@ -8,9 +8,61 @@ Built with a Go backend and React frontend, Photos NG emphasizes performance thr
 
 The backend exposes two API interfaces: a RESTful HTTP API and a gRPC API. Both APIs provide the same functionality. The HTTP API is consumed by the web frontend, while the gRPC API can be used for mobile applications on Android and iOS platforms.
 
-## Authentication and Authorization
+## Authentication
 
-This application does not implement authentication or authorization mechanisms. It is intended for deployment in trusted, internal networks only. Access control should be managed at the network or reverse proxy level if needed.
+This service does not implement OAuth2 or any authentication flow directly. Authentication is handled upstream by Envoy Proxy's OAuth2 filter, which validates tokens and injects user identity into request headers before they reach the application.
+
+## Authorization
+
+Authorization uses [SpiceDB](https://authzed.com/spicedb), a Zanzibar-inspired permissions database. The system implements relationship-based access control (ReBAC) where permissions are derived from relationships between users and resources.
+
+### Schema Overview
+
+The permission schema defines four resource types with hierarchical inheritance:
+
+```
+datastore
+    └── album
+            └── album (nested)
+                    └── media
+```
+
+**Datastore** - The root container representing a storage location (e.g., local filesystem). Grants top-level permissions that cascade to all albums and media within.
+
+| Relation | Subjects | Grants |
+|----------|----------|--------|
+| admin | user, role#member | create, view, edit, delete, sync, can_set_permissions |
+| creator | user, role#member | create, view |
+| editor | user, role#member | view, edit |
+| viewer | user, role#member | view |
+
+**Album** - A folder containing media or nested albums. Inherits permissions from its parent album and datastore.
+
+| Relation | Subjects | Grants |
+|----------|----------|--------|
+| owner | user | view, edit, delete, sync |
+| editor | user | view, edit |
+| viewer | user | view |
+| parent | album | inherits view, edit, delete, sync, can_set_permissions |
+| datastore | datastore | inherits view, edit, delete, sync, can_set_permissions |
+
+**Media** - A photo or video. Permissions are inherited entirely from the parent album.
+
+| Relation | Subjects | Grants |
+|----------|----------|--------|
+| parent | album | inherits view, delete |
+
+**Role** - Groups users for bulk permission assignment. Roles can be assigned to datastore relations.
+
+### Permission Inheritance
+
+Permissions flow downward through the hierarchy:
+
+1. A user with `admin` on `datastore:local` can view/edit/delete all albums and media
+2. A user with `owner` on `album:vacation-2024` can view/edit/delete that album and all nested albums/media
+3. A user with `viewer` on `album:shared` can only view that album and its contents
+
+Authorization checks are performed at the service layer through wrapper services (`AuthzAlbumService`, `AuthzMediaService`, `AuthzSyncService`) that validate permissions before delegating to the underlying business logic.
 
 ## Features
 
@@ -32,9 +84,7 @@ This application does not implement authentication or authorization mechanisms. 
 
 ## Road map
 
-- improve http header's middleware. Currently, there's almost none. see https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html
-- authentication. Only oauth2 is considered.
-- authorization. not really sure I need this.
+- Improve HTTP header middleware. Currently minimal. See https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html
 
 ## Architecture
 
