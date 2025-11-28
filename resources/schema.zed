@@ -9,10 +9,18 @@ definition datastore {
 	relation creator: user | role#member
 	relation viewer: user | role#member
 	relation editor: user | role#member
+	permission view = admin + creator + editor + viewer
+
+    // Permission to create albums
 	permission create = creator + admin
-	permission view = viewer + creator + admin
-	permission edit = editor + creator + admin
-	permission delete = admin
+	
+    // Permission to edit album (i.e. updating the name)
+    permission edit = admin + editor
+	
+    // Permission to delete albums
+    permission delete = admin
+
+    // Permission to start sync jobs
     permission sync = admin
     permission can_set_permissions = admin
 }
