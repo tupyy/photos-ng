@@ -92,10 +92,13 @@ func (s *AuthzMediaService) List(ctx context.Context, filter *MediaOptions) ([]e
 			perms, hasPerms := permissions[resource]
 			if hasPerms && slices.Contains(perms, entity.ViewPermission) {
 				results = append(results, media)
-				lastCursor = &PaginationCursor{
-					CapturedAt: media.CapturedAt,
-					ID:         media.ID,
-				}
+			}
+
+			// it does not matter if the user has or not permission on this resource
+			// by advancing the cursor on jump over the media that the user cannot access
+			lastCursor = &PaginationCursor{
+				CapturedAt: media.CapturedAt,
+				ID:         media.ID,
 			}
 
 			if len(results) >= requestedLimit {
@@ -103,9 +106,7 @@ func (s *AuthzMediaService) List(ctx context.Context, filter *MediaOptions) ([]e
 			}
 		}
 
-		// Update cursor for next batch
 		if nextCursor == nil {
-			// No more data from underlying service
 			break
 		}
 		filter.Cursor = nextCursor
