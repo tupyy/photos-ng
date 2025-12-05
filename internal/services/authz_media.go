@@ -45,6 +45,28 @@ func (s *AuthzMediaService) List(ctx context.Context, filter *MediaOptions) ([]e
 		Build()
 
 	user := user.MustFromContext(ctx)
+
+	if user.Role != nil {
+		userRelationships := []entity.Relationship{}
+		logger.Step("create user role relationship").
+			WithString("username", user.Username).
+			WithString("role", user.Role.String()).
+			Log()
+		switch *user.Role {
+		case entity.AdminRole:
+			userRelationships = append(userRelationships, entity.NewRelationship(entity.NewUserSubject(user.Username), entity.NewRoleResource(entity.AdminRoleName), entity.MemberRelationship))
+		case entity.CreatorRole:
+			userRelationships = append(userRelationships, entity.NewRelationship(entity.NewUserSubject(user.Username), entity.NewRoleResource(entity.CreatorRoleName), entity.MemberRelationship))
+		case entity.EditorRole:
+			userRelationships = append(userRelationships, entity.NewRelationship(entity.NewUserSubject(user.Username), entity.NewRoleResource(entity.EditorRoleName), entity.MemberRelationship))
+		case entity.ViewerRole:
+			userRelationships = append(userRelationships, entity.NewRelationship(entity.NewUserSubject(user.Username), entity.NewRoleResource(entity.ViewerRoleName), entity.MemberRelationship))
+		}
+		if err := s.authzSrv.WriteRelationships(ctx, userRelationships...); err != nil {
+			return nil, nil, NewInternalError(ctx, "authz_list_albums", "touch_user_relationships", err)
+		}
+	}
+
 	requestedLimit := filter.MediaLimit
 	if requestedLimit <= 0 {
 		requestedLimit = maxPageSize

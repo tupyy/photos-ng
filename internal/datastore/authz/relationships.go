@@ -1,8 +1,9 @@
 package authz
 
 import (
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
+
+	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 )
 
 // WithRelationship creates a relationship function that adds a relationship between a subject and a resource.

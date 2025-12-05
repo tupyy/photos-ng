@@ -35,5 +35,5 @@ type Authentication struct {
 type Authorization struct {
 	Enabled      bool   `debugmap:"visible"`
 	SpiceDBURL   string `debugmap:"visible" default:"localhost:50051"`
-	PresharedKey string `debugmap:"visible" default:"foobar"`
+	PresharedKey string `debugmap:"visible" default:"dev-secret-key"`
 }

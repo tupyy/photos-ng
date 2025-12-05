@@ -75,6 +75,9 @@ func (l *StructuredLogger) WithContext(ctx context.Context) *StructuredLogger {
 
 	if user := user.FromContext(ctx); user != nil {
 		fields = append(fields, zap.String("username", user.Username))
+		if user.Role != nil {
+			fields = append(fields, zap.String("role", user.Role.String()))
+		}
 	}
 
 	if len(fields) > 0 {

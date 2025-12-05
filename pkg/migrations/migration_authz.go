@@ -33,7 +33,7 @@ func (a *AuthzMigrations) Migrate(ctx context.Context, userSrv *services.UserSer
 	for _, k := range keys {
 		fn := a.migrations[k]
 		if err := fn(ctx, userSrv, authzSrv); err != nil {
-			return nil
+			return err
 		}
 	}
 

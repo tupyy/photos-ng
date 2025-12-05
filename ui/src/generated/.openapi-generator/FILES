@@ -6,6 +6,7 @@ api/albums-api.ts
 api/media-api.ts
 api/stats-api.ts
 api/sync-api.ts
+api/user-api.ts
 base.ts
 common.ts
 configuration.ts
@@ -22,6 +23,7 @@ docs/ListMediaResponse.md
 docs/ListSyncJobsResponse.md
 docs/Media.md
 docs/MediaApi.md
+docs/Permissions.md
 docs/StartSyncRequest.md
 docs/StartSyncResponse.md
 docs/StatsApi.md
@@ -36,6 +38,8 @@ docs/TaskResult.md
 docs/TaskResultResult.md
 docs/UpdateAlbumRequest.md
 docs/UpdateMediaRequest.md
+docs/User.md
+docs/UserApi.md
 git_push.sh
 index.ts
 models/album-children-inner.ts
@@ -50,6 +54,7 @@ models/list-media-response.ts
 models/list-sync-jobs-response.ts
 models/media.ts
 models/model-error.ts
+models/permissions.ts
 models/start-sync-request.ts
 models/start-sync-response.ts
 models/stats-response.ts
@@ -62,6 +67,7 @@ models/task-result-result.ts
 models/task-result.ts
 models/update-album-request.ts
 models/update-media-request.ts
+models/user.ts
 package.json
 tsconfig.esm.json
 tsconfig.json

@@ -76,6 +76,9 @@ type ServerInterface interface {
 	// Perform action on sync job by ID
 	// (PATCH /sync/{id})
 	ActionSyncJob(c *gin.Context, id string)
+	// Get current logged user profile
+	// (GET /user)
+	GetCurrentUser(c *gin.Context)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -598,6 +601,19 @@ func (siw *ServerInterfaceWrapper) ActionSyncJob(c *gin.Context) {
 	siw.Handler.ActionSyncJob(c, id)
 }
 
+// GetCurrentUser operation middleware
+func (siw *ServerInterfaceWrapper) GetCurrentUser(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetCurrentUser(c)
+}
+
 // GinServerOptions provides options for the Gin server.
 type GinServerOptions struct {
 	BaseURL      string
@@ -646,4 +662,5 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/sync/:id", wrapper.StopSyncJob)
 	router.GET(options.BaseURL+"/sync/:id", wrapper.GetSyncJob)
 	router.PATCH(options.BaseURL+"/sync/:id", wrapper.ActionSyncJob)
+	router.GET(options.BaseURL+"/user", wrapper.GetCurrentUser)
 }

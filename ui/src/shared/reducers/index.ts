@@ -6,6 +6,7 @@ import syncReducer from './syncSlice';
 import uploadReducer from './uploadSlice';
 import statsReducer from './statsSlice';
 import mediaReducer from './mediaSlice';
+import userReducer from './userSlice';
 
 // Combine all reducers
 const rootReducer = combineReducers({
@@ -16,6 +17,7 @@ const rootReducer = combineReducers({
   upload: uploadReducer,
   stats: statsReducer,
   media: mediaReducer,
+  user: userReducer,
 });
 
 export type RootState = ReturnType<typeof rootReducer>;
@@ -26,3 +28,6 @@ export { startSyncJob, fetchSyncJobs, fetchSyncJob, clearError, updateJob } from
 
 // Export media actions for convenience
 export { deleteMedia } from './mediaSlice';
+
+// Export user actions for convenience
+export { fetchCurrentUser, clearUser } from './userSlice';

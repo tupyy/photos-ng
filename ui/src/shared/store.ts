@@ -68,4 +68,16 @@ export const selectUpload = (state: RootState) => state.upload;
 export const selectUploadFiles = (state: RootState) => state.upload.files;
 export const selectUploadIsUploading = (state: RootState) => state.upload.isUploading;
 
+// User selectors
+export const selectUser = (state: RootState) => state.user.user;
+export const selectUserLoading = (state: RootState) => state.user.loading;
+export const selectUserInitialized = (state: RootState) => state.user.initialized;
+export const selectUserError = (state: RootState) => state.user.error;
+
+// Permission selectors
+export const selectCanSync = (state: RootState) =>
+  state.user.user?.permissions?.can_sync === 'allowed';
+export const selectCanCreateAlbums = (state: RootState) =>
+  state.user.user?.permissions?.can_create_albums === 'allowed';
+
 export default store;

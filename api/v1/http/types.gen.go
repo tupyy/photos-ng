@@ -11,6 +11,18 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for PermissionsCanCreateAlbums.
+const (
+	PermissionsCanCreateAlbumsAllowed PermissionsCanCreateAlbums = "allowed"
+	PermissionsCanCreateAlbumsDenied  PermissionsCanCreateAlbums = "denied"
+)
+
+// Defines values for PermissionsCanSync.
+const (
+	PermissionsCanSyncAllowed PermissionsCanSync = "allowed"
+	PermissionsCanSyncDenied  PermissionsCanSync = "denied"
+)
+
 // Defines values for SyncJobStatus.
 const (
 	Completed SyncJobStatus = "completed"
@@ -198,6 +210,21 @@ type Media struct {
 	Type      string `json:"type"`
 }
 
+// Permissions Datastore-level permissions for the user
+type Permissions struct {
+	// CanCreateAlbums Whether the user can create new albums
+	CanCreateAlbums *PermissionsCanCreateAlbums `json:"can_create_albums,omitempty"`
+
+	// CanSync Whether the user can perform sync operations
+	CanSync *PermissionsCanSync `json:"can_sync,omitempty"`
+}
+
+// PermissionsCanCreateAlbums Whether the user can create new albums
+type PermissionsCanCreateAlbums string
+
+// PermissionsCanSync Whether the user can perform sync operations
+type PermissionsCanSync string
+
 // StartSyncRequest defines model for StartSyncRequest.
 type StartSyncRequest struct {
 	// Path The file system path to sync
@@ -331,6 +358,18 @@ type UpdateMediaRequest struct {
 
 	// Exif EXIF data for the media
 	Exif *[]ExifHeader `json:"exif,omitempty"`
+}
+
+// User defines model for User.
+type User struct {
+	// Name Display name of the user
+	Name string `json:"name"`
+
+	// Permissions Datastore-level permissions for the user
+	Permissions Permissions `json:"permissions"`
+
+	// User Unique identifier or username of the user
+	User string `json:"user"`
 }
 
 // BadRequest defines model for BadRequest.

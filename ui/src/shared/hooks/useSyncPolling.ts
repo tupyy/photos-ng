@@ -16,10 +16,11 @@ export const useSyncPolling = (options: {
   const { enabled = true, interval = 1000, resetExponentialPolling = false } = options;
   const dispatch = useAppDispatch();
   const jobs = useAppSelector(selectSyncJobs);
-  
+
   // Exponential polling state
   const exponentialIntervalRef = useRef(2000); // Start at 2 seconds
   const maxExponentialInterval = 60000; // Max 1 minute
+  const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Check if there are any active jobs (pending or running status)
   const hasActiveJobs = jobs.some(job => job.status === 'running' || job.status === 'pending');
@@ -52,29 +53,37 @@ export const useSyncPolling = (options: {
   // Exponential polling effect when no active jobs
   useEffect(() => {
     if (!enabled || hasActiveJobs) {
+      // Clear any pending timeout when polling is disabled
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
       return;
     }
 
-    const startExponentialPolling = () => {
-      const pollInterval = setTimeout(() => {
+    const scheduleNextPoll = () => {
+      timeoutIdRef.current = setTimeout(() => {
         dispatch(fetchSyncJobs({ silent: true }));
-        
+
         // Increase interval for next poll (exponential backoff)
         exponentialIntervalRef.current = Math.min(
           exponentialIntervalRef.current * 2,
           maxExponentialInterval
         );
-        
-        // Schedule next poll
-        startExponentialPolling();
-      }, exponentialIntervalRef.current);
 
-      return pollInterval;
+        // Schedule next poll
+        scheduleNextPoll();
+      }, exponentialIntervalRef.current);
     };
 
-    const timeoutId = startExponentialPolling();
-    
-    return () => clearTimeout(timeoutId);
+    scheduleNextPoll();
+
+    return () => {
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
+    };
   }, [enabled, hasActiveJobs, dispatch]);
 
   return {

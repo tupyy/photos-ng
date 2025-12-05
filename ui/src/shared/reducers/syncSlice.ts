@@ -61,9 +61,9 @@ export const fetchSyncJobs = createAsyncThunk(
   async (options: { silent?: boolean } = {}, { rejectWithValue }) => {
     try {
       const response = await syncApi.listSyncJobs();
-      return { 
-        jobs: response.data.jobs || [], 
-        silent: options.silent || false 
+      return {
+        jobs: response.data.jobs || [],
+        silent: options.silent || false
       };
     } catch (error: any) {
       return rejectWithValue(

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,15 +18,25 @@ import (
 )
 
 const (
-	alg            = "ES256"
+	ES256          = "ES256"
+	RS256          = "RS256"
 	userKey string = "user"
 )
 
+type resourceRoles struct {
+	Roles []string `json:"roles"`
+}
+
+type resourceAccess struct {
+	Photos resourceRoles `json:"photos"`
+}
+
 type userClaims struct {
-	Username  string `json:"preferred_username"`
-	Email     string `json:"email"`
-	FirstName string `json:"given_name"`
-	LastName  string `json:"family_name"`
+	Username       string         `json:"preferred_username"`
+	Email          string         `json:"email"`
+	FirstName      string         `json:"given_name"`
+	LastName       string         `json:"family_name"`
+	ResourceAccess resourceAccess `json:"resource_access"`
 	jwt.RegisteredClaims
 }
 
@@ -78,10 +89,11 @@ func (o *OIDCAuthenticator) Middleware() gin.HandlerFunc {
 		}
 
 		if bearerToken == "" {
-			tracer.Step("bearer token not found in cookie").Log()
-			c.Next()
+			tracer.Error(errors.New("bearer token not found")).Log()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, errors.New("user not authenticated"))
+			return
 		}
-		tracer.Step("validating_token").Log()
+
 		user, err := o.Authenticate(ctx, bearerToken)
 		if err == nil {
 			uCtx := userCtx.ToContext(c.Request.Context(), user)
@@ -89,40 +101,38 @@ func (o *OIDCAuthenticator) Middleware() gin.HandlerFunc {
 			c.Set(userKey, user)
 
 			tracer.Step("token validated").Log()
+			tracer.Success().
+				WithString("user_id", user.ID).
+				WithString("username", user.Username).
+				Log()
+
 			c.Next()
 
 			return
 		}
+
+		c.AbortWithStatusJSON(http.StatusUnauthorized, err)
 	}
 }
 
 func (o *OIDCAuthenticator) Authenticate(ctx context.Context, token string) (*entity.User, error) {
-	tracer := logger.New("auth_middleware").WithContext(ctx).Operation("authenticate").Build()
-
 	parser := jwt.NewParser(
-		jwt.WithValidMethods([]string{alg}),
+		jwt.WithValidMethods([]string{ES256, RS256}),
 		jwt.WithIssuedAt(),
 		jwt.WithExpirationRequired(),
 	)
 
 	tt, err := parser.ParseWithClaims(token, &userClaims{}, o.keyFunc.Keyfunc)
 	if err != nil {
-		tracer.Step("parse_with_claims").WithString("error", err.Error()).Log()
 		return nil, err
 	}
 
 	claims, ok := tt.Claims.(*userClaims)
 	if !ok || !tt.Valid {
-		tracer.Step("invalid_claims").Log()
 		return nil, fmt.Errorf("invalid token claims")
 	}
 
 	user := newUser(claims)
-
-	tracer.Success().
-		WithString("user_id", user.ID).
-		WithString("username", user.Username).
-		Log()
 
 	return user, nil
 }
@@ -152,10 +162,34 @@ func getWellknownData(wellknownURL string) (map[string]any, error) {
 }
 
 func newUser(claims *userClaims) *entity.User {
-	return &entity.User{
+	user := &entity.User{
 		ID:        claims.Subject,
 		Username:  claims.Username,
 		FirstName: claims.FirstName,
 		LastName:  claims.LastName,
 	}
+
+	user.Role = parseRole(claims.ResourceAccess.Photos.Roles)
+
+	return user
+}
+
+func parseRole(roles []string) *entity.Role {
+	for _, r := range roles {
+		switch r {
+		case "admin":
+			role := entity.AdminRole
+			return &role
+		case "creator":
+			role := entity.CreatorRole
+			return &role
+		case "editor":
+			role := entity.EditorRole
+			return &role
+		case "viewer":
+			role := entity.ViewerRole
+			return &role
+		}
+	}
+	return nil
 }

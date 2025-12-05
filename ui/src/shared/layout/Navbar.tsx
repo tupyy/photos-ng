@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '@shared/contexts';
-import { useAppSelector, useAppDispatch, selectAlbumsPageActive, selectCurrentAlbum } from '@shared/store';
+import { useAppSelector, useAppDispatch, selectAlbumsPageActive, selectCurrentAlbum, selectCanSync, selectUser, selectCanCreateAlbums } from '@shared/store';
 import { setCreateFormOpen } from '@shared/reducers/albumsSlice';
 import { useSyncPolling } from '@shared/hooks/useSyncPolling';
 import { BuildInfo } from '@shared/components';
@@ -16,19 +16,28 @@ const Navbar: React.FC<NavbarProps> = () => {
   const { theme, toggleTheme } = useTheme();
   const isAlbumsPageActive = useAppSelector(selectAlbumsPageActive);
   const currentAlbum = useAppSelector(selectCurrentAlbum);
+  const canSync = useAppSelector(selectCanSync);
+  const canCreateAlbums = useAppSelector(selectCanCreateAlbums);
+  const user = useAppSelector(selectUser);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const actionMenuRef = useRef<HTMLDivElement>(null);
-  
-  // Use centralized sync polling for navbar status
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  // Use centralized sync polling for navbar status (only if user can sync)
   const { hasActiveJobs } = useSyncPolling({
+    enabled: canSync,
     interval: 2000, // Poll every 2 seconds for navbar
   });
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
         setActionMenuOpen(false);
+      }
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setProfileMenuOpen(false);
       }
     };
 
@@ -50,7 +59,7 @@ const Navbar: React.FC<NavbarProps> = () => {
     }
   };
 
-  const navItems = [
+  const allNavItems = [
     {
       path: '/albums',
       label: 'Albums',
@@ -58,7 +67,8 @@ const Navbar: React.FC<NavbarProps> = () => {
         <svg className="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
           <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.5 8H4m0-2v13a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-5.032a1 1 0 0 1-.768-.36l-1.9-2.28a1 1 0 0 0-.768-.36H5a1 1 0 0 0-1 1Z" />
         </svg>
-      )
+      ),
+      visible: true,
     },
     {
       path: '/sync',
@@ -67,9 +77,13 @@ const Navbar: React.FC<NavbarProps> = () => {
         <svg className={`w-6 h-6 ${hasActiveJobs ? 'animate-spin' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
         </svg>
-      )
+      ),
+      visible: canSync,
     }
   ];
+
+  // Filter nav items based on permissions
+  const navItems = allNavItems.filter(item => item.visible);
 
   return (
     <div className="sticky top-0 z-30 w-full backdrop-blur flex-none transition-colors duration-500 lg:z-30 supports-backdrop-blur:bg-white/60 dark:bg-slate-900">
@@ -114,7 +128,7 @@ const Navbar: React.FC<NavbarProps> = () => {
             {/* Action Menu - Only show when albums page is active */}
             {isAlbumsPageActive && (
               <div className="flex items-center space-x-1" ref={actionMenuRef}>
-                <ActionMenu 
+                <ActionMenu
                   isOpen={actionMenuOpen}
                   onToggle={() => setActionMenuOpen(!actionMenuOpen)}
                   onClose={() => setActionMenuOpen(false)}
@@ -122,6 +136,7 @@ const Navbar: React.FC<NavbarProps> = () => {
                   onUploadMedia={handleUploadMedia}
                   showUploadMedia={!!currentAlbum}
                   albumPath={currentAlbum?.path || ''}
+                  isAtRoot={!currentAlbum}
                 />
               </div>
             )}
@@ -145,6 +160,56 @@ const Navbar: React.FC<NavbarProps> = () => {
                 </svg>
               )}
             </button>
+
+            {/* User Profile Dropdown */}
+            {user && (
+              <div className="relative" ref={profileMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                  className="flex items-center p-2 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-gray-200 transition-colors"
+                  title="User profile"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                  </svg>
+                </button>
+
+                {profileMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-60 bg-white dark:bg-slate-800 rounded-lg shadow-lg z-50">
+                    <div className="p-4 border-b border-gray-200 dark:border-slate-700">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400">{user.user}</p>
+                    </div>
+                    <div className="p-3">
+                      <p className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase mb-2">Permissions</p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-700 dark:text-slate-300">Sync</span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            canSync
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                          }`}>
+                            {canSync ? 'allowed' : 'denied'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-700 dark:text-slate-300">Create Albums</span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            canCreateAlbums
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                          }`}>
+                            {canCreateAlbums ? 'allowed' : 'denied'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </nav>

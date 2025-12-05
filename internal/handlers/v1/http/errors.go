@@ -21,6 +21,8 @@ func getHTTPStatusFromError(err error) int {
 		return http.StatusBadRequest
 	case *services.InternalError:
 		return http.StatusInternalServerError
+	case *services.ForbiddenAccessError:
+		return http.StatusForbidden
 	default:
 		return http.StatusInternalServerError
 	}

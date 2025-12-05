@@ -12,6 +12,32 @@ servers:
     description: Production server
 
 paths:
+  /user:
+    get:
+      summary: Get current logged user profile
+      description: Retrieve the profile and permissions of the currently authenticated user
+      operationId: getCurrentUser
+      tags:
+        - User
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Authentication required"
+                code: "UNAUTHORIZED"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /albums:
     get:
       summary: List all albums
@@ -634,6 +660,40 @@ paths:
 
 components:
   schemas:
+    User:
+      type: object
+      required:
+        - user
+        - name
+        - permissions
+      properties:
+        user:
+          type: string
+          description: Unique identifier or username of the user
+          example: "john.doe"
+        name:
+          type: string
+          description: Display name of the user
+          example: "John Doe"
+        permissions:
+          $ref: '#/components/schemas/Permissions'
+
+    Permissions:
+      type: object
+      description: Datastore-level permissions for the user
+      properties:
+        can_sync:
+          type: string
+          enum: [allowed, denied]
+          description: Whether the user can perform sync operations
+        can_create_albums:
+          type: string
+          enum: [allowed, denied]
+          description: Whether the user can create new albums
+      example:
+        can_sync: "allowed"
+        can_create_albums: "denied"
+
     Album:
       type: object
       required:

@@ -72,6 +72,7 @@ Class | Method | HTTP request | Description
 *SyncApi* | [**listSyncJobs**](docs/SyncApi.md#listsyncjobs) | **GET** /sync | List all sync jobs
 *SyncApi* | [**startSyncJob**](docs/SyncApi.md#startsyncjob) | **POST** /sync | Start sync job
 *SyncApi* | [**stopSyncJob**](docs/SyncApi.md#stopsyncjob) | **DELETE** /sync/{id} | Stop sync job by ID (deprecated)
+*UserApi* | [**getCurrentUser**](docs/UserApi.md#getcurrentuser) | **GET** /user | Get current logged user profile
 
 
 ### Documentation For Models
@@ -87,6 +88,7 @@ Class | Method | HTTP request | Description
  - [ListSyncJobsResponse](docs/ListSyncJobsResponse.md)
  - [Media](docs/Media.md)
  - [ModelError](docs/ModelError.md)
+ - [Permissions](docs/Permissions.md)
  - [StartSyncRequest](docs/StartSyncRequest.md)
  - [StartSyncResponse](docs/StartSyncResponse.md)
  - [StatsResponse](docs/StatsResponse.md)
@@ -99,6 +101,7 @@ Class | Method | HTTP request | Description
  - [TaskResultResult](docs/TaskResultResult.md)
  - [UpdateAlbumRequest](docs/UpdateAlbumRequest.md)
  - [UpdateMediaRequest](docs/UpdateMediaRequest.md)
+ - [User](docs/User.md)
 
 
 <a id="documentation-for-authorization"></a>

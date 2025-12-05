@@ -9,10 +9,5 @@ func NewUserService() *UserService {
 }
 
 func (u *UserService) GetUsers() []entity.User {
-	return []entity.User{
-		entity.User{
-			Username: "cosmin",
-			Role:     entity.AdminRole,
-		},
-	}
+	return []entity.User{}
 }
