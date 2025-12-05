@@ -1,4 +1,4 @@
-.PHONY: generate generate.proto generate.proto.protoc lint.proto clean.proto build run clean help
+.PHONY: generate generate.proto generate.proto.protoc lint.proto clean.proto build run run.withauth run.ui clean help spicedb.start spicedb.stop spicedb.schema keycloak.start keycloak.start.postgres keycloak.start.server keycloak.stop envoy.start envoy.stop run.auth stop.auth
 
 # Default target
 .DEFAULT_GOAL := help
@@ -78,6 +78,19 @@ run.mnt:
 	@echo "Running $(BINARY_NAME)..."
 	$(BINARY_PATH) serve --data-root-folder=/mnt
 
+run.withauth:
+	@echo "Create temp data root folder..."
+	@mkdir -p $(TMP_DATA_FOLDER)
+	@echo "Running $(BINARY_NAME) with authentication..."
+	$(BINARY_PATH) serve \
+		--log-level=info \
+		--data-root-folder=$(TMP_DATA_FOLDER) \
+		--authentication-enabled \
+		--authentication-wellknown-endpoint=$(OIDC_WELLKNOWN_URL) \
+		--authorization-enabled \
+		--authorization-spicedb-url=localhost:$(SPICEDB_GRPC_PORT) \
+		--authorization-spicedb-preshared-key=$(SPICEDB_PRESHARED_KEY)
+
 run.ui:
 	cd ./ui && npm run start:dev
 
@@ -103,7 +116,73 @@ db.stop:
 	$(PODMAN) stop pg-photos
 
 db.migrate:
-	GOOSE_DRIVER=postgres GOOSE_DBSTRING=$(CONNSTR) GOOSE_MIGRATION_DIR=$(CURDIR)/internal/datastore/pg/migrations/sql goose up
+	GOOSE_DRIVER=postgres GOOSE_DBSTRING=$(CONNSTR) GOOSE_MIGRATION_DIR=$(CURDIR)/pkg/migrations/sql goose up
+
+# SpiceDB targets
+SPICEDB_IMAGE ?= authzed/spicedb:latest
+SPICEDB_GRPC_PORT=50051
+SPICEDB_PRESHARED_KEY=dev-secret-key
+
+spicedb.start:
+	$(PODMAN) run --rm -d \
+		--name spicedb-dev \
+		-p $(SPICEDB_GRPC_PORT):50051 \
+		$(SPICEDB_IMAGE) serve \
+		--grpc-preshared-key "$(SPICEDB_PRESHARED_KEY)"
+
+spicedb.stop:
+	$(PODMAN) stop spicedb-dev
+
+spicedb.schema:
+	zed schema write $(CURDIR)/resources/schema.zed \
+		--endpoint=localhost:$(SPICEDB_GRPC_PORT) \
+		--token="$(SPICEDB_PRESHARED_KEY)" \
+		--insecure
+
+# Keycloak targets
+KEYCLOAK_DB_PORT=5433
+KEYCLOAK_REALM=photos
+OIDC_WELLKNOWN_URL=http://localhost:8000/realms/$(KEYCLOAK_REALM)/.well-known/openid-configuration
+
+keycloak.start: keycloak.start.postgres keycloak.start.server
+
+keycloak.start.postgres:
+	$(PODMAN) play kube $(CURDIR)/resources/keycloak-postgres.yml
+	@echo "Waiting for PostgreSQL to be ready..."
+	@until pg_isready -h localhost -p $(KEYCLOAK_DB_PORT) -U keycloak > /dev/null 2>&1; do sleep 1; done
+	@echo "PostgreSQL is ready"
+
+keycloak.start.server:
+	$(PODMAN) play kube $(CURDIR)/resources/keycloak.yml
+
+keycloak.stop:
+	-$(PODMAN) play kube --down $(CURDIR)/resources/keycloak.yml
+	-$(PODMAN) play kube --down $(CURDIR)/resources/keycloak-postgres.yml
+
+# Envoy targets
+ENVOY_IMAGE ?= docker.io/envoyproxy/envoy:v1.32-latest
+
+envoy.start:
+	$(PODMAN) run -d --rm\
+		--name envoy-oauth2 \
+		--network host \
+		-v $(CURDIR)/resources/envoy.yaml:/etc/envoy/envoy.yaml \
+		$(ENVOY_IMAGE)
+
+envoy.stop:
+	$(PODMAN) stop envoy-oauth2
+
+# Auth stack targets (SpiceDB + Keycloak + Envoy)
+run.auth: spicedb.start spicedb.schema keycloak.start envoy.start
+	@echo "Auth stack started:"
+	@echo "  - SpiceDB:  localhost:$(SPICEDB_GRPC_PORT)"
+	@echo "  - Keycloak: http://localhost:8000"
+	@echo "  - Envoy:    http://localhost:7070"
+
+stop.auth:
+	-$(MAKE) envoy.stop
+	-$(MAKE) keycloak.stop
+	-$(MAKE) spicedb.stop
 
 
 #####################
@@ -132,9 +211,20 @@ help:
 	@echo "  lint.proto        - Lint protobuf files in container"
 	@echo "  clean.proto       - Clean generated protobuf files"
 	@echo "  build             - Build the application binary"
-	@echo "  run               - Run the application directly with go run"
+	@echo "  run               - Run the application directly"
+	@echo "  run.withauth      - Run the application with OIDC authentication"
+	@echo "  run.ui            - Run the UI development server"
 	@echo "  clean             - Clean build artifacts"
 	@echo "  db.start          - Start the database"
 	@echo "  db.stop           - Stop the database"
-	@echo "  db.migrate        - Migrate the database" 
+	@echo "  db.migrate        - Migrate the database"
+	@echo "  spicedb.start     - Start SpiceDB dev container"
+	@echo "  spicedb.stop      - Stop SpiceDB dev container"
+	@echo "  spicedb.schema    - Import schema.zed into SpiceDB"
+	@echo "  keycloak.start    - Start Keycloak with PostgreSQL"
+	@echo "  keycloak.stop     - Stop Keycloak pod"
+	@echo "  envoy.start       - Start Envoy OAuth2 proxy"
+	@echo "  envoy.stop        - Stop Envoy proxy"
+	@echo "  run.auth          - Start full auth stack (SpiceDB + Keycloak + Envoy)"
+	@echo "  stop.auth         - Stop full auth stack"
 	@echo "  help              - Show this help message"

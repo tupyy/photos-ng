@@ -1,0 +1,46 @@
+# Keycloak server - compatible with podman play kube
+#
+# Keycloak settings:
+#   admin user: admin
+#   admin password: admin
+#   port: 8000
+#
+# Requires keycloak-postgres to be running first:
+#   make keycloak.start
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: keycloak
+  labels:
+    app: keycloak
+spec:
+  containers:
+    - name: keycloak
+      image: quay.io/keycloak/keycloak:26.0
+      command:
+        - /opt/keycloak/bin/kc.sh
+      args:
+        - start-dev
+        - --spi-login-protocol-openid-connect-legacy-logout-redirect-uri=true
+      ports:
+        - containerPort: 8080
+          hostPort: 8000
+      env:
+        - name: KEYCLOAK_ADMIN
+          value: admin
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          value: admin
+        - name: KC_DB
+          value: postgres
+        - name: KC_DB_URL
+          value: jdbc:postgresql://keycloak-postgres:5432/keycloak
+        - name: KC_DB_USERNAME
+          value: keycloak
+        - name: KC_DB_PASSWORD
+          value: keycloak
+        - name: KC_HEALTH_ENABLED
+          value: "true"
+
+  restartPolicy: Always
