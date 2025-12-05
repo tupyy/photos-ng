@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 import './styles.css';
+import './App.css';
 import App from '@app/App';
 import { store } from '@shared/store';
 import { ThemeProvider } from '@shared/contexts';

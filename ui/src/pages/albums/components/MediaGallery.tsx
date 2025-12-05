@@ -122,14 +122,6 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
     setAlert((prev) => ({ ...prev, visible: false }));
   };
 
-  // Scroll to top function
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth',
-    });
-  };
-
   // Helper function to get the start of the week (Monday) for a given date
   const getWeekStart = (date: Date) => {
     const d = new Date(date);
@@ -421,14 +413,14 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
                 <button
                   onClick={selectAllMedia}
                   disabled={isDeleting || isSettingThumbnail}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                  className="px-4 py-2 text-sm font-medium border-2 border-gray-400 rounded-full text-gray-400 bg-transparent hover:text-black hover:border-black dark:hover:text-white dark:hover:border-white focus:outline-none transition-colors disabled:opacity-50"
                 >
                   Select All
                 </button>
                 <button
                   onClick={clearSelection}
                   disabled={isDeleting || isSettingThumbnail}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                  className="px-4 py-2 text-sm font-medium border-2 border-gray-400 rounded-full text-gray-400 bg-transparent hover:text-black hover:border-black dark:hover:text-white dark:hover:border-white focus:outline-none transition-colors disabled:opacity-50"
                 >
                   Clear
                 </button>
@@ -436,7 +428,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
                   <button
                     onClick={handleSetThumbnail}
                     disabled={isDeleting || isSettingThumbnail}
-                    className="px-3 py-1 text-sm border border-green-300 rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 dark:bg-green-900/20 dark:border-green-600 dark:text-green-300 dark:hover:bg-green-900/30"
+                    className="px-4 py-2 text-sm font-medium border-2 border-green-400 rounded-full text-green-400 bg-transparent hover:text-green-600 hover:border-green-600 dark:hover:text-green-200 dark:hover:border-green-200 focus:outline-none transition-colors disabled:opacity-50"
                   >
                     {isSettingThumbnail ? 'Setting...' : 'Set Album Thumbnail'}
                   </button>
@@ -445,7 +437,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
                   <button
                     onClick={handleDeleteSelected}
                     disabled={isDeleting || isSettingThumbnail}
-                    className="px-3 py-1 text-sm border border-red-300 rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 dark:bg-red-900/20 dark:border-red-600 dark:text-red-300 dark:hover:bg-red-900/30"
+                    className="px-4 py-2 text-sm font-medium border-2 border-red-400 rounded-full text-red-400 bg-transparent hover:text-red-600 hover:border-red-600 dark:hover:text-red-200 dark:hover:border-red-200 focus:outline-none transition-colors disabled:opacity-50"
                   >
                     {isDeleting ? 'Deleting...' : `Delete (${selectedMediaIds.size})`}
                   </button>
@@ -453,7 +445,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
                 <button
                   onClick={toggleSelectionMode}
                   disabled={isDeleting || isSettingThumbnail}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                  className="px-4 py-2 text-sm font-medium border-2 border-gray-400 rounded-full text-gray-400 bg-transparent hover:text-black hover:border-black dark:hover:text-white dark:hover:border-white focus:outline-none transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -461,9 +453,12 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
             ) : (
               <button
                 onClick={toggleSelectionMode}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full border-2 border-gray-400 text-gray-400 bg-transparent hover:text-black hover:border-black dark:hover:text-white dark:hover:border-white focus:outline-none transition-colors"
               >
-                Select Photos
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Select
               </button>
             )}
           </div>
@@ -480,7 +475,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
             </h3>
 
             {/* Media grid for this week */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1">
+            <div className="media-grid-container">
               {group.media.map((mediaItem) => (
                 <MediaThumbnail
                   key={mediaItem.id}

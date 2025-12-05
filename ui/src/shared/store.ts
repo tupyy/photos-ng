@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
 import rootReducer, { RootState } from '@reducers/index';
+import { AUTHZ_ENABLED } from '@shared/config';
 
 // Configure store
 export const store = configureStore({
@@ -42,6 +43,7 @@ export const selectSyncError = (state: RootState) => state.sync.error;
 export const selectAlbumsPageActive = (state: RootState) => state.albums.isPageActive;
 export const selectAlbumsCreateFormOpen = (state: RootState) => state.albums.isCreateFormOpen;
 export const selectCurrentAlbum = (state: RootState) => state.albums.currentAlbum;
+export const selectSelectedAlbumIds = (state: RootState) => state.albums.selectedAlbumIds;
 
 export const selectAlbumById = (state: RootState, albumId: string) =>
   state.albums.albums.find(album => album.id === albumId);
@@ -74,10 +76,10 @@ export const selectUserLoading = (state: RootState) => state.user.loading;
 export const selectUserInitialized = (state: RootState) => state.user.initialized;
 export const selectUserError = (state: RootState) => state.user.error;
 
-// Permission selectors
+// Permission selectors - when AUTHZ_ENABLED is false, all permissions are granted
 export const selectCanSync = (state: RootState) =>
-  state.user.user?.permissions?.can_sync === 'allowed';
+  !AUTHZ_ENABLED || state.user.user?.permissions?.can_sync === 'allowed';
 export const selectCanCreateAlbums = (state: RootState) =>
-  state.user.user?.permissions?.can_create_albums === 'allowed';
+  !AUTHZ_ENABLED || state.user.user?.permissions?.can_create_albums === 'allowed';
 
 export default store;
