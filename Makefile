@@ -5,7 +5,7 @@
 
 PODMAN ?= podman
 APP_IMAGE = photos-ng:latest
-REGISTRY = quay.io/ctupangiu/photos-ng
+REGISTRY = rhel2.tls.tupangiu.ro:5000/photos-ng
 LATEST_TAG ?= latest
 
 POSTGRES_IMAGE ?= docker.io/library/postgres:17
@@ -17,6 +17,25 @@ BINARY_NAME=photos-ng
 BINARY_PATH=bin/$(BINARY_NAME)
 MAIN_PATH=./main.go
 TMP_DATA_FOLDER=/tmp/photos-ng
+
+# Keycloak targets
+KEYCLOAK_DB_PORT=5433
+KEYCLOAK_REALM=photos
+OIDC_WELLKNOWN_URL=http://localhost:8000/realms/$(KEYCLOAK_REALM)/.well-known/openid-configuration
+OIDC_CLIENT_ID=photos
+OIDC_CLIENT_SECRET=bAz9ReuZ92gdOEsHG9H9aLZSjynPmo3o
+
+# SpiceDB targets
+SPICEDB_IMAGE ?= authzed/spicedb:latest
+SPICEDB_GRPC_PORT=50051
+SPICEDB_PRESHARED_KEY=dev-secret-key
+
+# Db tragets
+DB_HOST=localhost
+DB_PORT=5432
+ROOT_USER=postgres
+ROOT_PWD=postgres
+CONNSTR="postgresql://$(ROOT_USER):$(ROOT_PWD)@$(DB_HOST):$(DB_PORT)"
 
 # Generate code (OpenAPI, protobuf, etc.)
 generate:
@@ -87,6 +106,8 @@ run.withauth:
 		--data-root-folder=$(TMP_DATA_FOLDER) \
 		--authentication-enabled \
 		--authentication-wellknown-endpoint=$(OIDC_WELLKNOWN_URL) \
+		--authentication-client-id=$(OIDC_CLIENT_ID) \
+		--authentication-client-secret=$(OIDC_CLIENT_SECRET) \
 		--authorization-enabled \
 		--authorization-spicedb-url=localhost:$(SPICEDB_GRPC_PORT) \
 		--authorization-spicedb-preshared-key=$(SPICEDB_PRESHARED_KEY)
@@ -102,13 +123,6 @@ clean:
 	rm -rf $(TMP_DATA_FOLDER)
 	@echo "Clean complete."
 
-# Db tragets
-DB_HOST=localhost
-DB_PORT=5432
-ROOT_USER=postgres
-ROOT_PWD=postgres
-CONNSTR="postgresql://$(ROOT_USER):$(ROOT_PWD)@$(DB_HOST):$(DB_PORT)"
-
 db.start:
 	$(PODMAN) run --rm -p $(DB_PORT):5432 --name pg-photos -e POSTGRES_PASSWORD=$(ROOT_PWD) -d $(POSTGRES_IMAGE)
 
@@ -117,11 +131,6 @@ db.stop:
 
 db.migrate:
 	GOOSE_DRIVER=postgres GOOSE_DBSTRING=$(CONNSTR) GOOSE_MIGRATION_DIR=$(CURDIR)/pkg/migrations/sql goose up
-
-# SpiceDB targets
-SPICEDB_IMAGE ?= authzed/spicedb:latest
-SPICEDB_GRPC_PORT=50051
-SPICEDB_PRESHARED_KEY=dev-secret-key
 
 spicedb.start:
 	$(PODMAN) run --rm -d \
@@ -138,11 +147,6 @@ spicedb.schema:
 		--endpoint=localhost:$(SPICEDB_GRPC_PORT) \
 		--token="$(SPICEDB_PRESHARED_KEY)" \
 		--insecure
-
-# Keycloak targets
-KEYCLOAK_DB_PORT=5433
-KEYCLOAK_REALM=photos
-OIDC_WELLKNOWN_URL=http://localhost:8000/realms/$(KEYCLOAK_REALM)/.well-known/openid-configuration
 
 keycloak.start: keycloak.start.postgres keycloak.start.server
 
