@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"path"
+	"strings"
 	"time"
 
 	ginzap "github.com/gin-contrib/zap"
@@ -35,6 +37,21 @@ type HttpServerConfig struct {
 
 type Authentication struct {
 	WellknownURL string
+	ClientID     string
+	ClientSecret string
+}
+
+func (a Authentication) GetRealm() string {
+	if a.WellknownURL == "" {
+		return ""
+	}
+	parts := strings.Split(a.WellknownURL, string(os.PathSeparator))
+	for idx, p := range parts {
+		if p == "realms" && idx < len(parts) {
+			return parts[idx+1]
+		}
+	}
+	return ""
 }
 
 type Authorization struct {

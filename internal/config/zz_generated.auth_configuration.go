@@ -35,6 +35,8 @@ func (a *Authentication) ToOption() AuthenticationOption {
 	return func(to *Authentication) {
 		to.Enabled = a.Enabled
 		to.WellknownURL = a.WellknownURL
+		to.ClientID = a.ClientID
+		to.ClientSecret = a.ClientSecret
 	}
 }
 
@@ -43,6 +45,8 @@ func (a *Authentication) DebugMap() map[string]any {
 	debugMap := map[string]any{}
 	debugMap["Enabled"] = helpers.DebugValue(a.Enabled, false)
 	debugMap["WellknownURL"] = helpers.DebugValue(a.WellknownURL, false)
+	debugMap["ClientID"] = helpers.DebugValue(a.ClientID, false)
+	debugMap["ClientSecret"] = helpers.DebugValue(a.ClientSecret, false)
 	return debugMap
 }
 
@@ -73,5 +77,19 @@ func WithEnabled(enabled bool) AuthenticationOption {
 func WithWellknownURL(wellknownURL string) AuthenticationOption {
 	return func(a *Authentication) {
 		a.WellknownURL = wellknownURL
+	}
+}
+
+// WithClientID returns an option that can set ClientID on a Authentication
+func WithClientID(clientID string) AuthenticationOption {
+	return func(a *Authentication) {
+		a.ClientID = clientID
+	}
+}
+
+// WithClientSecret returns an option that can set ClientSecret on a Authentication
+func WithClientSecret(clientSecret string) AuthenticationOption {
+	return func(a *Authentication) {
+		a.ClientSecret = clientSecret
 	}
 }

@@ -30,6 +30,8 @@ type Database struct {
 type Authentication struct {
 	Enabled      bool   `debugmap:"visible"`
 	WellknownURL string `debugmap:"visible"`
+	ClientID     string `debugmap:"visible"`
+	ClientSecret string `debugmap:"visible"`
 }
 
 type Authorization struct {

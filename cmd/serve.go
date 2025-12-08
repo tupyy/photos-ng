@@ -102,6 +102,8 @@ func NewServeCommand(config *config.Config) *cobra.Command {
 				if config.Authentication.Enabled {
 					cfg = cfg.WithOptions(server.WithAuthentication(server.Authentication{
 						WellknownURL: config.Authentication.WellknownURL,
+						ClientID:     config.Authentication.ClientID,
+						ClientSecret: config.Authentication.ClientSecret,
 					}))
 				}
 
@@ -169,14 +171,20 @@ func validateConfig(config *config.Config) error {
 		if config.Authentication.WellknownURL == "" {
 			return errors.New("wellknown_url cannot be empty")
 		}
-	}
-
-	if config.Authorization.Enabled {
-		if config.Authorization.SpiceDBURL == "" {
-			return errors.New("spicedb url cannot be empty")
+		if config.Authentication.ClientID == "" {
+			return errors.New("client id cannot be empty")
 		}
-		if config.Authorization.PresharedKey == "" {
-			return errors.New("preshared key cannot be empty")
+		if config.Authentication.ClientSecret == "" {
+			return errors.New("client secret cannot be empty")
+		}
+
+		if config.Authorization.Enabled {
+			if config.Authorization.SpiceDBURL == "" {
+				return errors.New("spicedb url cannot be empty")
+			}
+			if config.Authorization.PresharedKey == "" {
+				return errors.New("preshared key cannot be empty")
+			}
 		}
 	}
 	return nil
@@ -217,6 +225,8 @@ func registerServerFlags(flagSet *pflag.FlagSet, config *config.Config) {
 func registerAuthenticationFlags(flagSet *pflag.FlagSet, config *config.Config) {
 	flagSet.BoolVar(&config.Authentication.Enabled, "authentication-enabled", config.Authentication.Enabled, "enable OIDC authentication (default false)")
 	flagSet.StringVar(&config.Authentication.WellknownURL, "authentication-wellknown-endpoint", config.Authentication.WellknownURL, "OIDC provider wellknown endpoing address")
+	flagSet.StringVar(&config.Authentication.ClientID, "authentication-client-id", config.Authentication.ClientID, "client's ID")
+	flagSet.StringVar(&config.Authentication.ClientSecret, "authentication-client-secret", config.Authentication.ClientSecret, "client secret")
 }
 
 func registerAuthorizationFlags(flagSet *pflag.FlagSet, config *config.Config) {

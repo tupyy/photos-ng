@@ -19,6 +19,34 @@ func Initial(ctx context.Context, userSrv *services.UserService, authzSrv *servi
 		entity.NewRelationship(entity.NewRoleSubject(entity.CreatorRoleName), entity.NewDatastoreResource(entity.LocalDatastore), entity.CreatorRelationship),
 	}
 
+	users, err := userSrv.GetUsers(context.Background())
+	if err != nil {
+		return err
+	}
+	for _, user := range users {
+		if user.Role == nil {
+			continue
+		}
+		userRelationships := []entity.Relationship{}
+		l.Step("create user role relationship").
+			WithString("username", user.Username).
+			WithString("role", user.Role.String()).
+			Log()
+		switch *user.Role {
+		case entity.AdminRole:
+			userRelationships = append(userRelationships, entity.NewRelationship(entity.NewUserSubject(user.Username), entity.NewRoleResource(entity.AdminRoleName), entity.MemberRelationship))
+		case entity.CreatorRole:
+			userRelationships = append(userRelationships, entity.NewRelationship(entity.NewUserSubject(user.Username), entity.NewRoleResource(entity.CreatorRoleName), entity.MemberRelationship))
+		case entity.EditorRole:
+			userRelationships = append(userRelationships, entity.NewRelationship(entity.NewUserSubject(user.Username), entity.NewRoleResource(entity.EditorRoleName), entity.MemberRelationship))
+		case entity.ViewerRole:
+			userRelationships = append(userRelationships, entity.NewRelationship(entity.NewUserSubject(user.Username), entity.NewRoleResource(entity.ViewerRoleName), entity.MemberRelationship))
+		}
+		if err := authzSrv.WriteRelationships(ctx, userRelationships...); err != nil {
+			return err
+		}
+	}
+
 	if err := authzSrv.WriteRelationships(ctx, relationships...); err != nil {
 		return err
 	}

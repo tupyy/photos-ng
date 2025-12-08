@@ -1,5 +1,7 @@
 package entity
 
+import "fmt"
+
 type Role int
 
 const (
@@ -21,6 +23,21 @@ func (r Role) String() string {
 		return "viewer"
 	default:
 		return "unknown"
+	}
+}
+
+func RoleFromString(s string) (Role, error) {
+	switch s {
+	case "admin":
+		return AdminRole, nil
+	case "creator":
+		return CreatorRole, nil
+	case "editor":
+		return EditorRole, nil
+	case "viewer":
+		return ViewerRole, nil
+	default:
+		return 0, fmt.Errorf("unknown role: %s", s)
 	}
 }
 
