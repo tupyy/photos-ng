@@ -10,7 +10,7 @@ LATEST_TAG ?= latest
 
 POSTGRES_IMAGE ?= docker.io/library/postgres:17
 GIT_COMMIT=$(shell git rev-list -1 HEAD --abbrev-commit)
-VERSION=$(shell cat VERSION)
+VERSION=v1.0.0
 
 # Project variables
 BINARY_NAME=photos-ng
@@ -194,8 +194,15 @@ stop.auth:
 #####################
 
 # Build the application image
-podman.build: ## Build the Finante application container
-	podman build -f Containerfile --build-arg GIT_SHA=$(GIT_COMMIT) -t $(APP_IMAGE) .
+podman.build: ## Build the photos-ng application container
+	$(PODMAN) build \
+		-f Containerfile \
+		--build-arg GIT_SHA=$(GIT_COMMIT) \
+		--label org.opencontainers.image.title="photos-ng-app" \
+		--label org.opencontainers.image.version=$(VERSION) \
+		--label org.opencontainers.image.revision=$(GIT_COMMIT) \
+		--label org.opencontainers.image.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
+		-t $(APP_IMAGE) $(CURDIR)
 
 # Push image to remote registry
 podman.push: podman.build
