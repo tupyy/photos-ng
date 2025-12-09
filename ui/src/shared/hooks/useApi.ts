@@ -6,7 +6,6 @@ import {
   createAlbum,
   updateAlbum,
   deleteAlbum,
-  syncAlbum,
   clearCurrentAlbum,
   clearError as clearAlbumsError,
   setFilters as setAlbumsFilters,
@@ -88,10 +87,6 @@ export const useAlbumsApi = () => {
     ),
     deleteAlbum: useCallback(
       (id: string) => dispatch(deleteAlbum(id)),
-      [dispatch]
-    ),
-    syncAlbum: useCallback(
-      (id: string) => dispatch(syncAlbum(id)),
       [dispatch]
     ),
     clearCurrentAlbum: useCallback(() => dispatch(clearCurrentAlbum()), [dispatch]),

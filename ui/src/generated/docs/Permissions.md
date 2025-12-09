@@ -6,7 +6,6 @@ Datastore-level permissions for the user
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**canSync** | **string** | Whether the user can perform sync operations | [optional] [default to undefined]
 **canCreateAlbums** | **string** | Whether the user can create new albums | [optional] [default to undefined]
 
 ## Example
@@ -15,7 +14,6 @@ Name | Type | Description | Notes
 import { Permissions } from 'photos-ng-api-client';
 
 const instance: Permissions = {
-    canSync,
     canCreateAlbums,
 };
 ```

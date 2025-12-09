@@ -21,12 +21,6 @@
  */
 export interface Permissions {
     /**
-     * Whether the user can perform sync operations
-     * @type {string}
-     * @memberof Permissions
-     */
-    'can_sync'?: PermissionsCanSyncEnum;
-    /**
      * Whether the user can create new albums
      * @type {string}
      * @memberof Permissions
@@ -34,14 +28,6 @@ export interface Permissions {
     'can_create_albums'?: PermissionsCanCreateAlbumsEnum;
 }
 
-/**
-    * @export
-    * @enum {string}
-    */
-export enum PermissionsCanSyncEnum {
-    Allowed = 'allowed',
-    Denied = 'denied'
-}
 /**
     * @export
     * @enum {string}

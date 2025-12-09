@@ -28,9 +28,6 @@ type ServerInterface interface {
 	// Update album by ID
 	// (PUT /albums/{id})
 	UpdateAlbum(c *gin.Context, id string)
-	// Sync album
-	// (POST /albums/{id}/sync)
-	SyncAlbum(c *gin.Context, id string)
 	// List all media
 	// (GET /media)
 	ListMedia(c *gin.Context, params ListMediaParams)
@@ -55,27 +52,6 @@ type ServerInterface interface {
 	// Get application statistics
 	// (GET /stats)
 	GetStats(c *gin.Context)
-	// Clear finished sync jobs
-	// (DELETE /sync)
-	ClearFinishedSyncJobs(c *gin.Context)
-	// List all sync jobs
-	// (GET /sync)
-	ListSyncJobs(c *gin.Context)
-	// Perform action on all sync jobs
-	// (PATCH /sync)
-	ActionAllSyncJobs(c *gin.Context)
-	// Start sync job
-	// (POST /sync)
-	StartSyncJob(c *gin.Context)
-	// Stop sync job by ID (deprecated)
-	// (DELETE /sync/{id})
-	StopSyncJob(c *gin.Context, id string)
-	// Get sync job by ID
-	// (GET /sync/{id})
-	GetSyncJob(c *gin.Context, id string)
-	// Perform action on sync job by ID
-	// (PATCH /sync/{id})
-	ActionSyncJob(c *gin.Context, id string)
 	// Get current logged user profile
 	// (GET /user)
 	GetCurrentUser(c *gin.Context)
@@ -215,30 +191,6 @@ func (siw *ServerInterfaceWrapper) UpdateAlbum(c *gin.Context) {
 	}
 
 	siw.Handler.UpdateAlbum(c, id)
-}
-
-// SyncAlbum operation middleware
-func (siw *ServerInterfaceWrapper) SyncAlbum(c *gin.Context) {
-
-	var err error
-
-	// ------------- Path parameter "id" -------------
-	var id string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.SyncAlbum(c, id)
 }
 
 // ListMedia operation middleware
@@ -477,130 +429,6 @@ func (siw *ServerInterfaceWrapper) GetStats(c *gin.Context) {
 	siw.Handler.GetStats(c)
 }
 
-// ClearFinishedSyncJobs operation middleware
-func (siw *ServerInterfaceWrapper) ClearFinishedSyncJobs(c *gin.Context) {
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ClearFinishedSyncJobs(c)
-}
-
-// ListSyncJobs operation middleware
-func (siw *ServerInterfaceWrapper) ListSyncJobs(c *gin.Context) {
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ListSyncJobs(c)
-}
-
-// ActionAllSyncJobs operation middleware
-func (siw *ServerInterfaceWrapper) ActionAllSyncJobs(c *gin.Context) {
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ActionAllSyncJobs(c)
-}
-
-// StartSyncJob operation middleware
-func (siw *ServerInterfaceWrapper) StartSyncJob(c *gin.Context) {
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.StartSyncJob(c)
-}
-
-// StopSyncJob operation middleware
-func (siw *ServerInterfaceWrapper) StopSyncJob(c *gin.Context) {
-
-	var err error
-
-	// ------------- Path parameter "id" -------------
-	var id string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.StopSyncJob(c, id)
-}
-
-// GetSyncJob operation middleware
-func (siw *ServerInterfaceWrapper) GetSyncJob(c *gin.Context) {
-
-	var err error
-
-	// ------------- Path parameter "id" -------------
-	var id string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.GetSyncJob(c, id)
-}
-
-// ActionSyncJob operation middleware
-func (siw *ServerInterfaceWrapper) ActionSyncJob(c *gin.Context) {
-
-	var err error
-
-	// ------------- Path parameter "id" -------------
-	var id string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ActionSyncJob(c, id)
-}
-
 // GetCurrentUser operation middleware
 func (siw *ServerInterfaceWrapper) GetCurrentUser(c *gin.Context) {
 
@@ -646,7 +474,6 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.DELETE(options.BaseURL+"/albums/:id", wrapper.DeleteAlbum)
 	router.GET(options.BaseURL+"/albums/:id", wrapper.GetAlbum)
 	router.PUT(options.BaseURL+"/albums/:id", wrapper.UpdateAlbum)
-	router.POST(options.BaseURL+"/albums/:id/sync", wrapper.SyncAlbum)
 	router.GET(options.BaseURL+"/media", wrapper.ListMedia)
 	router.POST(options.BaseURL+"/media", wrapper.UploadMedia)
 	router.DELETE(options.BaseURL+"/media/:id", wrapper.DeleteMedia)
@@ -655,12 +482,5 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/media/:id/content", wrapper.GetMediaContent)
 	router.GET(options.BaseURL+"/media/:id/thumbnail", wrapper.GetMediaThumbnail)
 	router.GET(options.BaseURL+"/stats", wrapper.GetStats)
-	router.DELETE(options.BaseURL+"/sync", wrapper.ClearFinishedSyncJobs)
-	router.GET(options.BaseURL+"/sync", wrapper.ListSyncJobs)
-	router.PATCH(options.BaseURL+"/sync", wrapper.ActionAllSyncJobs)
-	router.POST(options.BaseURL+"/sync", wrapper.StartSyncJob)
-	router.DELETE(options.BaseURL+"/sync/:id", wrapper.StopSyncJob)
-	router.GET(options.BaseURL+"/sync/:id", wrapper.GetSyncJob)
-	router.PATCH(options.BaseURL+"/sync/:id", wrapper.ActionSyncJob)
 	router.GET(options.BaseURL+"/user", wrapper.GetCurrentUser)
 }

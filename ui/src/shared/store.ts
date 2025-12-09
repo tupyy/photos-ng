@@ -26,18 +26,7 @@ export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 export const selectAlbums = (state: RootState) => state.albums;
 export const selectTimeline = (state: RootState) => state.timeline;
 export const selectAlbumsMedia = (state: RootState) => state.albumsMedia;
-export const selectSync = (state: RootState) => state.sync;
 export const selectStats = (state: RootState) => state.stats;
-
-// Sync job selectors
-export const selectSyncJobs = (state: RootState) => state.sync.jobs;
-export const selectActiveSyncJobs = (state: RootState) => 
-  state.sync.jobs.filter(job => job.status === 'running');
-export const selectHasActiveSyncJobs = (state: RootState) => 
-  state.sync.jobs.some(job => job.status === 'running');
-export const selectSyncLoading = (state: RootState) => state.sync.loading;
-export const selectSyncStarting = (state: RootState) => state.sync.startingSync;
-export const selectSyncError = (state: RootState) => state.sync.error;
 
 // Specific selectors
 export const selectAlbumsPageActive = (state: RootState) => state.albums.isPageActive;
@@ -77,8 +66,6 @@ export const selectUserInitialized = (state: RootState) => state.user.initialize
 export const selectUserError = (state: RootState) => state.user.error;
 
 // Permission selectors - when AUTHZ_ENABLED is false, all permissions are granted
-export const selectCanSync = (state: RootState) =>
-  !AUTHZ_ENABLED || state.user.user?.permissions?.can_sync === 'allowed';
 export const selectCanCreateAlbums = (state: RootState) =>
   !AUTHZ_ENABLED || state.user.user?.permissions?.can_create_albums === 'allowed';
 

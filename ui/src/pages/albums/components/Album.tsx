@@ -90,18 +90,6 @@ const Album: React.FC<AlbumProps> = ({
           )}
         </div>
 
-        {/* Sync spinner overlay */}
-        {album.syncInProgress && (
-          <div className="absolute top-2 left-2 z-10">
-            <div
-              className="flex items-center justify-center w-6 h-6 bg-blue-500 bg-opacity-90 rounded-full"
-              title="Sync job in progress"
-            >
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            </div>
-          </div>
-        )}
-
         {/* Selection checkbox overlay */}
         {isSelectionMode && (
           <div className="absolute top-2 right-2 z-10">

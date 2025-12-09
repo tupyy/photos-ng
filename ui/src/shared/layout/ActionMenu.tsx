@@ -1,7 +1,5 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useAppDispatch, useAppSelector, selectSyncStarting, selectCanSync, selectCanCreateAlbums } from '@shared/store';
-import { startSyncJob } from '@shared/reducers/syncSlice';
+import { useAppSelector, selectCanCreateAlbums } from '@shared/store';
 
 export interface ActionMenuProps {
   isOpen: boolean;
@@ -10,7 +8,6 @@ export interface ActionMenuProps {
   onCreateAlbum: () => void;
   onUploadMedia?: () => void;
   showUploadMedia?: boolean;
-  albumPath?: string; // Current album path for sync operations
   isAtRoot?: boolean; // Whether we're at root level (no album selected)
 }
 
@@ -21,38 +18,12 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
   onCreateAlbum,
   onUploadMedia,
   showUploadMedia = false,
-  albumPath = '',
   isAtRoot = true
 }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const dispatch = useAppDispatch();
-  const isStartingSync = useAppSelector(selectSyncStarting);
-  const canSync = useAppSelector(selectCanSync);
   const canCreateAlbums = useAppSelector(selectCanCreateAlbums);
 
   // Hide Create Album at root level if user doesn't have permission
   const showCreateAlbum = !isAtRoot || canCreateAlbums;
-
-  const handleSync = async () => {
-    onClose();
-    
-    // Determine sync path based on current location
-    const isRoot = location.pathname === '/' || location.pathname === '/albums';
-    const syncPath = isRoot ? '' : albumPath;
-    
-    try {
-      // Dispatch Redux action to start sync job
-      const result = await dispatch(startSyncJob(syncPath)).unwrap();
-      
-      // Navigate to sync page showing the new job
-      navigate(`/sync?jobId=${result.jobId}`);
-    } catch (error) {
-      console.error('Failed to start sync job:', error);
-      // On error, navigate to sync page to show error or allow manual retry
-      navigate('/sync');
-    }
-  };
 
   const handleCreateAlbum = () => {
     onClose();
@@ -84,23 +55,6 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
       {isOpen && (
         <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
           <div className="py-1">
-            {canSync && (
-              <button
-                onClick={handleSync}
-                disabled={isStartingSync}
-                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isStartingSync ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-3"></div>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-3">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                  </svg>
-                )}
-                {isStartingSync ? 'Starting...' : 'Sync'}
-              </button>
-            )}
-
             {showCreateAlbum && (
               <button
                 onClick={handleCreateAlbum}

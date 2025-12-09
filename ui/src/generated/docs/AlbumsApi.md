@@ -8,7 +8,6 @@ All URIs are relative to *http://localhost:8080*
 |[**deleteAlbum**](#deletealbum) | **DELETE** /albums/{id} | Delete album by ID|
 |[**getAlbum**](#getalbum) | **GET** /albums/{id} | Get album by ID|
 |[**listAlbums**](#listalbums) | **GET** /albums | List all albums|
-|[**syncAlbum**](#syncalbum) | **POST** /albums/{id}/sync | Sync album|
 |[**updateAlbum**](#updatealbum) | **PUT** /albums/{id} | Update album by ID|
 
 # **createAlbum**
@@ -225,59 +224,6 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 |**200** | Successful response |  -  |
-|**500** | Internal server error |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **syncAlbum**
-> SyncAlbumResponse syncAlbum()
-
-Synchronize an album with the file system
-
-### Example
-
-```typescript
-import {
-    AlbumsApi,
-    Configuration
-} from 'photos-ng-api-client';
-
-const configuration = new Configuration();
-const apiInstance = new AlbumsApi(configuration);
-
-let id: string; //The ID of the album to sync (default to undefined)
-
-const { status, data } = await apiInstance.syncAlbum(
-    id
-);
-```
-
-### Parameters
-
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **id** | [**string**] | The ID of the album to sync | defaults to undefined|
-
-
-### Return type
-
-**SyncAlbumResponse**
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** | Album sync completed successfully |  -  |
-|**404** | Resource not found |  -  |
 |**500** | Internal server error |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

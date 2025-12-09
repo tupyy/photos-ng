@@ -4,7 +4,6 @@ package photos_ng.api.v1.grpc;
 
 import "albums.proto";
 import "media.proto";
-import "sync.proto";
 import "stats.proto";
 import "google/protobuf/empty.proto";
 
@@ -22,8 +21,7 @@ service PhotosNGService {
   rpc GetAlbum(GetAlbumRequest) returns (Album);
   rpc UpdateAlbum(UpdateAlbumByIdRequest) returns (Album);
   rpc DeleteAlbum(DeleteAlbumRequest) returns (google.protobuf.Empty);
-  rpc SyncAlbum(SyncAlbumRequest) returns (SyncAlbumResponse);
-  
+
   // Media operations
   rpc ListMedia(ListMediaRequest) returns (stream Media);
   rpc UploadMedia(UploadMediaRequest) returns (Media);
@@ -32,17 +30,7 @@ service PhotosNGService {
   rpc DeleteMedia(DeleteMediaRequest) returns (google.protobuf.Empty);
   rpc GetMediaThumbnail(GetMediaThumbnailRequest) returns (BinaryDataResponse);
   rpc GetMediaContent(GetMediaContentRequest) returns (stream BinaryDataChunk);
-  
-  // Sync operations
-  rpc StartSyncJob(StartSyncRequest) returns (StartSyncResponse);
-  rpc ListSyncJobs(ListSyncJobsRequest) returns (ListSyncJobsResponse);
-  rpc GetSyncJob(GetSyncJobRequest) returns (SyncJob);
-  rpc ActionAllSyncJobs(ActionAllSyncJobsRequest) returns (ActionAllSyncJobsResponse);
-  rpc ActionSyncJob(ActionSyncJobRequest) returns (ActionSyncJobResponse);
-  rpc ClearFinishedSyncJobs(ClearFinishedSyncJobsRequest) returns (ClearFinishedSyncJobsResponse);
-  rpc StopSyncJob(StopSyncJobRequest) returns (StopSyncJobResponse);
-  rpc StopAllSyncJobs(StopAllSyncJobsRequest) returns (StopAllSyncJobsResponse);
-  
+
   // Stats operations
   rpc GetStats(GetStatsRequest) returns (StatsResponse);
 }

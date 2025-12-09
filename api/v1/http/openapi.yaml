@@ -180,32 +180,6 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /albums/{id}/sync:
-    post:
-      summary: Sync album
-      description: Synchronize an album with the file system
-      operationId: syncAlbum
-      tags:
-        - Albums
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The ID of the album to sync
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Album sync completed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SyncAlbumResponse'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
   /media:
     get:
       summary: List all media
@@ -490,174 +464,6 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /sync:
-    post:
-      summary: Start sync job
-      description: Start an asynchronous sync job for a specified path
-      operationId: startSyncJob
-      tags:
-        - Sync
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/StartSyncRequest'
-      responses:
-        '202':
-          description: Sync job started successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StartSyncResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    get:
-      summary: List all sync jobs
-      description: Retrieve a list of all running and completed sync jobs
-      operationId: listSyncJobs
-      tags:
-        - Sync
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ListSyncJobsResponse'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    patch:
-      summary: Perform action on all sync jobs
-      description: Perform an action (stop or resume) on all applicable sync jobs
-      operationId: actionAllSyncJobs
-      tags:
-        - Sync
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SyncJobActionRequest'
-      responses:
-        '200':
-          description: Action performed successfully on sync jobs
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SyncJobActionResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    delete:
-      summary: Clear finished sync jobs
-      description: Remove all completed, stopped, and failed sync jobs from the system
-      operationId: clearFinishedSyncJobs
-      tags:
-        - Sync
-      responses:
-        '200':
-          description: Finished sync jobs cleared successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ClearFinishedSyncJobsResponse'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-
-  /sync/{id}:
-    get:
-      summary: Get sync job by ID
-      description: Retrieve detailed information about a specific sync job
-      operationId: getSyncJob
-      tags:
-        - Sync
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The ID of the sync job to retrieve
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SyncJob'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    patch:
-      summary: Perform action on sync job by ID
-      description: Perform an action (stop or resume) on a specific sync job
-      operationId: actionSyncJob
-      tags:
-        - Sync
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The ID of the sync job to perform action on
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SyncJobActionRequest'
-      responses:
-        '200':
-          description: Action performed successfully on sync job
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SyncJobActionResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    delete:
-      summary: Stop sync job by ID (deprecated)
-      description: Stop a specific sync job by its ID
-      operationId: stopSyncJob
-      tags:
-        - Sync
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The ID of the sync job to stop
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Sync job stopped successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Sync job stopped successfully"
-                  jobId:
-                    type: string
-                    description: ID of the stopped job
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
 components:
   schemas:
     User:
@@ -682,17 +488,12 @@ components:
       type: object
       description: Datastore-level permissions for the user
       properties:
-        can_sync:
-          type: string
-          enum: [allowed, denied]
-          description: Whether the user can perform sync operations
         can_create_albums:
           type: string
           enum: [allowed, denied]
           description: Whether the user can create new albums
       example:
-        can_sync: "allowed"
-        can_create_albums: "denied"
+        can_create_albums: "allowed"
 
     Album:
       type: object
@@ -743,9 +544,6 @@ components:
           description: list of media href
           items:
             type: string
-        syncInProgress:
-          type: boolean
-          description: set true if a job syncing this album exists
 
     Media:
       type: object
@@ -910,21 +708,6 @@ components:
           description: Cursor for next page (base64 encoded)
           nullable: true
 
-    SyncAlbumResponse:
-      type: object
-      required:
-        - message
-        - synced_items
-      properties:
-        message:
-          type: string
-          description: Sync completion message
-          example: "Album sync completed"
-        synced_items:
-          type: integer
-          description: Number of items synced
-          example: 42
-
     StatsResponse:
       type: object
       required:
@@ -946,168 +729,6 @@ components:
           type: integer
           description: Total number of albums
           example: 45
-
-    StartSyncRequest:
-      type: object
-      required:
-        - path
-      properties:
-        path:
-          type: string
-          description: The file system path to sync
-          example: "/home/user/photos"
-
-    StartSyncResponse:
-      type: object
-      required:
-        - id
-      properties:
-        id:
-          type: string
-          description: Unique identifier for the sync job
-          example: "sync-123e4567-e89b-12d3-a456-426614174000"
-
-    SyncJob:
-      type: object
-      required:
-        - id
-        - status
-        - remainingTasks
-        - totalTasks
-        - completedTasks
-        - createdAt
-        - path
-      properties:
-        id:
-          type: string
-          description: Unique identifier for the sync job
-          example: "sync-123e4567-e89b-12d3-a456-426614174000"
-        path:
-          type: string
-          description: The folder path being synchronized
-          example: "photos/2023"
-        createdAt:
-          type: string
-          format: date-time
-        startedAt:
-          type: string
-          format: date-time
-        finishedAt:
-          type: string
-          format: date-time
-        remainingTime:
-          type: string
-          format: integer
-          description: aproximative ramaining running tile in seconds
-        duration:
-          type: integer
-          description: Duration of the sync job in seconds
-        message:
-          type: string
-          description: Additional message for job status
-        status:
-          type: string
-          description: Current status of the sync job
-          enum: ["pending", "running","paused", "completed", "failed", "stopped"]
-          example: "running"
-        remainingTasks:
-          type: integer
-          description: Number of files still to be processed
-          example: 42
-        totalTasks:
-          type: integer
-          description: Total number of files to process
-          example: 100
-        completedTasks:
-          type: array
-          description: List of processed files with their results
-          items:
-            $ref: '#/components/schemas/TaskResult'
-
-    TaskResult:
-      type: object
-      required:
-        - item
-        - itemType
-        - result
-        - duration
-      properties:
-        item:
-          type: string
-          description: Name of the processed file/folder
-          example: "IMG_001.jpg"
-        itemType:
-          type: string
-          enum: ["file", "folder"]
-        duration:
-          type: integer
-          description: time of running in milliseconds
-        result:
-          oneOf:
-            - type: string
-              enum: ["ok"]
-              description: File processed successfully
-            - type: string
-              description: Error message if processing failed
-              example: "Failed to process: file format not supported"
-
-    ListSyncJobsResponse:
-      type: object
-      required:
-        - jobs
-      properties:
-        jobs:
-          type: array
-          items:
-            $ref: '#/components/schemas/SyncJob'
-
-    SyncJobActionRequest:
-      type: object
-      required:
-        - action
-      properties:
-        action:
-          type: string
-          enum: [pause, cancel]
-          description: Action to perform on sync job(s)
-          example: "cancel"
-
-    SyncJobActionResponse:
-      type: object
-      required:
-        - message
-        - action
-        - affectedCount
-      properties:
-        message:
-          type: string
-          description: Success message
-          example: "Sync jobs cancelled successfully"
-        action:
-          type: string
-          enum: [pause, cancel]
-          description: Action that was performed
-          example: "cancel"
-        affectedCount:
-          type: integer
-          description: Number of jobs affected by the action
-          example: 3
-
-    ClearFinishedSyncJobsResponse:
-      type: object
-      required:
-        - message
-        - clearedCount
-      properties:
-        message:
-          type: string
-          description: Success message
-          example: "Finished sync jobs cleared"
-        clearedCount:
-          type: integer
-          description: Number of jobs that were cleared
-          example: 5
-
 
   responses:
     BadRequest:

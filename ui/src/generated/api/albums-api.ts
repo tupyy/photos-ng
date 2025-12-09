@@ -28,8 +28,6 @@ import type { CreateAlbumRequest } from '../models';
 // @ts-ignore
 import type { ListAlbumsResponse } from '../models';
 // @ts-ignore
-import type { SyncAlbumResponse } from '../models';
-// @ts-ignore
 import type { UpdateAlbumRequest } from '../models';
 /**
  * AlbumsApi - axios parameter creator
@@ -187,40 +185,6 @@ export const AlbumsApiAxiosParamCreator = function (configuration?: Configuratio
             };
         },
         /**
-         * Synchronize an album with the file system
-         * @summary Sync album
-         * @param {string} id The ID of the album to sync
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        syncAlbum: async (id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'id' is not null or undefined
-            assertParamExists('syncAlbum', 'id', id)
-            const localVarPath = `/albums/{id}/sync`
-                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
          * Update a specific album by its ID
          * @summary Update album by ID
          * @param {string} id The ID of the album to update
@@ -325,19 +289,6 @@ export const AlbumsApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Synchronize an album with the file system
-         * @summary Sync album
-         * @param {string} id The ID of the album to sync
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async syncAlbum(id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SyncAlbumResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.syncAlbum(id, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['AlbumsApi.syncAlbum']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
          * Update a specific album by its ID
          * @summary Update album by ID
          * @param {string} id The ID of the album to update
@@ -404,16 +355,6 @@ export const AlbumsApiFactory = function (configuration?: Configuration, basePat
             return localVarFp.listAlbums(limit, offset, withParent, options).then((request) => request(axios, basePath));
         },
         /**
-         * Synchronize an album with the file system
-         * @summary Sync album
-         * @param {string} id The ID of the album to sync
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        syncAlbum(id: string, options?: RawAxiosRequestConfig): AxiosPromise<SyncAlbumResponse> {
-            return localVarFp.syncAlbum(id, options).then((request) => request(axios, basePath));
-        },
-        /**
          * Update a specific album by its ID
          * @summary Update album by ID
          * @param {string} id The ID of the album to update
@@ -474,16 +415,6 @@ export interface AlbumsApiInterface {
      * @memberof AlbumsApiInterface
      */
     listAlbums(limit?: number, offset?: number, withParent?: boolean, options?: RawAxiosRequestConfig): AxiosPromise<ListAlbumsResponse>;
-
-    /**
-     * Synchronize an album with the file system
-     * @summary Sync album
-     * @param {string} id The ID of the album to sync
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof AlbumsApiInterface
-     */
-    syncAlbum(id: string, options?: RawAxiosRequestConfig): AxiosPromise<SyncAlbumResponse>;
 
     /**
      * Update a specific album by its ID
@@ -553,18 +484,6 @@ export class AlbumsApi extends BaseAPI implements AlbumsApiInterface {
      */
     public listAlbums(limit?: number, offset?: number, withParent?: boolean, options?: RawAxiosRequestConfig) {
         return AlbumsApiFp(this.configuration).listAlbums(limit, offset, withParent, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * Synchronize an album with the file system
-     * @summary Sync album
-     * @param {string} id The ID of the album to sync
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof AlbumsApi
-     */
-    public syncAlbum(id: string, options?: RawAxiosRequestConfig) {
-        return AlbumsApiFp(this.configuration).syncAlbum(id, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

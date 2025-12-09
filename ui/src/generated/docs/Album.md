@@ -15,7 +15,6 @@ Name | Type | Description | Notes
 **children** | [**Array&lt;AlbumChildrenInner&gt;**](AlbumChildrenInner.md) |  | [optional] [default to undefined]
 **mediaCount** | **number** | Total media including media of all its children | [default to undefined]
 **media** | **Array&lt;string&gt;** | list of media href | [optional] [default to undefined]
-**syncInProgress** | **boolean** | set true if a job syncing this album exists | [optional] [default to undefined]
 
 ## Example
 
@@ -33,7 +32,6 @@ const instance: Album = {
     children,
     mediaCount,
     media,
-    syncInProgress,
 };
 ```
 

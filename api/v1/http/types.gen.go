@@ -4,10 +4,8 @@
 package http
 
 import (
-	"encoding/json"
 	"time"
 
-	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -21,39 +19,6 @@ const (
 const (
 	PermissionsCanSyncAllowed PermissionsCanSync = "allowed"
 	PermissionsCanSyncDenied  PermissionsCanSync = "denied"
-)
-
-// Defines values for SyncJobStatus.
-const (
-	Completed SyncJobStatus = "completed"
-	Failed    SyncJobStatus = "failed"
-	Paused    SyncJobStatus = "paused"
-	Pending   SyncJobStatus = "pending"
-	Running   SyncJobStatus = "running"
-	Stopped   SyncJobStatus = "stopped"
-)
-
-// Defines values for SyncJobActionRequestAction.
-const (
-	SyncJobActionRequestActionCancel SyncJobActionRequestAction = "cancel"
-	SyncJobActionRequestActionPause  SyncJobActionRequestAction = "pause"
-)
-
-// Defines values for SyncJobActionResponseAction.
-const (
-	SyncJobActionResponseActionCancel SyncJobActionResponseAction = "cancel"
-	SyncJobActionResponseActionPause  SyncJobActionResponseAction = "pause"
-)
-
-// Defines values for TaskResultItemType.
-const (
-	File   TaskResultItemType = "file"
-	Folder TaskResultItemType = "folder"
-)
-
-// Defines values for TaskResultResult0.
-const (
-	Ok TaskResultResult0 = "ok"
 )
 
 // Defines values for ListMediaParamsDirection.
@@ -123,15 +88,6 @@ type Bucket struct {
 	Year  *int      `json:"year,omitempty"`
 }
 
-// ClearFinishedSyncJobsResponse defines model for ClearFinishedSyncJobsResponse.
-type ClearFinishedSyncJobsResponse struct {
-	// ClearedCount Number of jobs that were cleared
-	ClearedCount int `json:"clearedCount"`
-
-	// Message Success message
-	Message string `json:"message"`
-}
-
 // CreateAlbumRequest defines model for CreateAlbumRequest.
 type CreateAlbumRequest struct {
 	// Description Info about the album
@@ -186,11 +142,6 @@ type ListMediaResponse struct {
 	NextCursor *string `json:"nextCursor"`
 }
 
-// ListSyncJobsResponse defines model for ListSyncJobsResponse.
-type ListSyncJobsResponse struct {
-	Jobs []SyncJob `json:"jobs"`
-}
-
 // Media defines model for Media.
 type Media struct {
 	AlbumHref  string    `json:"albumHref"`
@@ -225,18 +176,6 @@ type PermissionsCanCreateAlbums string
 // PermissionsCanSync Whether the user can perform sync operations
 type PermissionsCanSync string
 
-// StartSyncRequest defines model for StartSyncRequest.
-type StartSyncRequest struct {
-	// Path The file system path to sync
-	Path string `json:"path"`
-}
-
-// StartSyncResponse defines model for StartSyncResponse.
-type StartSyncResponse struct {
-	// Id Unique identifier for the sync job
-	Id string `json:"id"`
-}
-
 // StatsResponse defines model for StatsResponse.
 type StatsResponse struct {
 	// CountAlbum Total number of albums
@@ -247,100 +186,6 @@ type StatsResponse struct {
 
 	// Years List of years that contain media
 	Years []int `json:"years"`
-}
-
-// SyncAlbumResponse defines model for SyncAlbumResponse.
-type SyncAlbumResponse struct {
-	// Message Sync completion message
-	Message string `json:"message"`
-
-	// SyncedItems Number of items synced
-	SyncedItems int `json:"synced_items"`
-}
-
-// SyncJob defines model for SyncJob.
-type SyncJob struct {
-	// CompletedTasks List of processed files with their results
-	CompletedTasks []TaskResult `json:"completedTasks"`
-	CreatedAt      time.Time    `json:"createdAt"`
-
-	// Duration Duration of the sync job in seconds
-	Duration   *int       `json:"duration,omitempty"`
-	FinishedAt *time.Time `json:"finishedAt,omitempty"`
-
-	// Id Unique identifier for the sync job
-	Id string `json:"id"`
-
-	// Message Additional message for job status
-	Message *string `json:"message,omitempty"`
-
-	// Path The folder path being synchronized
-	Path string `json:"path"`
-
-	// RemainingTasks Number of files still to be processed
-	RemainingTasks int `json:"remainingTasks"`
-
-	// RemainingTime aproximative ramaining running tile in seconds
-	RemainingTime *string    `json:"remainingTime,omitempty"`
-	StartedAt     *time.Time `json:"startedAt,omitempty"`
-
-	// Status Current status of the sync job
-	Status SyncJobStatus `json:"status"`
-
-	// TotalTasks Total number of files to process
-	TotalTasks int `json:"totalTasks"`
-}
-
-// SyncJobStatus Current status of the sync job
-type SyncJobStatus string
-
-// SyncJobActionRequest defines model for SyncJobActionRequest.
-type SyncJobActionRequest struct {
-	// Action Action to perform on sync job(s)
-	Action SyncJobActionRequestAction `json:"action"`
-}
-
-// SyncJobActionRequestAction Action to perform on sync job(s)
-type SyncJobActionRequestAction string
-
-// SyncJobActionResponse defines model for SyncJobActionResponse.
-type SyncJobActionResponse struct {
-	// Action Action that was performed
-	Action SyncJobActionResponseAction `json:"action"`
-
-	// AffectedCount Number of jobs affected by the action
-	AffectedCount int `json:"affectedCount"`
-
-	// Message Success message
-	Message string `json:"message"`
-}
-
-// SyncJobActionResponseAction Action that was performed
-type SyncJobActionResponseAction string
-
-// TaskResult defines model for TaskResult.
-type TaskResult struct {
-	// Duration time of running in milliseconds
-	Duration int `json:"duration"`
-
-	// Item Name of the processed file/folder
-	Item     string             `json:"item"`
-	ItemType TaskResultItemType `json:"itemType"`
-	Result   TaskResult_Result  `json:"result"`
-}
-
-// TaskResultItemType defines model for TaskResult.ItemType.
-type TaskResultItemType string
-
-// TaskResultResult0 File processed successfully
-type TaskResultResult0 string
-
-// TaskResultResult1 Error message if processing failed
-type TaskResultResult1 = string
-
-// TaskResult_Result defines model for TaskResult.Result.
-type TaskResult_Result struct {
-	union json.RawMessage
 }
 
 // UpdateAlbumRequest Request body for updating an album
@@ -458,74 +303,3 @@ type UploadMediaMultipartRequestBody UploadMediaMultipartBody
 
 // UpdateMediaJSONRequestBody defines body for UpdateMedia for application/json ContentType.
 type UpdateMediaJSONRequestBody = UpdateMediaRequest
-
-// ActionAllSyncJobsJSONRequestBody defines body for ActionAllSyncJobs for application/json ContentType.
-type ActionAllSyncJobsJSONRequestBody = SyncJobActionRequest
-
-// StartSyncJobJSONRequestBody defines body for StartSyncJob for application/json ContentType.
-type StartSyncJobJSONRequestBody = StartSyncRequest
-
-// ActionSyncJobJSONRequestBody defines body for ActionSyncJob for application/json ContentType.
-type ActionSyncJobJSONRequestBody = SyncJobActionRequest
-
-// AsTaskResultResult0 returns the union data inside the TaskResult_Result as a TaskResultResult0
-func (t TaskResult_Result) AsTaskResultResult0() (TaskResultResult0, error) {
-	var body TaskResultResult0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromTaskResultResult0 overwrites any union data inside the TaskResult_Result as the provided TaskResultResult0
-func (t *TaskResult_Result) FromTaskResultResult0(v TaskResultResult0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeTaskResultResult0 performs a merge with any union data inside the TaskResult_Result, using the provided TaskResultResult0
-func (t *TaskResult_Result) MergeTaskResultResult0(v TaskResultResult0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsTaskResultResult1 returns the union data inside the TaskResult_Result as a TaskResultResult1
-func (t TaskResult_Result) AsTaskResultResult1() (TaskResultResult1, error) {
-	var body TaskResultResult1
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromTaskResultResult1 overwrites any union data inside the TaskResult_Result as the provided TaskResultResult1
-func (t *TaskResult_Result) FromTaskResultResult1(v TaskResultResult1) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeTaskResultResult1 performs a merge with any union data inside the TaskResult_Result, using the provided TaskResultResult1
-func (t *TaskResult_Result) MergeTaskResultResult1(v TaskResultResult1) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t TaskResult_Result) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *TaskResult_Result) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}

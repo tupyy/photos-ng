@@ -17,6 +17,5 @@
 export * from './api/albums-api';
 export * from './api/media-api';
 export * from './api/stats-api';
-export * from './api/sync-api';
 export * from './api/user-api';
 

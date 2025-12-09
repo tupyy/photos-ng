@@ -55,7 +55,6 @@ Class | Method | HTTP request | Description
 *AlbumsApi* | [**deleteAlbum**](docs/AlbumsApi.md#deletealbum) | **DELETE** /albums/{id} | Delete album by ID
 *AlbumsApi* | [**getAlbum**](docs/AlbumsApi.md#getalbum) | **GET** /albums/{id} | Get album by ID
 *AlbumsApi* | [**listAlbums**](docs/AlbumsApi.md#listalbums) | **GET** /albums | List all albums
-*AlbumsApi* | [**syncAlbum**](docs/AlbumsApi.md#syncalbum) | **POST** /albums/{id}/sync | Sync album
 *AlbumsApi* | [**updateAlbum**](docs/AlbumsApi.md#updatealbum) | **PUT** /albums/{id} | Update album by ID
 *MediaApi* | [**deleteMedia**](docs/MediaApi.md#deletemedia) | **DELETE** /media/{id} | Delete media by ID
 *MediaApi* | [**getMedia**](docs/MediaApi.md#getmedia) | **GET** /media/{id} | Get media by ID
@@ -65,13 +64,6 @@ Class | Method | HTTP request | Description
 *MediaApi* | [**updateMedia**](docs/MediaApi.md#updatemedia) | **PUT** /media/{id} | Update media by ID
 *MediaApi* | [**uploadMedia**](docs/MediaApi.md#uploadmedia) | **POST** /media | Upload new media
 *StatsApi* | [**getStats**](docs/StatsApi.md#getstats) | **GET** /stats | Get application statistics
-*SyncApi* | [**actionAllSyncJobs**](docs/SyncApi.md#actionallsyncjobs) | **PATCH** /sync | Perform action on all sync jobs
-*SyncApi* | [**actionSyncJob**](docs/SyncApi.md#actionsyncjob) | **PATCH** /sync/{id} | Perform action on sync job by ID
-*SyncApi* | [**clearFinishedSyncJobs**](docs/SyncApi.md#clearfinishedsyncjobs) | **DELETE** /sync | Clear finished sync jobs
-*SyncApi* | [**getSyncJob**](docs/SyncApi.md#getsyncjob) | **GET** /sync/{id} | Get sync job by ID
-*SyncApi* | [**listSyncJobs**](docs/SyncApi.md#listsyncjobs) | **GET** /sync | List all sync jobs
-*SyncApi* | [**startSyncJob**](docs/SyncApi.md#startsyncjob) | **POST** /sync | Start sync job
-*SyncApi* | [**stopSyncJob**](docs/SyncApi.md#stopsyncjob) | **DELETE** /sync/{id} | Stop sync job by ID (deprecated)
 *UserApi* | [**getCurrentUser**](docs/UserApi.md#getcurrentuser) | **GET** /user | Get current logged user profile
 
 
@@ -80,25 +72,14 @@ Class | Method | HTTP request | Description
  - [Album](docs/Album.md)
  - [AlbumChildrenInner](docs/AlbumChildrenInner.md)
  - [Bucket](docs/Bucket.md)
- - [ClearFinishedSyncJobsResponse](docs/ClearFinishedSyncJobsResponse.md)
  - [CreateAlbumRequest](docs/CreateAlbumRequest.md)
  - [ExifHeader](docs/ExifHeader.md)
  - [ListAlbumsResponse](docs/ListAlbumsResponse.md)
  - [ListMediaResponse](docs/ListMediaResponse.md)
- - [ListSyncJobsResponse](docs/ListSyncJobsResponse.md)
  - [Media](docs/Media.md)
  - [ModelError](docs/ModelError.md)
  - [Permissions](docs/Permissions.md)
- - [StartSyncRequest](docs/StartSyncRequest.md)
- - [StartSyncResponse](docs/StartSyncResponse.md)
  - [StatsResponse](docs/StatsResponse.md)
- - [StopSyncJob200Response](docs/StopSyncJob200Response.md)
- - [SyncAlbumResponse](docs/SyncAlbumResponse.md)
- - [SyncJob](docs/SyncJob.md)
- - [SyncJobActionRequest](docs/SyncJobActionRequest.md)
- - [SyncJobActionResponse](docs/SyncJobActionResponse.md)
- - [TaskResult](docs/TaskResult.md)
- - [TaskResultResult](docs/TaskResultResult.md)
  - [UpdateAlbumRequest](docs/UpdateAlbumRequest.md)
  - [UpdateMediaRequest](docs/UpdateMediaRequest.md)
  - [User](docs/User.md)

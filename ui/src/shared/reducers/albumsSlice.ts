@@ -96,14 +96,6 @@ export const deleteAlbum = createAsyncThunk(
   }
 );
 
-export const syncAlbum = createAsyncThunk(
-  'albums/syncAlbum',
-  async (id: string) => {
-    const response = await albumsApi.syncAlbum(id);
-    return response.data;
-  }
-);
-
 // State interface
 interface AlbumsState {
   albums: Album[];
@@ -116,13 +108,6 @@ interface AlbumsState {
   loading: boolean;
   error: string | null;
   selectedAlbumIds: string[];
-  syncStatus: {
-    [albumId: string]: {
-      syncing: boolean;
-      lastSyncedItems?: number;
-      error?: string;
-    };
-  };
 }
 
 // Initial state
@@ -137,7 +122,6 @@ const initialState: AlbumsState = {
   loading: false,
   error: null,
   selectedAlbumIds: [],
-  syncStatus: {},
 };
 
 // Slice
@@ -272,31 +256,6 @@ const albumsSlice = createSlice({
       .addCase(deleteAlbum.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to delete album';
-      });
-
-    // Sync album
-    builder
-      .addCase(syncAlbum.pending, (state, action) => {
-        const albumId = action.meta.arg;
-        state.syncStatus[albumId] = {
-          syncing: true,
-          error: undefined,
-        };
-      })
-      .addCase(syncAlbum.fulfilled, (state, action) => {
-        const albumId = action.meta.arg;
-        state.syncStatus[albumId] = {
-          syncing: false,
-          lastSyncedItems: action.payload.synced_items,
-          error: undefined,
-        };
-      })
-      .addCase(syncAlbum.rejected, (state, action) => {
-        const albumId = action.meta.arg;
-        state.syncStatus[albumId] = {
-          syncing: false,
-          error: action.error.message || 'Failed to sync album',
-        };
       });
   },
 });

@@ -28,7 +28,6 @@ message Album {
   repeated AlbumChild children = 7;     // List of child album references
   int32 media_count = 8;               // Total media count including children
   repeated string media_ids = 9;      // List of media IDs in this album
-  optional bool sync_in_progress = 10; // True if a sync job is running for this album
 }
 
 // Request to create a new album
@@ -72,17 +71,6 @@ message DeleteAlbumRequest {
   string id = 1;                       // Album ID
 }
 
-// Request to sync a specific album
-message SyncAlbumRequest {
-  string id = 1;                       // Album ID
-}
-
-// Response for album sync operation
-message SyncAlbumResponse {
-  string message = 1;                  // Sync completion message
-  int32 synced_items = 2;             // Number of items synced
-}
-
 // Albums service definition
 service AlbumsService {
   // List all albums with optional pagination and filtering
@@ -99,7 +87,4 @@ service AlbumsService {
   
   // Delete a specific album by ID
   rpc DeleteAlbum(DeleteAlbumRequest) returns (google.protobuf.Empty);
-  
-  // Sync an album with the file system
-  rpc SyncAlbum(SyncAlbumRequest) returns (SyncAlbumResponse);
 }
