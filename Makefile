@@ -5,7 +5,7 @@
 
 PODMAN ?= podman
 APP_IMAGE = photos-ng:latest
-REGISTRY = rhel2.tls.tupangiu.ro:5000/photos-ng
+REGISTRY = rhel2.tls.tupangiu.ro:5000/photos-ng-app
 LATEST_TAG ?= latest
 
 POSTGRES_IMAGE ?= docker.io/library/postgres:17
@@ -201,8 +201,6 @@ podman.build: ## Build the Finante application container
 podman.push: podman.build
 	podman tag $(APP_IMAGE) $(REGISTRY):$(GIT_COMMIT)
 	podman push $(REGISTRY):$(GIT_COMMIT)
-	podman tag $(APP_IMAGE) $(REGISTRY):$(LATEST_TAG)
-	podman push $(REGISTRY):$(LATEST_TAG)
 
 # Build and push in one command
 deploy.image: podman.build podman.push ## Build and push the container image to remote registry
