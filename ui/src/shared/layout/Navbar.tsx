@@ -4,7 +4,6 @@ import { useTheme } from '@shared/contexts';
 import { useAppSelector, useAppDispatch, selectAlbumsPageActive, selectCurrentAlbum, selectUser, selectCanCreateAlbums } from '@shared/store';
 import { setCreateFormOpen } from '@shared/reducers/albumsSlice';
 import { BuildInfo } from '@shared/components';
-import ActionMenu from './ActionMenu';
 
 export interface NavbarProps {}
 
@@ -17,17 +16,12 @@ const Navbar: React.FC<NavbarProps> = () => {
   const currentAlbum = useAppSelector(selectCurrentAlbum);
   const canCreateAlbums = useAppSelector(selectCanCreateAlbums);
   const user = useAppSelector(selectUser);
-  const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const actionMenuRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
-        setActionMenuOpen(false);
-      }
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setProfileMenuOpen(false);
       }
@@ -96,25 +90,38 @@ const Navbar: React.FC<NavbarProps> = () => {
             </div>
           </div>
 
-          {/* Right side - Build Info, Action Menu and Theme Toggle */}
+          {/* Right side - Create Album, Build Info, Theme Toggle, User Profile */}
           <div className="flex items-center md:order-2 space-x-3 md:space-x-2">
+            {/* Create Album Button - Only show when albums page is active and user can create albums */}
+            {isAlbumsPageActive && canCreateAlbums && (
+              <button
+                type="button"
+                onClick={handleCreateAlbumFormOpen}
+                className="p-2 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-gray-200 transition-colors"
+                title="Create Album"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+              </button>
+            )}
+
+            {/* Upload Media Button - Only show when inside an album */}
+            {isAlbumsPageActive && currentAlbum && (
+              <button
+                type="button"
+                onClick={handleUploadMedia}
+                className="p-2 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-gray-200 transition-colors"
+                title="Upload Media"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                </svg>
+              </button>
+            )}
+
             {/* Build Info */}
             <BuildInfo />
-            
-            {/* Action Menu - Only show when albums page is active */}
-            {isAlbumsPageActive && (
-              <div className="flex items-center space-x-1" ref={actionMenuRef}>
-                <ActionMenu
-                  isOpen={actionMenuOpen}
-                  onToggle={() => setActionMenuOpen(!actionMenuOpen)}
-                  onClose={() => setActionMenuOpen(false)}
-                  onCreateAlbum={handleCreateAlbumFormOpen}
-                  onUploadMedia={handleUploadMedia}
-                  showUploadMedia={!!currentAlbum}
-                  isAtRoot={!currentAlbum}
-                />
-              </div>
-            )}
 
             {/* Theme Toggle Button */}
             <button

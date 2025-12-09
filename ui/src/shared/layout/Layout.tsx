@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import Navbar from './Navbar';
 import { useAppDispatch } from '@shared/store';
 import { fetchCurrentUser } from '@shared/reducers';
-import { AUTHZ_ENABLED } from '@shared/config';
+import { AUTH_ENABLED } from '@shared/config';
 
 export interface LayoutProps {
   children: React.ReactNode;
@@ -11,9 +11,9 @@ export interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const dispatch = useAppDispatch();
 
-  // Fetch current user on app start (only when authz is enabled)
+  // Fetch current user on app start (only when auth is enabled)
   useEffect(() => {
-    if (AUTHZ_ENABLED) {
+    if (AUTH_ENABLED) {
       dispatch(fetchCurrentUser());
     }
   }, [dispatch]);

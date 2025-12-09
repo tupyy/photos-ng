@@ -6,8 +6,6 @@ import (
 	"context"
 	"slices"
 
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/context/user"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/logger"
@@ -27,9 +25,9 @@ type AuthzMediaService struct {
 
 // NewAuthzMediaService creates a new authorization-wrapped media service.
 // It requires an authorization service, database datastore, and filesystem datastore.
-func NewAuthzMediaService(authzSrv Authz, dt *pg.Datastore, fsDatastore *fs.Datastore) *AuthzMediaService {
+func NewAuthzMediaService(authzSrv Authz, mediaSrv *MediaService) *AuthzMediaService {
 	return &AuthzMediaService{
-		mediaSrv: NewMediaService(dt, fsDatastore),
+		mediaSrv: mediaSrv,
 		authzSrv: authzSrv,
 		logger:   logger.New("authz_media_service"),
 	}

@@ -5,8 +5,6 @@ package services
 import (
 	"context"
 
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
-	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/entity"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/context/user"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/pkg/logger"
@@ -22,9 +20,9 @@ type AuthzAlbumService struct {
 
 // NewAuthzAlbumService creates a new authorization-wrapped album service.
 // It requires an authorization service, database datastore, and filesystem datastore.
-func NewAuthzAlbumService(authzSrv Authz, dt *pg.Datastore, fsDatastore *fs.Datastore) *AuthzAlbumService {
+func NewAuthzAlbumService(authzSrv Authz, albumSrv *AlbumService) *AuthzAlbumService {
 	return &AuthzAlbumService{
-		albumSrv: NewAlbumService(dt, fsDatastore),
+		albumSrv: albumSrv,
 		authzSrv: authzSrv,
 		logger:   logger.New("authz_album_service"),
 	}

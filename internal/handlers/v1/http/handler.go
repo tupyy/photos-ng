@@ -37,16 +37,16 @@ func NewHandler(dt *pg.Datastore, fs *fs.Datastore) *Handler {
 func NewHandlerWithAuthorization(spiceDBClient *authzed.Client, dt *pg.Datastore, fs *fs.Datastore) *Handler {
 	authzSrv := services.NewAuthzService(authzStore.NewAuthzDatastore(spiceDBClient), dt)
 	albumSrv := services.NewAlbumService(dt, fs)
-	authzAlbumSrv := services.NewAuthzAlbumService(authzSrv, dt, fs)
+	authzAlbumSrv := services.NewAuthzAlbumService(authzSrv, albumSrv)
+
 	mediaSrv := services.NewMediaService(dt, fs)
-	authzMediaSrv := services.NewAuthzMediaService(authzSrv, dt, fs)
-	syncSrv := services.NewAuthzSyncService(authzSrv, albumSrv, mediaSrv, fs)
+	authzMediaSrv := services.NewAuthzMediaService(authzSrv, mediaSrv)
+
 	statsSrv := services.NewStatsService(dt)
 
 	return &Handler{
 		albumSrv: authzAlbumSrv,
 		mediaSrv: authzMediaSrv,
 		statsSrv: statsSrv,
-		syncSrv:  syncSrv,
 	}
 }

@@ -26,7 +26,21 @@ const getGitCommit = () => {
 };
 
 module.exports = (env) => {
-  
+  // AUTH_ENABLED: false in development, true in production (can be overridden via env var)
+  // Only set if not already defined in environment (to avoid conflict with Dotenv plugin)
+  const authEnabled = process.env.AUTH_ENABLED !== undefined
+    ? process.env.AUTH_ENABLED
+    : (env === 'production' ? 'true' : 'false');
+
+  // AUTHZ_ENABLED: false in development, true in production (can be overridden via env var)
+  const authzEnabled = process.env.AUTHZ_ENABLED !== undefined
+    ? process.env.AUTHZ_ENABLED
+    : (env === 'production' ? 'true' : 'false');
+
+  // Set environment variables before Dotenv plugin runs
+  process.env.AUTH_ENABLED = authEnabled;
+  process.env.AUTHZ_ENABLED = authzEnabled;
+
   return {
     entry: './src/index.tsx',
     module: {

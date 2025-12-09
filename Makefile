@@ -107,13 +107,13 @@ run.withauth:
 		--authentication-enabled \
 		--authentication-wellknown-endpoint=$(OIDC_WELLKNOWN_URL) \
 		--authentication-client-id=$(OIDC_CLIENT_ID) \
-		--authentication-client-secret=$(OIDC_CLIENT_SECRET) \
-		--authorization-enabled \
-		--authorization-spicedb-url=localhost:$(SPICEDB_GRPC_PORT) \
-		--authorization-spicedb-preshared-key=$(SPICEDB_PRESHARED_KEY)
+		--authentication-client-secret=$(OIDC_CLIENT_SECRET)
 
 run.ui:
 	cd ./ui && npm run start:dev
+
+run.ui.auth:
+	cd ./ui && AUTH_ENABLED=true npm run start:dev
 
 # Clean build artifacts
 clean:

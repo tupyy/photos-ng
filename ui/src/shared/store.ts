@@ -66,7 +66,9 @@ export const selectUserInitialized = (state: RootState) => state.user.initialize
 export const selectUserError = (state: RootState) => state.user.error;
 
 // Permission selectors - when AUTHZ_ENABLED is false, all permissions are granted
-export const selectCanCreateAlbums = (state: RootState) =>
-  !AUTHZ_ENABLED || state.user.user?.permissions?.can_create_albums === 'allowed';
+export const selectCanCreateAlbums = (state: RootState) => {
+  if (!AUTHZ_ENABLED) return true;
+  return state.user.user?.permissions?.can_create_albums === 'allowed';
+};
 
 export default store;

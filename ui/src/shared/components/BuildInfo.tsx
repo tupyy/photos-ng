@@ -8,8 +8,8 @@ const BuildInfo: React.FC<BuildInfoProps> = ({ variant = 'plain' }) => {
   const gitCommit = process.env.GIT_COMMIT || 'unknown';
   
   return (
-    <div 
-      className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400"
+    <div
+      className="flex items-center space-x-1 p-2 text-xs text-gray-500 dark:text-gray-400"
       title={`Build commit: ${gitCommit}`}
     >
       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
