@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Album as AlbumType } from '@shared/types/Album';
 import { useAlbumsApi } from '@shared/hooks/useApi';
-import { ConfirmDeleteModal } from '@app/shared/components';
+import { ConfirmDeleteModal, PillButton } from '@app/shared/components';
 import Album from './Album';
 
 export interface AlbumsListProps {
@@ -100,48 +100,28 @@ const AlbumsList: React.FC<AlbumsListProps> = ({ albums, loading = false, error 
           <div className="flex items-center space-x-2">
             {isSelectionMode ? (
               <>
-                <button
-                  onClick={handleSelectAll}
-                  disabled={isDeleting}
-                  className="px-4 py-2 text-sm font-medium border-2 border-gray-400 rounded-full text-gray-400 bg-transparent hover:text-black hover:border-black dark:hover:text-white dark:hover:border-white focus:outline-none transition-colors disabled:opacity-50"
-                >
+                <PillButton onClick={handleSelectAll} disabled={isDeleting}>
                   {selectedAlbumIds.length === sortedAlbums.length ? 'Deselect All' : 'Select All'}
-                </button>
-                <button
-                  onClick={() => clearAlbumSelection()}
-                  disabled={isDeleting}
-                  className="px-4 py-2 text-sm font-medium border-2 border-gray-400 rounded-full text-gray-400 bg-transparent hover:text-black hover:border-black dark:hover:text-white dark:hover:border-white focus:outline-none transition-colors disabled:opacity-50"
-                >
+                </PillButton>
+                <PillButton onClick={() => clearAlbumSelection()} disabled={isDeleting}>
                   Clear
-                </button>
-
+                </PillButton>
                 {selectedAlbumIds.length > 0 && (
-                  <button
-                    onClick={handleDeleteSelected}
-                    disabled={isDeleting}
-                    className="px-4 py-2 text-sm font-medium border-2 border-red-400 rounded-full text-red-400 bg-transparent hover:text-red-600 hover:border-red-600 dark:hover:text-red-200 dark:hover:border-red-200 focus:outline-none transition-colors disabled:opacity-50"
-                  >
+                  <PillButton onClick={handleDeleteSelected} disabled={isDeleting} variant="danger">
                     {isDeleting ? 'Deleting...' : `Delete (${selectedAlbumIds.length})`}
-                  </button>
+                  </PillButton>
                 )}
-                <button
-                  onClick={toggleSelectionMode}
-                  disabled={isDeleting}
-                  className="px-4 py-2 text-sm font-medium border-2 border-gray-400 rounded-full text-gray-400 bg-transparent hover:text-black hover:border-black dark:hover:text-white dark:hover:border-white focus:outline-none transition-colors disabled:opacity-50"
-                >
+                <PillButton onClick={toggleSelectionMode} disabled={isDeleting}>
                   Cancel
-                </button>
+                </PillButton>
               </>
             ) : (
-              <button
-                onClick={toggleSelectionMode}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full border-2 border-gray-400 text-gray-400 bg-transparent hover:text-black hover:border-black dark:hover:text-white dark:hover:border-white focus:outline-none transition-colors"
-              >
+              <PillButton onClick={toggleSelectionMode}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Select
-              </button>
+              </PillButton>
             )}
           </div>
         </div>

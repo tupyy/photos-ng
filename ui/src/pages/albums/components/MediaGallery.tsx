@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Media } from '@generated/models';
 import MediaThumbnail from '@app/shared/components/MediaThumbnail';
 import ExifDrawer from '@app/shared/components/ExifDrawer';
-import { MediaViewerModal, ConfirmDeleteModal, Alert, LoadingProgressBar } from '@app/shared/components';
+import { MediaViewerModal, ConfirmDeleteModal, Alert, LoadingProgressBar, PillButton } from '@app/shared/components';
 import { useMediaApi, useAlbumsApi } from '@shared/hooks/useApi';
 import { useThumbnail } from '@shared/contexts';
 import { useInView } from 'react-intersection-observer';
@@ -17,6 +17,7 @@ interface MediaGalleryProps {
   albumId?: string;
   total?: number;
   hasMore?: boolean;
+  groupByWeek?: boolean;
   onLoadMore?: () => void;
   onMediaDeleted?: () => void;
 }
@@ -30,6 +31,7 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   albumId,
   total = 0,
   hasMore = true,
+  groupByWeek = true,
   onLoadMore,
   onMediaDeleted,
 }) => {
@@ -190,10 +192,30 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
       .sort((a, b) => b.weekStart.getTime() - a.weekStart.getTime());
   }, [media]);
 
-  // Flatten grouped media for modal navigation
+  // Sorted media for flat grid mode and modal navigation
+  const sortedMedia = React.useMemo(() => {
+    if (!media || media.length === 0) return [];
+
+    return [...media].sort((a, b) => {
+      const capturedAtA = new Date(a.capturedAt).getTime();
+      const capturedAtB = new Date(b.capturedAt).getTime();
+
+      if (capturedAtA !== capturedAtB) {
+        return capturedAtB - capturedAtA; // Descending order
+      }
+
+      // If capturedAt is the same, sort by filename (ascending)
+      return a.filename.localeCompare(b.filename);
+    });
+  }, [media]);
+
+  // Flatten grouped media for modal navigation (use sorted media directly when not grouping)
   const allMedia = React.useMemo(() => {
+    if (!groupByWeek) {
+      return sortedMedia;
+    }
     return groupedMedia.flatMap((group) => group.media);
-  }, [groupedMedia]);
+  }, [groupByWeek, sortedMedia, groupedMedia]);
 
   const handleInfoClick = (mediaItem: Media) => {
     setSelectedMedia(mediaItem);
@@ -406,90 +428,81 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
           </h2>
 
           <div className="flex items-center space-x-2">
-
-
             {isSelectionMode && !isThumbnailMode ? (
               <>
-                <button
-                  onClick={selectAllMedia}
-                  disabled={isDeleting || isSettingThumbnail}
-                  className="px-4 py-2 text-sm font-medium border-2 border-gray-400 rounded-full text-gray-400 bg-transparent hover:text-black hover:border-black dark:hover:text-white dark:hover:border-white focus:outline-none transition-colors disabled:opacity-50"
-                >
+                <PillButton onClick={selectAllMedia} disabled={isDeleting || isSettingThumbnail}>
                   Select All
-                </button>
-                <button
-                  onClick={clearSelection}
-                  disabled={isDeleting || isSettingThumbnail}
-                  className="px-4 py-2 text-sm font-medium border-2 border-gray-400 rounded-full text-gray-400 bg-transparent hover:text-black hover:border-black dark:hover:text-white dark:hover:border-white focus:outline-none transition-colors disabled:opacity-50"
-                >
+                </PillButton>
+                <PillButton onClick={clearSelection} disabled={isDeleting || isSettingThumbnail}>
                   Clear
-                </button>
+                </PillButton>
                 {selectedMediaIds.size === 1 && albumId && (
-                  <button
-                    onClick={handleSetThumbnail}
-                    disabled={isDeleting || isSettingThumbnail}
-                    className="px-4 py-2 text-sm font-medium border-2 border-green-400 rounded-full text-green-400 bg-transparent hover:text-green-600 hover:border-green-600 dark:hover:text-green-200 dark:hover:border-green-200 focus:outline-none transition-colors disabled:opacity-50"
-                  >
+                  <PillButton onClick={handleSetThumbnail} disabled={isDeleting || isSettingThumbnail} variant="success">
                     {isSettingThumbnail ? 'Setting...' : 'Set Album Thumbnail'}
-                  </button>
+                  </PillButton>
                 )}
                 {selectedMediaIds.size > 0 && (
-                  <button
-                    onClick={handleDeleteSelected}
-                    disabled={isDeleting || isSettingThumbnail}
-                    className="px-4 py-2 text-sm font-medium border-2 border-red-400 rounded-full text-red-400 bg-transparent hover:text-red-600 hover:border-red-600 dark:hover:text-red-200 dark:hover:border-red-200 focus:outline-none transition-colors disabled:opacity-50"
-                  >
+                  <PillButton onClick={handleDeleteSelected} disabled={isDeleting || isSettingThumbnail} variant="danger">
                     {isDeleting ? 'Deleting...' : `Delete (${selectedMediaIds.size})`}
-                  </button>
+                  </PillButton>
                 )}
-                <button
-                  onClick={toggleSelectionMode}
-                  disabled={isDeleting || isSettingThumbnail}
-                  className="px-4 py-2 text-sm font-medium border-2 border-gray-400 rounded-full text-gray-400 bg-transparent hover:text-black hover:border-black dark:hover:text-white dark:hover:border-white focus:outline-none transition-colors disabled:opacity-50"
-                >
+                <PillButton onClick={toggleSelectionMode} disabled={isDeleting || isSettingThumbnail}>
                   Cancel
-                </button>
+                </PillButton>
               </>
             ) : (
-              <button
-                onClick={toggleSelectionMode}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full border-2 border-gray-400 text-gray-400 bg-transparent hover:text-black hover:border-black dark:hover:text-white dark:hover:border-white focus:outline-none transition-colors"
-              >
+              <PillButton onClick={toggleSelectionMode}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Select
-              </button>
+              </PillButton>
             )}
           </div>
         </div>
       </div>
 
-      {/* Grouped by weeks */}
-      <div className="space-y-8">
-        {groupedMedia.map((group) => (
-          <div key={group.weekStart.toISOString()}>
-            {/* Week header */}
-            <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
-              {group.weekRange} ({group.media.length} photos)
-            </h3>
+      {/* Photo Grid - Grouped by weeks or flat */}
+      {groupByWeek ? (
+        <div className="space-y-8">
+          {groupedMedia.map((group) => (
+            <div key={group.weekStart.toISOString()}>
+              {/* Week header */}
+              <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+                {group.weekRange} ({group.media.length} photos)
+              </h3>
 
-            {/* Media grid for this week */}
-            <div className="media-grid-container">
-              {group.media.map((mediaItem) => (
-                <MediaThumbnail
-                  key={mediaItem.id}
-                  media={mediaItem}
-                  onInfoClick={handleInfoClick}
-                  onClick={isSelectionMode && !isThumbnailMode ? () => toggleMediaSelection(mediaItem.id) : handleMediaClick}
-                  isSelectionMode={isSelectionMode}
-                  isSelected={selectedMediaIds.has(mediaItem.id)}
-                />
-              ))}
+              {/* Media grid for this week */}
+              <div className="media-grid-container">
+                {group.media.map((mediaItem) => (
+                  <MediaThumbnail
+                    key={mediaItem.id}
+                    media={mediaItem}
+                    onInfoClick={handleInfoClick}
+                    onClick={isSelectionMode && !isThumbnailMode ? () => toggleMediaSelection(mediaItem.id) : handleMediaClick}
+                    isSelectionMode={isSelectionMode}
+                    isSelected={selectedMediaIds.has(mediaItem.id)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        /* Flat grid without week grouping */
+        <div className="media-grid-container">
+          {sortedMedia.map((mediaItem) => (
+            <MediaThumbnail
+              key={mediaItem.id}
+              media={mediaItem}
+              onInfoClick={handleInfoClick}
+              onClick={isSelectionMode && !isThumbnailMode ? () => toggleMediaSelection(mediaItem.id) : handleMediaClick}
+              isSelectionMode={isSelectionMode}
+              isSelected={selectedMediaIds.has(mediaItem.id)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Infinite scroll sentinel */}
       <div ref={sentinelRef} className="w-full py-6 mt-8" style={{ minHeight: '50px' }} data-testid="infinite-scroll-sentinel">

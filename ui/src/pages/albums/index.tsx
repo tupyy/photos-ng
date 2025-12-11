@@ -19,9 +19,11 @@ import { useAppDispatch, useAppSelector, selectAlbumsCreateFormOpen, selectCurre
 import { setPageActive, setCreateFormOpen, fetchAlbumById, setCurrentAlbum } from '@shared/reducers/albumsSlice';
 import { useAlbumsApi, useAlbumsMediaApi } from '@shared/hooks/useApi';
 import { useThumbnail } from '@shared/contexts';
+import { PillButton } from '@shared/components';
 import { Album } from '@shared/types/Album';
 import { ListMediaSortByEnum, ListMediaSortOrderEnum, ListMediaDirectionEnum } from '@generated/api/media-api';
 import AlbumsList from './components/AlbumsList';
+import SubAlbumsList from './components/SubAlbumsList';
 import CreateAlbumForm from './components/CreateAlbumForm';
 import MediaGallery from './components/MediaGallery';
 
@@ -213,15 +215,6 @@ const AlbumsPage: React.FC = () => {
     }
   };
 
-
-  // Determine which albums to show
-  const albumsToShow: Album[] =
-    id && currentAlbum
-      ? currentAlbum.children && currentAlbum.children.length > 0
-        ? currentAlbum.children
-        : [] // Empty array if album has no children
-      : albums;
-
   return (
     <div className="max-w-[1800px] mx-auto py-6 sm:px-6 lg:px-8">
       <div className="px-4 py-6 sm:px-0">
@@ -254,27 +247,23 @@ const AlbumsPage: React.FC = () => {
 
         {/* Album Header - Show when viewing a specific album */}
         {id && currentAlbum && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={handleBackToParent}
-                className="flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                </svg>
-                Back
-              </button>
-            </div>
+          <div className="mb-8">
+            {/* Back Button */}
+            <PillButton onClick={handleBackToParent}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              Back
+            </PillButton>
 
-            {/* Album Name and Description - Under back button */}
-            <div className="mt-4">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{currentAlbum.name}</h1>
+            {/* Album Name and Description */}
+            <div className="mt-6">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{currentAlbum.name}</h1>
 
-              {/* Editable Description */}
-              <div className="mt-1">
+              {/* Editable Description with pencil icon */}
+              <div className="mt-2">
                 {isEditingDescription ? (
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 max-w-2xl">
                     <input
                       type="text"
                       value={editedDescription}
@@ -287,35 +276,34 @@ const AlbumsPage: React.FC = () => {
                     <div className="flex space-x-1">
                       <button
                         onClick={handleDescriptionSave}
-                        className="px-3 py-2 text-sm border border-blue-600 text-blue-600 rounded-md hover:bg-blue-800 hover:text-white dark:hover:bg-blue-900 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="px-3 py-2 text-sm border border-blue-600 text-blue-600 rounded-md hover:bg-blue-600 hover:text-white dark:hover:bg-blue-700 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                       >
                         Save
                       </button>
                       <button
                         onClick={handleDescriptionCancel}
-                        className="px-3 py-2 text-sm border border-gray-400 text-gray-600 hover:bg-gray-600 hover:text-white dark:text-gray-400 dark:border-gray-500 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-500"
+                        className="px-3 py-2 text-sm border border-gray-300 text-gray-600 rounded-md hover:bg-gray-100 dark:text-gray-400 dark:border-gray-500 dark:hover:bg-gray-600 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
                       >
                         Cancel
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div
-                    onClick={handleDescriptionEdit}
-                    className="cursor-pointer text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors group"
-                  >
+                  <div className="flex items-center text-gray-600 dark:text-gray-400">
                     {currentAlbum.description ? (
-                      <p className="group-hover:bg-gray-100 dark:group-hover:bg-gray-700 px-2 py-1 rounded transition-colors">
-                        {currentAlbum.description}
-                      </p>
+                      <p>{currentAlbum.description}</p>
                     ) : (
-                      <p className="text-gray-500 dark:text-gray-500 italic group-hover:bg-gray-100 dark:group-hover:bg-gray-700 px-2 py-1 rounded transition-colors">
-                        Click to add description...
-                      </p>
+                      <p className="text-gray-400 dark:text-gray-500 italic">No description</p>
                     )}
-                    <span className="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                      Click to edit
-                    </span>
+                    <button
+                      onClick={handleDescriptionEdit}
+                      className="ml-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      title="Edit description"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
                   </div>
                 )}
               </div>
@@ -323,18 +311,25 @@ const AlbumsPage: React.FC = () => {
           </div>
         )}
 
-        <AlbumsList
-          albums={albumsToShow}
-          loading={loading}
-          error={error}
-          emptyStateTitle={id ? 'No sub-albums' : 'No albums yet'}
-          emptyStateMessage={
-            id
-              ? "This album doesn't contain any sub-albums."
-              : 'Create your first album to get started organizing your photos.'
-          }
-          onSetThumbnail={startThumbnailSelection}
-        />
+        {/* Sub-albums - Show when viewing a specific album with children */}
+        {id && currentAlbum && currentAlbum.children && currentAlbum.children.length > 0 && (
+          <SubAlbumsList
+            albums={currentAlbum.children}
+            loading={loading}
+          />
+        )}
+
+        {/* Root-level Albums List - Show when at /albums (no id) */}
+        {!id && (
+          <AlbumsList
+            albums={albums}
+            loading={loading}
+            error={error}
+            emptyStateTitle="No albums yet"
+            emptyStateMessage="Create your first album to get started organizing your photos."
+            onSetThumbnail={startThumbnailSelection}
+          />
+        )}
 
         {/* Media Gallery - Show only when viewing a specific album */}
         {id && currentAlbum && (
@@ -347,6 +342,7 @@ const AlbumsPage: React.FC = () => {
             albumId={id}
             total={currentAlbum.media?.length || 0}
             hasMore={hasMoreMedia}
+            groupByWeek={false}
             onLoadMore={handleLoadMore}
             onMediaDeleted={handleMediaDeleted}
           />
