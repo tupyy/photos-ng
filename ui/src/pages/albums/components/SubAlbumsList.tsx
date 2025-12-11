@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Album as AlbumType } from '@shared/types/Album';
-import SubAlbumCard from './SubAlbumCard';
+import Album from './Album';
 
 export interface SubAlbumsListProps {
   albums: AlbumType[];
@@ -11,12 +11,11 @@ export interface SubAlbumsListProps {
 }
 
 /**
- * SubAlbumsList - Displays sub-albums in a horizontal flex-wrap layout
+ * SubAlbumsList - Displays sub-albums using the same card style as the main albums page
  *
  * Features:
- * - Flex container with wrap for multi-row layout
- * - Uses SubAlbumCard for simplified card design
- * - Only renders when albums exist
+ * - Uses the same Album card component as the main page
+ * - Grid layout matching the main albums page
  * - Supports selection mode with checkboxes
  */
 const SubAlbumsList: React.FC<SubAlbumsListProps> = ({
@@ -53,14 +52,14 @@ const SubAlbumsList: React.FC<SubAlbumsListProps> = ({
   }
 
   return (
-    <div className="flex flex-wrap gap-6">
+    <div className="album-grid-container">
       {sortedAlbums.map((album: AlbumType) => (
-        <SubAlbumCard
+        <Album
           key={album.id}
           album={album}
           isSelectionMode={isSelectionMode}
           isSelected={selectedIds.has(album.id)}
-          onToggleSelection={onToggleSelection}
+          onSelectionToggle={onToggleSelection}
         />
       ))}
     </div>

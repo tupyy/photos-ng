@@ -305,23 +305,9 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
 
   if (!allMedia || allMedia.length === 0) {
     return (
-      <div className="mt-8">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Photos</h2>
-        <div className="text-center py-8">
-          <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6 6h.01M6 20h.01m-.01 4h.01m4.01 0h.01m0 4h.01M10 28h.01m4.01 0h.01m0 4h.01M16 32h.01M8 36a4 4 0 004 4h8a4 4 0 004-4v-8a4 4 0 00-4-4h-8a4 4 0 00-4 4v8z"
-            />
-          </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No photos</h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {albumName ? `${albumName} doesn't contain any photos yet.` : "This album doesn't contain any photos yet."}
-          </p>
-        </div>
-      </div>
+      <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
+        This album doesn't contain any photos yet.
+      </p>
     );
   }
 
