@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Media } from '@generated/models';
 import MediaThumbnail from '@app/shared/components/MediaThumbnail';
 import ExifDrawer from '@app/shared/components/ExifDrawer';
-import { MediaViewerModal, ConfirmDeleteModal, Alert, LoadingProgressBar, PillButton } from '@app/shared/components';
-import { useMediaApi, useAlbumsApi } from '@shared/hooks/useApi';
+import { MediaViewerModal, Alert, LoadingProgressBar } from '@app/shared/components';
+import { useAlbumsApi } from '@shared/hooks/useApi';
 import { useThumbnail } from '@shared/contexts';
 import { useInView } from 'react-intersection-observer';
 
@@ -18,8 +18,12 @@ interface MediaGalleryProps {
   total?: number;
   hasMore?: boolean;
   groupByWeek?: boolean;
+  viewMode?: 'grid' | 'masonry';
   onLoadMore?: () => void;
   onMediaDeleted?: () => void;
+  isSelectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelection?: (mediaId: string) => void;
 }
 
 const MediaGallery: React.FC<MediaGalleryProps> = ({
@@ -32,8 +36,12 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   total = 0,
   hasMore = true,
   groupByWeek = true,
+  viewMode = 'grid',
   onLoadMore,
   onMediaDeleted,
+  isSelectionMode = false,
+  selectedIds = new Set(),
+  onToggleSelection,
 }) => {
   const navigate = useNavigate();
   
@@ -47,18 +55,14 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [thumbnailRect, setThumbnailRect] = useState<DOMRect | undefined>(undefined);
 
-  // Multi-select state
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedMediaIds, setSelectedMediaIds] = useState<Set<string>>(new Set());
-  const [isDeleting, setIsDeleting] = useState(false);
+  // Thumbnail setting state
   const [isSettingThumbnail, setIsSettingThumbnail] = useState(false);
 
   // Scroll to top state
   const [isHeaderSticky, setIsHeaderSticky] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
 
-  // Modal and alert state
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  // Alert state
   const [alert, setAlert] = useState<{
     type: 'success' | 'error' | 'warning' | 'info';
     title?: string;
@@ -71,7 +75,6 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
   });
 
   // API hooks
-  const { deleteMedia } = useMediaApi();
   const { updateAlbum } = useAlbumsApi();
 
   // Infinite scroll setup
@@ -270,96 +273,12 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
     setCurrentMediaIndex(index);
   };
 
-  // Multi-select handlers
-  const toggleSelectionMode = () => {
-    setIsSelectionMode(!isSelectionMode);
-    setSelectedMediaIds(new Set());
-  };
-
-  const toggleMediaSelection = (mediaId: string) => {
-    const newSelected = new Set(selectedMediaIds);
-    if (newSelected.has(mediaId)) {
-      newSelected.delete(mediaId);
+  // Handle click on media item
+  const handleMediaItemClick = (mediaItem: Media, rect?: DOMRect) => {
+    if (isSelectionMode && !isThumbnailMode && onToggleSelection) {
+      onToggleSelection(mediaItem.id);
     } else {
-      newSelected.add(mediaId);
-    }
-    setSelectedMediaIds(newSelected);
-  };
-
-  const selectAllMedia = () => {
-    const allIds = new Set(allMedia.map((m) => m.id));
-    setSelectedMediaIds(allIds);
-  };
-
-  const clearSelection = () => {
-    setSelectedMediaIds(new Set());
-  };
-
-  const handleDeleteSelected = () => {
-    if (selectedMediaIds.size === 0) return;
-    setShowDeleteModal(true);
-  };
-
-  const confirmDelete = async () => {
-    setIsDeleting(true);
-    setShowDeleteModal(false);
-
-    try {
-      // Delete media one by one
-      const deletePromises = Array.from(selectedMediaIds).map((id) => deleteMedia(id));
-      await Promise.all(deletePromises);
-
-      const deletedCount = selectedMediaIds.size;
-
-      // Clear selection and exit selection mode
-      setSelectedMediaIds(new Set());
-      setIsSelectionMode(false);
-
-      // Notify parent component to refresh album data
-      // This is important in case any of the deleted media was used as the album thumbnail
-      if (onMediaDeleted) {
-        onMediaDeleted();
-      }
-
-      // Show success alert
-      showAlert(
-        'success',
-        `Successfully deleted ${deletedCount} ${deletedCount === 1 ? 'photo' : 'photos'}.`,
-        'Deletion Complete!'
-      );
-    } catch (error) {
-      console.error('Failed to delete media:', error);
-      showAlert('error', 'Failed to delete some photos. Please try again.', 'Deletion Failed!');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const cancelDelete = () => {
-    setShowDeleteModal(false);
-  };
-
-  const handleSetThumbnail = async () => {
-    if (selectedMediaIds.size !== 1 || !albumId) return;
-
-    const selectedMediaId = Array.from(selectedMediaIds)[0];
-
-    setIsSettingThumbnail(true);
-
-    try {
-      await updateAlbum(albumId, { thumbnail: selectedMediaId });
-
-      // Clear selection and exit selection mode
-      setSelectedMediaIds(new Set());
-      setIsSelectionMode(false);
-
-      // Show success alert
-      showAlert('success', 'The album thumbnail has been updated successfully.', 'Thumbnail Updated!');
-    } catch (error) {
-      console.error('Failed to set album thumbnail:', error);
-      showAlert('error', 'Failed to set album thumbnail. Please try again.', 'Update Failed!');
-    } finally {
-      setIsSettingThumbnail(false);
+      handleMediaClick(mediaItem, rect);
     }
   };
   if (loading) {
@@ -406,64 +325,18 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
     );
   }
 
+  // Get the appropriate container class based on view mode
+  const getContainerClass = () => {
+    if (viewMode === 'masonry') {
+      return 'media-masonry-container';
+    }
+    return 'media-grid-container';
+  };
+
   return (
-    <div className="mt-8">
-      {/* Sticky Header with selection controls */}
-      <div className="sticky top-0 z-30 bg-gray-50 dark:bg-slate-900 pb-4 mb-6 bg-opacity-95 dark:bg-opacity-95">
-        <div className="flex items-center justify-between pt-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {isThumbnailMode ? (
-              <>
-                <span className="text-blue-600 dark:text-blue-400">📸 Select Thumbnail</span>
-                <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">({total} photos)</span>
-              </>
-            ) : (
-              <>
-                Photos ({total})
-                {isSelectionMode && selectedMediaIds.size > 0 && (
-                  <span className="ml-2 text-sm text-blue-600 dark:text-blue-400">({selectedMediaIds.size} selected)</span>
-                )}
-              </>
-            )}
-          </h2>
-
-          <div className="flex items-center space-x-2">
-            {isSelectionMode && !isThumbnailMode ? (
-              <>
-                <PillButton onClick={selectAllMedia} disabled={isDeleting || isSettingThumbnail}>
-                  Select All
-                </PillButton>
-                <PillButton onClick={clearSelection} disabled={isDeleting || isSettingThumbnail}>
-                  Clear
-                </PillButton>
-                {selectedMediaIds.size === 1 && albumId && (
-                  <PillButton onClick={handleSetThumbnail} disabled={isDeleting || isSettingThumbnail} variant="success">
-                    {isSettingThumbnail ? 'Setting...' : 'Set Album Thumbnail'}
-                  </PillButton>
-                )}
-                {selectedMediaIds.size > 0 && (
-                  <PillButton onClick={handleDeleteSelected} disabled={isDeleting || isSettingThumbnail} variant="danger">
-                    {isDeleting ? 'Deleting...' : `Delete (${selectedMediaIds.size})`}
-                  </PillButton>
-                )}
-                <PillButton onClick={toggleSelectionMode} disabled={isDeleting || isSettingThumbnail}>
-                  Cancel
-                </PillButton>
-              </>
-            ) : (
-              <PillButton onClick={toggleSelectionMode}>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Select
-              </PillButton>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Photo Grid - Grouped by weeks or flat */}
-      {groupByWeek ? (
+    <div>
+      {/* Photo Grid - Grouped by weeks, flat grid, or masonry */}
+      {groupByWeek && viewMode !== 'masonry' ? (
         <div className="space-y-8">
           {groupedMedia.map((group) => (
             <div key={group.weekStart.toISOString()}>
@@ -479,9 +352,9 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
                     key={mediaItem.id}
                     media={mediaItem}
                     onInfoClick={handleInfoClick}
-                    onClick={isSelectionMode && !isThumbnailMode ? () => toggleMediaSelection(mediaItem.id) : handleMediaClick}
+                    onClick={handleMediaItemClick}
                     isSelectionMode={isSelectionMode}
-                    isSelected={selectedMediaIds.has(mediaItem.id)}
+                    isSelected={selectedIds.has(mediaItem.id)}
                   />
                 ))}
               </div>
@@ -489,16 +362,16 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
           ))}
         </div>
       ) : (
-        /* Flat grid without week grouping */
-        <div className="media-grid-container">
+        /* Flat grid or masonry layout */
+        <div className={getContainerClass()}>
           {sortedMedia.map((mediaItem) => (
             <MediaThumbnail
               key={mediaItem.id}
               media={mediaItem}
               onInfoClick={handleInfoClick}
-              onClick={isSelectionMode && !isThumbnailMode ? () => toggleMediaSelection(mediaItem.id) : handleMediaClick}
+              onClick={handleMediaItemClick}
               isSelectionMode={isSelectionMode}
-              isSelected={selectedMediaIds.has(mediaItem.id)}
+              isSelected={selectedIds.has(mediaItem.id)}
             />
           ))}
         </div>
@@ -506,17 +379,10 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
 
       {/* Infinite scroll sentinel */}
       <div ref={sentinelRef} className="w-full py-6 mt-8" style={{ minHeight: '50px' }} data-testid="infinite-scroll-sentinel">
-        {hasMore ? (
+        {hasMore && (
           <div className="flex flex-col items-center space-y-3">
             <LoadingProgressBar loading={loadingMore} message="Loading more photos..." size="medium" />
             <div className="text-center text-sm text-gray-600 dark:text-gray-400 mb-3">Loading more photos...</div>
-          </div>
-        ) : (
-          <div className="text-center">
-            <div className="text-green-600 dark:text-green-400 font-medium">✅ All photos loaded</div>
-            <div className="text-xs text-gray-500 mt-1">
-              {media.length} of {total} photos
-            </div>
           </div>
         )}
       </div>
@@ -536,15 +402,6 @@ const MediaGallery: React.FC<MediaGalleryProps> = ({
         onClose={handleViewerClose}
         onIndexChange={handleIndexChange}
         thumbnailRect={thumbnailRect}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <ConfirmDeleteModal
-        isOpen={showDeleteModal}
-        itemCount={selectedMediaIds.size}
-        isDeleting={isDeleting}
-        onConfirm={confirmDelete}
-        onCancel={cancelDelete}
       />
 
       {/* Alert */}

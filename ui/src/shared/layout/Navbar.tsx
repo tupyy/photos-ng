@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '@shared/contexts';
 import { useAppSelector, useAppDispatch, selectAlbumsPageActive, selectCurrentAlbum, selectUser, selectCanCreateAlbums } from '@shared/store';
 import { setCreateFormOpen } from '@shared/reducers/albumsSlice';
-import { BuildInfo } from '@shared/components';
+import { HomeIcon, FolderIcon, SunIcon, MoonIcon, PlusIcon, ArrowUpTrayIcon, UserIcon } from '@heroicons/react/24/outline';
 
 export interface NavbarProps {}
 
@@ -47,11 +47,7 @@ const Navbar: React.FC<NavbarProps> = () => {
     {
       path: '/albums',
       label: 'Albums',
-      icon: (
-        <svg className="w-6 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.5 8H4m0-2v13a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-5.032a1 1 0 0 1-.768-.36l-1.9-2.28a1 1 0 0 0-.768-.36H5a1 1 0 0 0-1 1Z" />
-        </svg>
-      ),
+      icon: <FolderIcon className="w-6 h-6" />,
     },
   ];
 
@@ -62,11 +58,8 @@ const Navbar: React.FC<NavbarProps> = () => {
           {/* Left - Brand and Navigation Icons */}
           <div className="flex items-center space-x-6">
             <div className="flex items-center">
-              <Link to="/" className="flex items-center text-gray-900 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Photos NG">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                </svg>
+              <Link to="/" className="p-2 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-gray-200 transition-colors" title="Photos NG">
+                <HomeIcon className="w-6 h-6" />
               </Link>
             </div>
             
@@ -75,16 +68,14 @@ const Navbar: React.FC<NavbarProps> = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center p-2 rounded-lg transition-colors ${
-                    location.pathname === item.path
-                      ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20'
-                      : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-gray-800'
+                  className={`p-2 transition-colors ${
+                    location.pathname.startsWith(item.path)
+                      ? 'text-gray-700 dark:text-gray-200'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-gray-200'
                   }`}
                   title={item.label}
                 >
-                  <span className="flex-shrink-0">
-                    {item.icon}
-                  </span>
+                  {item.icon}
                 </Link>
               ))}
             </div>
@@ -100,9 +91,7 @@ const Navbar: React.FC<NavbarProps> = () => {
                 className="p-2 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-gray-200 transition-colors"
                 title="Create Album"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
+                <PlusIcon className="w-6 h-6" />
               </button>
             )}
 
@@ -114,14 +103,9 @@ const Navbar: React.FC<NavbarProps> = () => {
                 className="p-2 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-gray-200 transition-colors"
                 title="Upload Media"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-                </svg>
+                <ArrowUpTrayIcon className="w-6 h-6" />
               </button>
             )}
-
-            {/* Build Info */}
-            <BuildInfo />
 
             {/* Theme Toggle Button */}
             <button
@@ -131,15 +115,9 @@ const Navbar: React.FC<NavbarProps> = () => {
               title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             >
               {theme === 'dark' ? (
-                // Sun icon for switching to light mode
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
-                </svg>
+                <SunIcon className="w-6 h-6" />
               ) : (
-                // Moon icon for switching to dark mode
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
-                </svg>
+                <MoonIcon className="w-6 h-6" />
               )}
             </button>
 
@@ -152,9 +130,7 @@ const Navbar: React.FC<NavbarProps> = () => {
                   className="flex items-center p-2 text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-gray-200 transition-colors"
                   title="User profile"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                  </svg>
+                  <UserIcon className="w-6 h-6" />
                 </button>
 
                 {profileMenuOpen && (

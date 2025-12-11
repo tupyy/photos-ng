@@ -10,7 +10,7 @@ LATEST_TAG ?= latest
 
 POSTGRES_IMAGE ?= docker.io/library/postgres:17
 GIT_COMMIT=$(shell git rev-list -1 HEAD --abbrev-commit)
-VERSION=v1.0.0
+VERSION=v1.0.1
 
 # Project variables
 BINARY_NAME=photos-ng

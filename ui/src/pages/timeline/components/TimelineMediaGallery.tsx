@@ -370,7 +370,6 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
   if (loading) {
     return (
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Photos</h2>
         <div className="flex justify-center items-center py-8">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
@@ -382,7 +381,6 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
   if (error) {
     return (
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Photos</h2>
         <div className="text-center py-8">
           <div className="text-red-600 dark:text-red-400 mb-2">Failed to load photos</div>
           <div className="text-sm text-gray-500 dark:text-gray-400">{error}</div>
@@ -395,7 +393,6 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
   if (!media || media.length === 0) {
     return (
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Photos</h2>
         <div className="text-center py-12">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
@@ -415,14 +412,7 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
   }
 
   return (
-    <div className="mt-8">
-      {/* Simple Header without selection controls */}
-      <div className="sticky top-0 z-20 backdrop-blur flex-none transition-colors duration-500 supports-backdrop-blur:bg-white/60 dark:bg-slate-900 pb-4 mb-6">
-        <div className="pt-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Photos </h2>
-        </div>
-      </div>
-
+    <div>
       {/* Top sentinel for backward infinite scroll */}
       <div ref={topRef} className="w-full py-2" style={{ minHeight: '10px' }} data-testid="backward-scroll-sentinel">
         {/* This sentinel triggers loading older content when it comes into view */}
@@ -442,12 +432,12 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
               {isFirstWeekOfYear && <div id={`year-${group.year}`} className="scroll-mt-24"></div>}
 
               {/* Additional year anchor for last week to handle backward navigation */}
-              {isLastWeekOfYear && !isFirstWeekOfYear && <div id={`year-${group.year}-end`} className="scroll-mt-24"></div>}
+              {isLastWeekOfYear && !isFirstWeekOfYear && (
+                <div id={`year-${group.year}-end`} className="scroll-mt-24"></div>
+              )}
 
               {/* Week header */}
-              <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
-                {group.weekRange}
-              </h3>
+              <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-4">{group.weekRange}</h3>
 
               {/* Media grid for this week */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1">
@@ -468,24 +458,27 @@ const TimelineMediaGallery: React.FC<TimelineMediaGalleryProps> = ({
       </div>
 
       {/* Bottom sentinel for forward infinite scroll - always render at the bottom */}
-      <div ref={bottomRef} className="w-full py-6 mt-8" style={{ minHeight: '50px' }} data-testid="forward-scroll-sentinel">
-        {hasMore ? (
+      <div
+        ref={bottomRef}
+        className="w-full py-6 mt-8"
+        style={{ minHeight: '50px' }}
+        data-testid="forward-scroll-sentinel"
+      >
+        {hasMore && (
           <div className="flex flex-col items-center space-y-3">
             <LoadingProgressBar loading={loadingMore} message="Loading more photos..." size="medium" />
             <div className="text-center text-sm text-gray-600 dark:text-gray-400 mb-3">Loading more photos...</div>
-          </div>
-        ) : (
-          <div className="text-center">
-            <div className="text-green-600 dark:text-green-400 font-medium">✅ All photos loaded</div>
-            <div className="text-xs text-gray-500 mt-1">
-              {allMedia.length} of {total} photos
-            </div>
           </div>
         )}
       </div>
 
       {/* EXIF Drawer */}
-      <ExifDrawer isOpen={isDrawerOpen} media={selectedMedia} onClose={handleCloseDrawer} onNavigateToAlbum={handleNavigateToAlbum} />
+      <ExifDrawer
+        isOpen={isDrawerOpen}
+        media={selectedMedia}
+        onClose={handleCloseDrawer}
+        onNavigateToAlbum={handleNavigateToAlbum}
+      />
 
       {/* Media Viewer Modal */}
       <MediaViewerModal

@@ -1,9 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Album as AlbumType } from '@shared/types/Album';
+import { CheckCircleIcon } from '@heroicons/react/24/solid';
 
 export interface SubAlbumCardProps {
   album: AlbumType;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelection?: (albumId: string) => void;
 }
 
 /**
@@ -14,12 +18,22 @@ export interface SubAlbumCardProps {
  * - Album name displayed below (not overlaid)
  * - Clean, minimal design without stacked folder effect
  * - Hover effect with subtle scale
+ * - Selection mode with checkbox overlay
  */
-const SubAlbumCard: React.FC<SubAlbumCardProps> = ({ album }) => {
+const SubAlbumCard: React.FC<SubAlbumCardProps> = ({
+  album,
+  isSelectionMode = false,
+  isSelected = false,
+  onToggleSelection,
+}) => {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate(`/albums/${album.id}`);
+    if (isSelectionMode && onToggleSelection) {
+      onToggleSelection(album.id);
+    } else {
+      navigate(`/albums/${album.id}`);
+    }
   };
 
   return (
@@ -28,12 +42,22 @@ const SubAlbumCard: React.FC<SubAlbumCardProps> = ({ album }) => {
       onClick={handleClick}
     >
       {/* Thumbnail Container */}
-      <div className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 transition-transform duration-200 group-hover:scale-105 group-hover:shadow-lg">
+      <div
+        className={`relative w-32 h-32 sm:w-36 sm:h-36 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 transition-all duration-200 ${
+          isSelectionMode
+            ? isSelected
+              ? 'ring-4 ring-blue-500 scale-95'
+              : 'hover:ring-2 hover:ring-blue-300'
+            : 'group-hover:scale-105 group-hover:shadow-lg'
+        }`}
+      >
         {album.thumbnail ? (
           <img
             src={album.thumbnail}
             alt={album.name}
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover transition-opacity ${
+              isSelected ? 'opacity-80' : ''
+            }`}
             loading="lazy"
           />
         ) : (
@@ -52,6 +76,17 @@ const SubAlbumCard: React.FC<SubAlbumCardProps> = ({ album }) => {
                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
+          </div>
+        )}
+
+        {/* Selection Checkbox Overlay */}
+        {isSelectionMode && (
+          <div className="absolute top-2 left-2">
+            {isSelected ? (
+              <CheckCircleIcon className="w-6 h-6 text-blue-500 bg-white rounded-full" />
+            ) : (
+              <div className="w-6 h-6 border-2 border-white/70 rounded-full shadow-sm bg-black/20"></div>
+            )}
           </div>
         )}
       </div>

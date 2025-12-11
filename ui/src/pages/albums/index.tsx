@@ -8,20 +8,28 @@
  * - Editing album descriptions
  * - Displaying media within albums
  * - Managing album thumbnails
+ * - Unified selection mode for albums and media
  *
  * The component supports both root-level album listing and individual album views
  * with media galleries, depending on the URL parameter.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector, selectAlbumsCreateFormOpen, selectCurrentAlbum } from '@shared/store';
-import { setPageActive, setCreateFormOpen, fetchAlbumById, setCurrentAlbum } from '@shared/reducers/albumsSlice';
-import { useAlbumsApi, useAlbumsMediaApi } from '@shared/hooks/useApi';
+import { setPageActive, setCreateFormOpen, setCurrentAlbum } from '@shared/reducers/albumsSlice';
+import { useAlbumsApi, useAlbumsMediaApi, useMediaApi } from '@shared/hooks/useApi';
 import { useThumbnail } from '@shared/contexts';
-import { PillButton } from '@shared/components';
-import { Album } from '@shared/types/Album';
+import { PillButton, SelectionBar, ConfirmDeleteModal } from '@shared/components';
 import { ListMediaSortByEnum, ListMediaSortOrderEnum, ListMediaDirectionEnum } from '@generated/api/media-api';
+import {
+  ArrowLeftIcon,
+  PencilSquareIcon,
+  CheckIcon,
+  XMarkIcon,
+  PhotoIcon,
+  Squares2X2Icon,
+} from '@heroicons/react/24/outline';
 import AlbumsList from './components/AlbumsList';
 import SubAlbumsList from './components/SubAlbumsList';
 import CreateAlbumForm from './components/CreateAlbumForm';
@@ -29,7 +37,7 @@ import MediaGallery from './components/MediaGallery';
 
 const AlbumsPage: React.FC = () => {
   // URL parameters and navigation
-  const { id } = useParams<{ id: string }>(); // Album ID from URL (undefined for root albums view)
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
@@ -38,8 +46,26 @@ const AlbumsPage: React.FC = () => {
   const currentAlbum = useAppSelector(selectCurrentAlbum);
 
   // API hooks for data fetching and operations
-  const { albums, loading, error, fetchAlbums, fetchAlbumById: fetchAlbumByIdApi, updateAlbum } = useAlbumsApi();
-  const { media, loading: mediaLoading, loadingMore: mediaLoadingMore, error: mediaError, hasMore, nextCursor, fetchMedia, setCurrentAlbum: setCurrentAlbumMedia } = useAlbumsMediaApi();
+  const {
+    albums,
+    loading,
+    error,
+    fetchAlbums,
+    fetchAlbumById: fetchAlbumByIdApi,
+    updateAlbum,
+    deleteAlbum,
+  } = useAlbumsApi();
+  const {
+    media,
+    loading: mediaLoading,
+    loadingMore: mediaLoadingMore,
+    error: mediaError,
+    hasMore,
+    nextCursor,
+    fetchMedia,
+    setCurrentAlbum: setCurrentAlbumMedia,
+  } = useAlbumsMediaApi();
+  const { deleteMedia } = useMediaApi();
 
   // Thumbnail context
   const { isThumbnailMode, startThumbnailSelection, exitThumbnailMode } = useThumbnail();
@@ -50,86 +76,92 @@ const AlbumsPage: React.FC = () => {
   // Local state for inline description editing
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedDescription, setEditedDescription] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Local state for managing media display
   const [hasMoreMedia, setHasMoreMedia] = useState(true);
 
-  /**
-   * Main effect for page initialization and data fetching
-   * Runs when component mounts or when album ID changes
-   */
   // Track previous album ID to detect actual changes
   const [prevAlbumId, setPrevAlbumId] = useState<string | undefined>(undefined);
 
+  // Unified selection state
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedAlbumIds, setSelectedAlbumIds] = useState<Set<string>>(new Set());
+  const [selectedMediaIds, setSelectedMediaIds] = useState<Set<string>>(new Set());
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSettingThumbnail, setIsSettingThumbnail] = useState(false);
+
+  // Effects
   useEffect(() => {
-    // Set page as active when component mounts
     dispatch(setPageActive(true));
 
-    // Set current album in media state when album ID changes
     if (prevAlbumId !== id) {
       setCurrentAlbumMedia(id || null);
       setPrevAlbumId(id);
+      // Reset selection when changing albums
+      exitSelectionMode();
     }
 
     if (id) {
-      // Viewing a specific album - fetch album details (which includes all media)
       fetchAlbumByIdApi(id);
     } else {
-      // Viewing root albums list - fetch all albums (no pagination)
       fetchAlbums({ limit: 1000, offset: 0 });
-      // Clear current album when navigating to root
       dispatch(setCurrentAlbum(null));
     }
 
-    // Set page as inactive when component unmounts
     return () => {
       dispatch(setPageActive(false));
     };
   }, [dispatch, id, fetchAlbums, fetchAlbumByIdApi, prevAlbumId]);
 
-  /**
-   * Initialize edited description when currentAlbum changes
-   * Ensures the input field shows the current album description
-   */
   useEffect(() => {
     if (currentAlbum) {
       setEditedDescription(currentAlbum.description || '');
     }
   }, [currentAlbum]);
 
-  /**
-   * Handles closing the create album form modal
-   */
-  const handleCreateFormClose = () => {
-    dispatch(setCreateFormOpen(false));
-  };
+  useEffect(() => {
+    if (isEditingDescription && textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [editedDescription, isEditingDescription]);
 
-  /**
-   * Handles successful album creation
-   * Navigates to the newly created album
-   * @param albumId - The ID of the newly created album
-   */
+  useEffect(() => {
+    if (id && currentAlbum) {
+      fetchMedia({
+        limit: pageSize,
+        albumId: id,
+        sortBy: ListMediaSortByEnum.CapturedAt,
+        sortOrder: ListMediaSortOrderEnum.Desc,
+        direction: ListMediaDirectionEnum.Forward,
+        forceRefresh: true,
+      });
+    }
+  }, [id, currentAlbum]);
+
+  useEffect(() => {
+    setHasMoreMedia(hasMore);
+  }, [hasMore]);
+
+  // Navigation handlers
+  const handleCreateFormClose = () => dispatch(setCreateFormOpen(false));
+
   const handleCreateAlbumSuccess = (albumId: string) => {
-    console.log('Album created successfully:', albumId);
-    // Navigate to the created album
     navigate(`/albums/${albumId}`);
   };
 
-  /**
-   * Handles navigation back to parent album or root
-   * Uses the parentHref from current album to determine navigation target
-   */
   const handleBackToParent = () => {
     if (currentAlbum?.parentHref) {
-      // Extract parent ID from parentHref and navigate to it
       const parentId = currentAlbum.parentHref.split('/').pop();
       navigate(`/albums/${parentId}`);
     } else {
-      // Navigate to root albums list
       navigate('/albums');
     }
   };
 
+  // Description editing handlers
   const handleDescriptionEdit = () => {
     setIsEditingDescription(true);
   };
@@ -140,7 +172,6 @@ const AlbumsPage: React.FC = () => {
     try {
       await updateAlbum(id, { description: editedDescription });
       setIsEditingDescription(false);
-      // Refresh the album data to get the updated description
       fetchAlbumByIdApi(id);
     } catch (error) {
       console.error('Failed to update album description:', error);
@@ -153,7 +184,7 @@ const AlbumsPage: React.FC = () => {
   };
 
   const handleDescriptionKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleDescriptionSave();
     } else if (e.key === 'Escape') {
@@ -161,13 +192,10 @@ const AlbumsPage: React.FC = () => {
     }
   };
 
-
-
+  // Media handlers
   const handleMediaDeleted = () => {
     if (id) {
-      // Refresh album data to get updated media list and check if thumbnail was affected
       fetchAlbumByIdApi(id);
-      // Refresh media list
       fetchMedia({
         limit: pageSize,
         albumId: id,
@@ -179,29 +207,6 @@ const AlbumsPage: React.FC = () => {
     }
   };
 
-  // Load media when album changes
-  useEffect(() => {
-    if (id && currentAlbum) {
-      // Fetch media for this album using cursor-based pagination
-      fetchMedia({
-        limit: pageSize,
-        albumId: id,
-        sortBy: ListMediaSortByEnum.CapturedAt,
-        sortOrder: ListMediaSortOrderEnum.Desc,
-        direction: ListMediaDirectionEnum.Forward,
-        forceRefresh: true,
-      });
-    }
-  }, [id, currentAlbum]);
-
-  // Sync hasMoreMedia with Redux state
-  useEffect(() => {
-    setHasMoreMedia(hasMore);
-  }, [hasMore]);
-
-  /**
-   * Handles loading more media for infinite scroll
-   */
   const handleLoadMore = () => {
     if (!mediaLoadingMore && hasMore && id) {
       fetchMedia({
@@ -215,139 +220,290 @@ const AlbumsPage: React.FC = () => {
     }
   };
 
+  // Selection handlers
+  const enterSelectionMode = () => setIsSelectionMode(true);
+
+  const exitSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedAlbumIds(new Set());
+    setSelectedMediaIds(new Set());
+  };
+
+  const toggleAlbumSelection = (albumId: string) => {
+    const newSet = new Set(selectedAlbumIds);
+    if (newSet.has(albumId)) {
+      newSet.delete(albumId);
+    } else {
+      newSet.add(albumId);
+    }
+    setSelectedAlbumIds(newSet);
+
+    // Auto-enter selection mode if not active
+    if (!isSelectionMode) setIsSelectionMode(true);
+  };
+
+  const toggleMediaSelection = (mediaId: string) => {
+    const newSet = new Set(selectedMediaIds);
+    if (newSet.has(mediaId)) {
+      newSet.delete(mediaId);
+    } else {
+      newSet.add(mediaId);
+    }
+    setSelectedMediaIds(newSet);
+
+    // Auto-enter selection mode if not active
+    if (!isSelectionMode) setIsSelectionMode(true);
+  };
+
+  const handleBulkDelete = () => {
+    const totalSelected = selectedAlbumIds.size + selectedMediaIds.size;
+    if (totalSelected > 0) {
+      setShowDeleteModal(true);
+    }
+  };
+
+  const confirmBulkDelete = async () => {
+    setIsDeleting(true);
+    setShowDeleteModal(false);
+
+    try {
+      // Delete albums
+      const albumDeletePromises = Array.from(selectedAlbumIds).map((albumId) => deleteAlbum(albumId));
+
+      // Delete media
+      const mediaDeletePromises = Array.from(selectedMediaIds).map((mediaId) => deleteMedia(mediaId));
+
+      await Promise.all([...albumDeletePromises, ...mediaDeletePromises]);
+
+      // Refresh data
+      if (id) {
+        fetchAlbumByIdApi(id);
+        handleMediaDeleted();
+      } else {
+        fetchAlbums({ limit: 1000, offset: 0 });
+      }
+
+      exitSelectionMode();
+    } catch (error) {
+      console.error('Failed to delete items:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleSetThumbnail = async () => {
+    if (selectedMediaIds.size !== 1 || !id) return;
+
+    const selectedMediaId = Array.from(selectedMediaIds)[0];
+    setIsSettingThumbnail(true);
+
+    try {
+      await updateAlbum(id, { thumbnail: selectedMediaId });
+      fetchAlbumByIdApi(id);
+      exitSelectionMode();
+    } catch (error) {
+      console.error('Failed to set album thumbnail:', error);
+    } finally {
+      setIsSettingThumbnail(false);
+    }
+  };
+
+  const totalSelectedCount = selectedAlbumIds.size + selectedMediaIds.size;
+  const canSetThumbnail = id && selectedMediaIds.size === 1 && selectedAlbumIds.size === 0;
+
   return (
-    <div className="max-w-[1800px] mx-auto py-6 sm:px-6 lg:px-8">
-      <div className="px-4 py-6 sm:px-0">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pb-32">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-8 lg:px-12 pt-10">
         {/* Thumbnail Selection Mode Banner */}
         {isThumbnailMode && (
-          <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <div>
-                  <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                    Thumbnail Selection Mode
-                  </h3>
-                  <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
-                    Navigate through folders and click on any photo to set it as the album thumbnail
-                  </p>
-                </div>
+          <div className="mb-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 p-4 flex items-center justify-between shadow-sm animate-fadeIn">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-800 rounded-lg text-indigo-600 dark:text-indigo-300">
+                <PhotoIcon className="w-5 h-5" />
               </div>
-              <button
-                onClick={exitThumbnailMode}
-                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 text-sm font-medium"
-              >
-                Exit
-              </button>
+              <div>
+                <h3 className="font-semibold text-indigo-900 dark:text-indigo-200 text-sm">Select Album Cover</h3>
+                <p className="text-xs text-indigo-600 dark:text-indigo-400">
+                  Click any photo below to set it as the thumbnail.
+                </p>
+              </div>
             </div>
+            <button
+              onClick={exitThumbnailMode}
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-200 px-3 py-1.5 rounded-md hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-colors"
+            >
+              Exit
+            </button>
           </div>
         )}
 
         {/* Album Header - Show when viewing a specific album */}
         {id && currentAlbum && (
-          <div className="mb-8">
-            {/* Back Button */}
-            <PillButton onClick={handleBackToParent}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-              </svg>
-              Back
-            </PillButton>
+          <header className="mb-12 animate-fadeIn">
+            {/* Top Controls Row */}
+            <div className="flex items-center justify-between mb-8">
+              <PillButton onClick={handleBackToParent}>
+                <ArrowLeftIcon className="w-4 h-4" />
+                Back
+              </PillButton>
 
-            {/* Album Name and Description */}
-            <div className="mt-6">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{currentAlbum.name}</h1>
+              {/* Selection Mode Toggle */}
+              {!isSelectionMode ? (
+                <PillButton onClick={enterSelectionMode}>
+                  <Squares2X2Icon className="w-4 h-4" />
+                  Select
+                </PillButton>
+              ) : (
+                <PillButton onClick={exitSelectionMode}>Done</PillButton>
+              )}
+            </div>
 
-              {/* Editable Description with pencil icon */}
-              <div className="mt-2">
+            {/* Title & Description */}
+            <div className="space-y-4 max-w-4xl">
+              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-tight">
+                {currentAlbum.name}
+              </h1>
+
+              {/* Editable Description */}
+              <div className="relative group">
                 {isEditingDescription ? (
-                  <div className="flex items-center space-x-2 max-w-2xl">
-                    <input
-                      type="text"
+                  <div className="relative">
+                    <textarea
+                      ref={textareaRef}
                       value={editedDescription}
                       onChange={(e) => setEditedDescription(e.target.value)}
                       onKeyDown={handleDescriptionKeyDown}
-                      className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-blue-400"
+                      className="w-full bg-transparent text-lg sm:text-xl text-gray-500 dark:text-gray-400 resize-none outline-none border-b-2 border-blue-500 py-2 placeholder-gray-300 dark:placeholder-gray-600"
                       placeholder="Add a description..."
                       autoFocus
                     />
-                    <div className="flex space-x-1">
+                    <div className="absolute right-0 top-2 flex gap-2">
                       <button
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={handleDescriptionSave}
-                        className="px-3 py-2 text-sm border border-blue-600 text-blue-600 rounded-md hover:bg-blue-600 hover:text-white dark:hover:bg-blue-700 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                        className="p-1.5 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
                       >
-                        Save
+                        <CheckIcon className="w-4 h-4" />
                       </button>
                       <button
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={handleDescriptionCancel}
-                        className="px-3 py-2 text-sm border border-gray-300 text-gray-600 rounded-md hover:bg-gray-100 dark:text-gray-400 dark:border-gray-500 dark:hover:bg-gray-600 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
+                        className="p-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                       >
-                        Cancel
+                        <XMarkIcon className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center text-gray-600 dark:text-gray-400">
-                    {currentAlbum.description ? (
-                      <p>{currentAlbum.description}</p>
-                    ) : (
-                      <p className="text-gray-400 dark:text-gray-500 italic">No description</p>
-                    )}
-                    <button
-                      onClick={handleDescriptionEdit}
-                      className="ml-2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                      title="Edit description"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </button>
+                  <div
+                    onClick={handleDescriptionEdit}
+                    className="flex items-baseline gap-3 cursor-pointer py-2 -ml-2 px-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors"
+                  >
+                    <p className="text-lg sm:text-xl text-gray-500 dark:text-gray-400 font-normal leading-relaxed">
+                      {currentAlbum.description || (
+                        <span className="italic opacity-50">No description... click to add one.</span>
+                      )}
+                    </p>
+                    <PencilSquareIcon className="w-5 h-5 text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0" />
                   </div>
                 )}
               </div>
             </div>
-          </div>
+          </header>
         )}
 
-        {/* Sub-albums - Show when viewing a specific album with children */}
+        {/* Sub-albums Section - Show when viewing a specific album with children */}
         {id && currentAlbum && currentAlbum.children && currentAlbum.children.length > 0 && (
-          <SubAlbumsList
-            albums={currentAlbum.children}
-            loading={loading}
-          />
+          <section className="mb-12">
+            <SubAlbumsList
+              albums={currentAlbum.children}
+              loading={loading}
+              isSelectionMode={isSelectionMode}
+              selectedIds={selectedAlbumIds}
+              onToggleSelection={toggleAlbumSelection}
+            />
+          </section>
         )}
 
         {/* Root-level Albums List - Show when at /albums (no id) */}
         {!id && (
-          <AlbumsList
-            albums={albums}
-            loading={loading}
-            error={error}
-            emptyStateTitle="No albums yet"
-            emptyStateMessage="Create your first album to get started organizing your photos."
-            onSetThumbnail={startThumbnailSelection}
-          />
+          <section>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Albums</h2>
+              {!isSelectionMode ? (
+                <PillButton onClick={enterSelectionMode}>
+                  <Squares2X2Icon className="w-4 h-4" />
+                  Select
+                </PillButton>
+              ) : (
+                <PillButton onClick={exitSelectionMode}>Done</PillButton>
+              )}
+            </div>
+            <AlbumsList
+              albums={albums}
+              loading={loading}
+              error={error}
+              emptyStateTitle="No albums yet"
+              emptyStateMessage="Create your first album to get started organizing your photos."
+              onSetThumbnail={startThumbnailSelection}
+              isSelectionMode={isSelectionMode}
+              selectedIds={selectedAlbumIds}
+              onToggleSelection={toggleAlbumSelection}
+            />
+          </section>
         )}
 
         {/* Media Gallery - Show only when viewing a specific album */}
         {id && currentAlbum && (
-          <MediaGallery
-            media={media || []}
-            loading={mediaLoading}
-            loadingMore={mediaLoadingMore}
-            error={mediaError}
-            albumName={currentAlbum.name}
-            albumId={id}
-            total={currentAlbum.media?.length || 0}
-            hasMore={hasMoreMedia}
-            groupByWeek={false}
-            onLoadMore={handleLoadMore}
-            onMediaDeleted={handleMediaDeleted}
-          />
+          <section>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Photos</h2>
+            <MediaGallery
+              media={media || []}
+              loading={mediaLoading}
+              loadingMore={mediaLoadingMore}
+              error={mediaError}
+              albumName={currentAlbum.name}
+              albumId={id}
+              total={currentAlbum.media?.length || 0}
+              hasMore={hasMoreMedia}
+              groupByWeek={false}
+              viewMode="masonry"
+              onLoadMore={handleLoadMore}
+              onMediaDeleted={handleMediaDeleted}
+              isSelectionMode={isSelectionMode}
+              selectedIds={selectedMediaIds}
+              onToggleSelection={toggleMediaSelection}
+            />
+          </section>
         )}
       </div>
+
+      {/* Floating Selection Bar */}
+      <SelectionBar
+        selectedCount={totalSelectedCount}
+        isVisible={isSelectionMode}
+        onClose={exitSelectionMode}
+        onDelete={handleBulkDelete}
+        onSetThumbnail={canSetThumbnail ? handleSetThumbnail : undefined}
+        isDeleting={isDeleting}
+        isSettingThumbnail={isSettingThumbnail}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={showDeleteModal}
+        itemCount={totalSelectedCount}
+        itemType={
+          selectedAlbumIds.size > 0 && selectedMediaIds.size > 0
+            ? 'Item'
+            : selectedAlbumIds.size > 0
+              ? 'Album'
+              : 'Photo'
+        }
+        isDeleting={isDeleting}
+        onConfirm={confirmBulkDelete}
+        onCancel={() => setShowDeleteModal(false)}
+      />
 
       {/* Create Album Form Modal */}
       <CreateAlbumForm isOpen={isCreateFormOpen} onClose={handleCreateFormClose} onSuccess={handleCreateAlbumSuccess} />

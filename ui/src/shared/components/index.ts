@@ -7,3 +7,4 @@ export { default as ConfirmDeleteModal } from './ConfirmDeleteModal';
 export { default as Alert } from './Alert';
 export { default as BuildInfo } from './BuildInfo';
 export { default as PillButton } from './PillButton';
+export { default as SelectionBar } from './SelectionBar';
