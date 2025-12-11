@@ -467,7 +467,7 @@ const AlbumsPage: React.FC = () => {
               total={currentAlbum.media?.length || 0}
               hasMore={hasMoreMedia}
               groupByWeek={false}
-              viewMode="masonry"
+              viewMode="grid"
               onLoadMore={handleLoadMore}
               onMediaDeleted={handleMediaDeleted}
               isSelectionMode={isSelectionMode}
