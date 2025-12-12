@@ -25,6 +25,11 @@ OIDC_WELLKNOWN_URL=http://localhost:8000/realms/$(KEYCLOAK_REALM)/.well-known/op
 OIDC_CLIENT_ID=photos
 OIDC_CLIENT_SECRET=bAz9ReuZ92gdOEsHG9H9aLZSjynPmo3o
 
+# Frontend auth config (for container build) - must be provided
+REACT_APP_KEYCLOAK_LOGOUT_URL ?=
+REACT_APP_ENVOY_SIGNOUT_URL ?=
+REACT_APP_OIDC_CLIENT_ID ?=
+
 # SpiceDB targets
 SPICEDB_IMAGE ?= authzed/spicedb:latest
 SPICEDB_GRPC_PORT=50051
@@ -198,6 +203,9 @@ podman.build: ## Build the photos-ng application container
 	$(PODMAN) build \
 		-f Containerfile \
 		--build-arg GIT_SHA=$(GIT_COMMIT) \
+		--build-arg REACT_APP_KEYCLOAK_LOGOUT_URL=$(REACT_APP_KEYCLOAK_LOGOUT_URL) \
+		--build-arg REACT_APP_ENVOY_SIGNOUT_URL=$(REACT_APP_ENVOY_SIGNOUT_URL) \
+		--build-arg REACT_APP_OIDC_CLIENT_ID=$(REACT_APP_OIDC_CLIENT_ID) \
 		--label org.opencontainers.image.title="photos-ng-app" \
 		--label org.opencontainers.image.version=$(VERSION) \
 		--label org.opencontainers.image.revision=$(GIT_COMMIT) \

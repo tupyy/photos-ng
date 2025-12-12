@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '@shared/contexts';
 import { useAppSelector, useAppDispatch, selectAlbumsPageActive, selectCurrentAlbum, selectUser, selectCanCreateAlbums } from '@shared/store';
 import { setCreateFormOpen } from '@shared/reducers/albumsSlice';
-import { HomeIcon, FolderIcon, SunIcon, MoonIcon, PlusIcon, ArrowUpTrayIcon, UserIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, FolderIcon, SunIcon, MoonIcon, PlusIcon, ArrowUpTrayIcon, UserIcon, ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
+import { performLogout } from '@shared/auth';
 
 export interface NavbarProps {}
 
@@ -139,7 +140,7 @@ const Navbar: React.FC<NavbarProps> = () => {
                       <p className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</p>
                       <p className="text-xs text-gray-500 dark:text-slate-400">{user.user}</p>
                     </div>
-                    <div className="p-3">
+                    <div className="p-3 border-b border-gray-200 dark:border-slate-700">
                       <p className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase mb-2">Permissions</p>
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between text-sm">
@@ -153,6 +154,16 @@ const Navbar: React.FC<NavbarProps> = () => {
                           </span>
                         </div>
                       </div>
+                    </div>
+                    <div className="p-2">
+                      <button
+                        type="button"
+                        onClick={performLogout}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-md transition-colors"
+                      >
+                        <ArrowRightStartOnRectangleIcon className="w-5 h-5" />
+                        Sign Out
+                      </button>
                     </div>
                   </div>
                 )}
