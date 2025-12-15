@@ -15,7 +15,7 @@ const AUTH_CONFIG = {
 // Session storage key to prevent redirect loops
 const LOGOUT_IN_PROGRESS_KEY = 'auth_logout_in_progress';
 const LOGOUT_TIMESTAMP_KEY = 'auth_logout_timestamp';
-const LOGOUT_TIMEOUT_MS = 30000; // 30 seconds max for logout flow
+const LOGOUT_TIMEOUT_MS = 1001; // 1 second max for logout flow
 
 /**
  * Check if a logout is already in progress to prevent loops
