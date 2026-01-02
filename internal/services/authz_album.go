@@ -113,6 +113,7 @@ func (s *AuthzAlbumService) Create(ctx context.Context, album entity.Album) (*en
 		),
 	}
 
+	// TODO: Check permission on the parent
 	if album.ParentId != nil {
 		relationships = append(relationships, entity.NewRelationship(
 			entity.NewAlbumSubject(*album.ParentId),

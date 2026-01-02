@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"path"
-	"strings"
 
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/fs"
 	"git.tls.tupangiu.ro/cosmin/photos-ng/internal/datastore/pg"
@@ -120,20 +119,6 @@ func (a *AlbumService) Create(ctx context.Context, album entity.Album) (*entity.
 		WithString("checking", "album_exists").
 		Log()
 
-	_, err := a.Get(ctx, album.ID)
-	if err == nil {
-		return nil, NewAlbumExistsError(ctx, album.ID, album.Path)
-	}
-	switch err.(type) {
-	case *NotFoundError:
-		logger.Step("album does not exist, proceeding with creation").
-			WithString(AlbumID, album.ID).
-			Log()
-	default:
-		return nil, NewInternalError(ctx, "create_album", "check_album_exists", err).
-			WithAlbumID(album.ID)
-	}
-
 	if album.ParentId != nil {
 		logger.Step("parent_processing").
 			WithString("parent_id", *album.ParentId).
@@ -150,10 +135,22 @@ func (a *AlbumService) Create(ctx context.Context, album entity.Album) (*entity.
 			}
 		}
 
-		if !strings.HasPrefix(album.Path, parent.Path+"/") && album.Path != parent.Path {
-			album.Path = path.Join(parent.Path, album.Path)
-		}
+		album.Path = path.Join(parent.Path, album.Path)
 		album.ID = entity.GenerateId(album.Path)
+	}
+
+	_, err := a.Get(ctx, album.ID)
+	if err == nil {
+		return nil, NewAlbumExistsError(ctx, album.ID, album.Path)
+	}
+	switch err.(type) {
+	case *NotFoundError:
+		logger.Step("album does not exist, proceeding with creation").
+			WithString(AlbumID, album.ID).
+			Log()
+	default:
+		return nil, NewInternalError(ctx, "create_album", "check_album_exists", err).
+			WithAlbumID(album.ID)
 	}
 
 	// Create the album in the datastore using a write transaction

@@ -131,6 +131,8 @@ func (g *JobGenerator) createTasksForSingleFolder(node *entity.FolderNode, album
 // createAlbumTaskWithParent creates a task to create an album with proper parent relationship
 func (g *JobGenerator) createAlbumTaskWithParent(albumPath string, parent *entity.Album) Task[string] {
 	return func(ctx context.Context) entity.Result[string] {
+		// FIX: look for parent id based on the path.
+		// FIX: don't create the album from full path
 		album := entity.NewAlbum(albumPath)
 		if parent != nil {
 			album.ParentId = &parent.ID
