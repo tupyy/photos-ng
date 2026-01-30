@@ -1,4 +1,3 @@
-import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '@shared/store';
 import {
   fetchAlbums,
@@ -60,6 +59,7 @@ import {
 import { CreateAlbumRequest, UpdateAlbumRequest, UpdateMediaRequest } from '@generated/models';
 
 // Custom hook for Albums API
+// Note: React Compiler handles memoization automatically, no need for useCallback
 export const useAlbumsApi = () => {
   const dispatch = useAppDispatch();
   const albumsState = useAppSelector((state) => state.albums);
@@ -67,40 +67,19 @@ export const useAlbumsApi = () => {
   return {
     // State
     ...albumsState,
-    
-    // Actions
-    fetchAlbums: useCallback(
-      (params?: { limit?: number; offset?: number }) => dispatch(fetchAlbums(params || {})),
-      [dispatch]
-    ),
-    fetchAlbumById: useCallback(
-      (id: string) => dispatch(fetchAlbumById(id)),
-      [dispatch]
-    ),
-    createAlbum: useCallback(
-      (albumData: CreateAlbumRequest) => dispatch(createAlbum(albumData)),
-      [dispatch]
-    ),
-    updateAlbum: useCallback(
-      (id: string, albumData: UpdateAlbumRequest) => dispatch(updateAlbum({ id, albumData })),
-      [dispatch]
-    ),
-    deleteAlbum: useCallback(
-      (id: string) => dispatch(deleteAlbum(id)),
-      [dispatch]
-    ),
-    clearCurrentAlbum: useCallback(() => dispatch(clearCurrentAlbum()), [dispatch]),
-    clearError: useCallback(() => dispatch(clearAlbumsError()), [dispatch]),
-    setFilters: useCallback(
-      (filters: { limit?: number; offset?: number }) => dispatch(setAlbumsFilters(filters)),
-      [dispatch]
-    ),
-    toggleAlbumSelection: useCallback(
-      (albumId: string) => dispatch(toggleAlbumSelection(albumId)),
-      [dispatch]
-    ),
-    selectAllAlbums: useCallback(() => dispatch(selectAllAlbums()), [dispatch]),
-    clearAlbumSelection: useCallback(() => dispatch(clearAlbumSelection()), [dispatch]),
+
+    // Actions - React Compiler auto-memoizes these
+    fetchAlbums: (params?: { limit?: number; offset?: number }) => dispatch(fetchAlbums(params || {})),
+    fetchAlbumById: (id: string) => dispatch(fetchAlbumById(id)),
+    createAlbum: (albumData: CreateAlbumRequest) => dispatch(createAlbum(albumData)),
+    updateAlbum: (id: string, albumData: UpdateAlbumRequest) => dispatch(updateAlbum({ id, albumData })),
+    deleteAlbum: (id: string) => dispatch(deleteAlbum(id)),
+    clearCurrentAlbum: () => dispatch(clearCurrentAlbum()),
+    clearError: () => dispatch(clearAlbumsError()),
+    setFilters: (filters: { limit?: number; offset?: number }) => dispatch(setAlbumsFilters(filters)),
+    toggleAlbumSelection: (albumId: string) => dispatch(toggleAlbumSelection(albumId)),
+    selectAllAlbums: () => dispatch(selectAllAlbums()),
+    clearAlbumSelection: () => dispatch(clearAlbumSelection()),
   };
 };
 
@@ -112,25 +91,16 @@ export const useTimelineApi = () => {
   return {
     // State
     ...timelineState,
-    
+
     // Actions
-    fetchMedia: useCallback(
-      (params?: Partial<TimelineFilters> & { forceRefresh?: boolean }) => dispatch(fetchTimelineMedia(params || {})),
-      [dispatch]
-    ),
-    clearError: useCallback(() => dispatch(clearTimelineError()), [dispatch]),
-    setFilters: useCallback(
-      (filters: Partial<TimelineFilters>) => dispatch(setTimelineFilters(filters)),
-      [dispatch]
-    ),
-    clearFilters: useCallback(() => dispatch(clearTimelineFilters()), [dispatch]),
-    toggleMediaSelection: useCallback(
-      (mediaId: string) => dispatch(toggleTimelineMediaSelection(mediaId)),
-      [dispatch]
-    ),
-    selectAllMedia: useCallback(() => dispatch(selectAllTimelineMedia()), [dispatch]),
-    clearSelection: useCallback(() => dispatch(clearTimelineSelection()), [dispatch]),
-    invalidateCache: useCallback(() => dispatch(invalidateTimelineCache()), [dispatch]),
+    fetchMedia: (params?: Partial<TimelineFilters> & { forceRefresh?: boolean }) => dispatch(fetchTimelineMedia(params || {})),
+    clearError: () => dispatch(clearTimelineError()),
+    setFilters: (filters: Partial<TimelineFilters>) => dispatch(setTimelineFilters(filters)),
+    clearFilters: () => dispatch(clearTimelineFilters()),
+    toggleMediaSelection: (mediaId: string) => dispatch(toggleTimelineMediaSelection(mediaId)),
+    selectAllMedia: () => dispatch(selectAllTimelineMedia()),
+    clearSelection: () => dispatch(clearTimelineSelection()),
+    invalidateCache: () => dispatch(invalidateTimelineCache()),
   };
 };
 
@@ -142,34 +112,22 @@ export const useAlbumsMediaApi = () => {
   return {
     // State
     ...albumsMediaState,
-    
+
     // Actions
-    fetchMedia: useCallback(
-      (params: Partial<AlbumsMediaFilters> & { forceRefresh?: boolean }) => {
-        if (!params.albumId) {
-          throw new Error('albumId is required for albums media');
-        }
-        return dispatch(fetchAlbumsMedia(params as AlbumsMediaFilters & { forceRefresh?: boolean }));
-      },
-      [dispatch]
-    ),
-    setCurrentAlbum: useCallback(
-      (albumId: string | null) => dispatch(setCurrentAlbum(albumId)),
-      [dispatch]
-    ),
-    clearError: useCallback(() => dispatch(clearAlbumsMediaError()), [dispatch]),
-    setFilters: useCallback(
-      (filters: Partial<AlbumsMediaFilters>) => dispatch(setAlbumsMediaFilters(filters)),
-      [dispatch]
-    ),
-    clearFilters: useCallback(() => dispatch(clearAlbumsMediaFilters()), [dispatch]),
-    toggleMediaSelection: useCallback(
-      (mediaId: string) => dispatch(toggleAlbumsMediaSelection(mediaId)),
-      [dispatch]
-    ),
-    selectAllMedia: useCallback(() => dispatch(selectAllAlbumsMedia()), [dispatch]),
-    clearSelection: useCallback(() => dispatch(clearAlbumsMediaSelection()), [dispatch]),
-    invalidateCache: useCallback(() => dispatch(invalidateAlbumsMediaCache()), [dispatch]),
+    fetchMedia: (params: Partial<AlbumsMediaFilters> & { forceRefresh?: boolean }) => {
+      if (!params.albumId) {
+        throw new Error('albumId is required for albums media');
+      }
+      return dispatch(fetchAlbumsMedia(params as AlbumsMediaFilters & { forceRefresh?: boolean }));
+    },
+    setCurrentAlbum: (albumId: string | null) => dispatch(setCurrentAlbum(albumId)),
+    clearError: () => dispatch(clearAlbumsMediaError()),
+    setFilters: (filters: Partial<AlbumsMediaFilters>) => dispatch(setAlbumsMediaFilters(filters)),
+    clearFilters: () => dispatch(clearAlbumsMediaFilters()),
+    toggleMediaSelection: (mediaId: string) => dispatch(toggleAlbumsMediaSelection(mediaId)),
+    selectAllMedia: () => dispatch(selectAllAlbumsMedia()),
+    clearSelection: () => dispatch(clearAlbumsMediaSelection()),
+    invalidateCache: () => dispatch(invalidateAlbumsMediaCache()),
   };
 };
 
@@ -183,40 +141,19 @@ export const useMediaApi = () => {
     ...mediaState,
 
     // Actions
-    fetchMedia: useCallback(
-      (params?: Partial<MediaFilters> & { forceRefresh?: boolean }) => dispatch(fetchMedia(params || {})),
-      [dispatch]
-    ),
-    fetchMediaById: useCallback(
-      (params: { id: string; forceRefresh?: boolean }) => dispatch(fetchMediaById(params)),
-      [dispatch]
-    ),
-    updateMedia: useCallback(
-      (id: string, mediaData: UpdateMediaRequest) => dispatch(updateMedia({ id, mediaData })),
-      [dispatch]
-    ),
-    deleteMedia: useCallback(
-      (id: string) => dispatch(deleteMedia(id)),
-      [dispatch]
-    ),
-    clearCurrentMedia: useCallback(() => dispatch(clearCurrentMedia()), [dispatch]),
-    clearError: useCallback(() => dispatch(clearMediaError()), [dispatch]),
-    setFilters: useCallback(
-      (filters: Partial<MediaFilters>) => dispatch(setMediaFilters(filters)),
-      [dispatch]
-    ),
-    clearFilters: useCallback(() => dispatch(clearMediaFilters()), [dispatch]),
-    toggleMediaSelection: useCallback(
-      (mediaId: string) => dispatch(toggleMediaSelection(mediaId)),
-      [dispatch]
-    ),
-    selectAllMedia: useCallback(() => dispatch(selectAllMedia()), [dispatch]),
-    clearSelection: useCallback(() => dispatch(clearMediaSelection()), [dispatch]),
-    setViewMode: useCallback(
-      (viewMode: 'grid' | 'list') => dispatch(setViewMode(viewMode)),
-      [dispatch]
-    ),
-    invalidateCache: useCallback(() => dispatch(invalidateMediaCache()), [dispatch]),
+    fetchMedia: (params?: Partial<MediaFilters> & { forceRefresh?: boolean }) => dispatch(fetchMedia(params || {})),
+    fetchMediaById: (params: { id: string; forceRefresh?: boolean }) => dispatch(fetchMediaById(params)),
+    updateMedia: (id: string, mediaData: UpdateMediaRequest) => dispatch(updateMedia({ id, mediaData })),
+    deleteMedia: (id: string) => dispatch(deleteMedia(id)),
+    clearCurrentMedia: () => dispatch(clearCurrentMedia()),
+    clearError: () => dispatch(clearMediaError()),
+    setFilters: (filters: Partial<MediaFilters>) => dispatch(setMediaFilters(filters)),
+    clearFilters: () => dispatch(clearMediaFilters()),
+    toggleMediaSelection: (mediaId: string) => dispatch(toggleMediaSelection(mediaId)),
+    selectAllMedia: () => dispatch(selectAllMedia()),
+    clearSelection: () => dispatch(clearMediaSelection()),
+    setViewMode: (viewMode: 'grid' | 'list') => dispatch(setViewMode(viewMode)),
+    invalidateCache: () => dispatch(invalidateMediaCache()),
   };
 };
 
@@ -228,10 +165,10 @@ export const useStatsApi = () => {
   return {
     // State
     ...statsState,
-    
+
     // Actions
-    fetchStats: useCallback(() => dispatch(fetchStats()), [dispatch]),
-    clearError: useCallback(() => dispatch(clearStatsError()), [dispatch]),
-    resetStats: useCallback(() => dispatch(resetStats()), [dispatch]),
+    fetchStats: () => dispatch(fetchStats()),
+    clearError: () => dispatch(clearStatsError()),
+    resetStats: () => dispatch(resetStats()),
   };
 };

@@ -47,12 +47,12 @@ module.exports = (env) => {
       rules: [
         {
           test: /\.(tsx|ts|jsx)?$/,
+          exclude: /node_modules/,
           use: [
             {
-              loader: 'ts-loader',
+              loader: 'babel-loader',
               options: {
-                transpileOnly: true,
-                experimentalWatchApi: true,
+                cacheDirectory: true,
               },
             },
           ],

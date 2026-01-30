@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useActionState } from 'react';
 import { useAppDispatch, useAppSelector, selectCurrentAlbum } from '@shared/store';
 import { createAlbum } from '@shared/reducers/albumsSlice';
 import { CreateAlbumRequest } from '@generated/models';
@@ -9,26 +9,66 @@ export interface CreateAlbumFormProps {
   onSuccess?: (albumId: string) => void;
 }
 
-const CreateAlbumForm: React.FC<CreateAlbumFormProps> = ({ isOpen, onClose, onSuccess }) => {
+interface FormState {
+  error: string | null;
+  success: boolean;
+  albumId: string | null;
+}
+
+const initialState: FormState = {
+  error: null,
+  success: false,
+  albumId: null,
+};
+
+const CreateAlbumForm = ({ isOpen, onClose, onSuccess }: CreateAlbumFormProps) => {
   const dispatch = useAppDispatch();
   const currentAlbum = useAppSelector(selectCurrentAlbum);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-  });
-  const [errors, setErrors] = useState<{ name?: string }>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const formAction = async (_prevState: FormState, formData: FormData): Promise<FormState> => {
+    const name = formData.get('name') as string;
+    const description = formData.get('description') as string;
+
+    // Validation
+    if (!name?.trim()) {
+      return { error: 'Album name is required', success: false, albumId: null };
+    }
+    if (name.trim().length < 2) {
+      return { error: 'Album name must be at least 2 characters', success: false, albumId: null };
+    }
+
+    try {
+      const createRequest: CreateAlbumRequest = {
+        name: name.trim(),
+        ...(currentAlbum && { parentId: currentAlbum.id }),
+        ...(description?.trim() && { description: description.trim() }),
+      };
+
+      const result = await dispatch(createAlbum(createRequest)).unwrap();
+      return { error: null, success: true, albumId: result.id };
+    } catch {
+      return { error: 'Failed to create album. Please try again.', success: false, albumId: null };
+    }
+  };
+
+  const [state, submitAction, isPending] = useActionState(formAction, initialState);
+
+  // Handle success - close modal and call callback
+  useEffect(() => {
+    if (state.success && state.albumId) {
+      onClose();
+      onSuccess?.(state.albumId);
+    }
+  }, [state.success, state.albumId, onClose, onSuccess]);
 
   const handleCancel = useCallback(() => {
-    setFormData({ name: '', description: '' });
-    setErrors({});
     onClose();
   }, [onClose]);
 
   // Handle ESC key to close modal
   useEffect(() => {
     const handleEscKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen && !isSubmitting) {
+      if (event.key === 'Escape' && isOpen && !isPending) {
         handleCancel();
       }
     };
@@ -40,66 +80,7 @@ const CreateAlbumForm: React.FC<CreateAlbumFormProps> = ({ isOpen, onClose, onSu
     return () => {
       document.removeEventListener('keydown', handleEscKey);
     };
-  }, [isOpen, isSubmitting, handleCancel]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-
-    // Clear error when user starts typing
-    if (errors[name as keyof typeof errors]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors: { name?: string } = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Album name is required';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Album name must be at least 2 characters';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Create album with name, description, and parent if available
-      const createRequest: CreateAlbumRequest = {
-        name: formData.name.trim(),
-        ...(currentAlbum && { parentId: currentAlbum.id }),
-        ...(formData.description.trim() && { description: formData.description.trim() }),
-      };
-
-      const createResult = await dispatch(createAlbum(createRequest)).unwrap();
-
-      // Reset form and close
-      setFormData({ name: '', description: '' });
-      setErrors({});
-      onClose();
-
-      // Call success callback if provided
-      if (onSuccess) {
-        onSuccess(createResult.id);
-      }
-    } catch (error) {
-      console.error('Failed to create album:', error);
-      setErrors({ name: 'Failed to create album. Please try again.' });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  }, [isOpen, isPending, handleCancel]);
 
   return (
     <div
@@ -140,7 +121,7 @@ const CreateAlbumForm: React.FC<CreateAlbumFormProps> = ({ isOpen, onClose, onSu
 
           {/* Modal body */}
           <div className="p-4 md:p-5 space-y-4">
-            <form onSubmit={handleSubmit} id="create-album-form">
+            <form action={submitAction} id="create-album-form">
               <div className="space-y-4">
                 {/* Album Name */}
                 <div>
@@ -151,16 +132,14 @@ const CreateAlbumForm: React.FC<CreateAlbumFormProps> = ({ isOpen, onClose, onSu
                     type="text"
                     id="name"
                     name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
                     className={`bg-gray-50 border text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 ${
-                      errors.name ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-500'
+                      state.error ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-500'
                     }`}
                     placeholder="Enter album name"
-                    disabled={isSubmitting}
+                    disabled={isPending}
                     required
                   />
-                  {errors.name && <p className="mt-2 text-sm text-red-600 dark:text-red-500">{errors.name}</p>}
+                  {state.error && <p className="mt-2 text-sm text-red-600 dark:text-red-500">{state.error}</p>}
                 </div>
 
                 {/* Album Description */}
@@ -171,12 +150,10 @@ const CreateAlbumForm: React.FC<CreateAlbumFormProps> = ({ isOpen, onClose, onSu
                   <textarea
                     id="description"
                     name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
                     rows={4}
                     className="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                     placeholder="Enter album description (optional)"
-                    disabled={isSubmitting}
+                    disabled={isPending}
                   />
                 </div>
               </div>
@@ -188,10 +165,10 @@ const CreateAlbumForm: React.FC<CreateAlbumFormProps> = ({ isOpen, onClose, onSu
             <button
               type="submit"
               form="create-album-form"
-              disabled={isSubmitting}
+              disabled={isPending}
               className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 disabled:opacity-50 flex items-center"
             >
-              {isSubmitting ? (
+              {isPending ? (
                 <>
                   <svg
                     className="animate-spin -ml-1 mr-3 h-4 w-4 text-white"
@@ -222,7 +199,7 @@ const CreateAlbumForm: React.FC<CreateAlbumFormProps> = ({ isOpen, onClose, onSu
             <button
               type="button"
               onClick={handleCancel}
-              disabled={isSubmitting}
+              disabled={isPending}
               className="py-2.5 px-5 ms-3 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700 disabled:opacity-50"
             >
               Cancel

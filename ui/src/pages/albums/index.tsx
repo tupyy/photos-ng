@@ -14,7 +14,7 @@
  * with media galleries, depending on the URL parameter.
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useOptimistic } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector, selectAlbumsCreateFormOpen, selectCurrentAlbum } from '@shared/store';
 import { setPageActive, setCreateFormOpen, setCurrentAlbum } from '@shared/reducers/albumsSlice';
@@ -91,6 +91,19 @@ const AlbumsPage: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSettingThumbnail, setIsSettingThumbnail] = useState(false);
+
+  // Optimistic updates for instant deletion feedback
+  const [optimisticAlbums, removeOptimisticAlbum] = useOptimistic(
+    albums,
+    (currentAlbums, albumIdToRemove: string) =>
+      currentAlbums.filter(album => album.id !== albumIdToRemove)
+  );
+
+  const [optimisticMedia, removeOptimisticMedia] = useOptimistic(
+    media || [],
+    (currentMedia, mediaIdToRemove: string) =>
+      currentMedia.filter(m => m.id !== mediaIdToRemove)
+  );
 
   // Effects
   useEffect(() => {
@@ -266,26 +279,42 @@ const AlbumsPage: React.FC = () => {
     setIsDeleting(true);
     setShowDeleteModal(false);
 
+    // Apply optimistic updates immediately for instant feedback
+    const albumIdsToDelete = Array.from(selectedAlbumIds);
+    const mediaIdsToDelete = Array.from(selectedMediaIds);
+
+    // Optimistically remove items from UI
+    albumIdsToDelete.forEach(albumId => removeOptimisticAlbum(albumId));
+    mediaIdsToDelete.forEach(mediaId => removeOptimisticMedia(mediaId));
+
+    // Exit selection mode immediately for better UX
+    exitSelectionMode();
+
     try {
       // Delete albums
-      const albumDeletePromises = Array.from(selectedAlbumIds).map((albumId) => deleteAlbum(albumId));
+      const albumDeletePromises = albumIdsToDelete.map((albumId) => deleteAlbum(albumId));
 
       // Delete media
-      const mediaDeletePromises = Array.from(selectedMediaIds).map((mediaId) => deleteMedia(mediaId));
+      const mediaDeletePromises = mediaIdsToDelete.map((mediaId) => deleteMedia(mediaId));
 
       await Promise.all([...albumDeletePromises, ...mediaDeletePromises]);
 
-      // Refresh data
+      // Refresh data to sync with server
       if (id) {
         fetchAlbumByIdApi(id);
         handleMediaDeleted();
       } else {
         fetchAlbums({ limit: 1000, offset: 0 });
       }
-
-      exitSelectionMode();
     } catch (error) {
       console.error('Failed to delete items:', error);
+      // On error, refetch to restore correct state
+      if (id) {
+        fetchAlbumByIdApi(id);
+        handleMediaDeleted();
+      } else {
+        fetchAlbums({ limit: 1000, offset: 0 });
+      }
     } finally {
       setIsDeleting(false);
     }
@@ -311,8 +340,12 @@ const AlbumsPage: React.FC = () => {
   const totalSelectedCount = selectedAlbumIds.size + selectedMediaIds.size;
   const canSetThumbnail = id && selectedMediaIds.size === 1 && selectedAlbumIds.size === 0;
 
+  // Dynamic page title
+  const pageTitle = currentAlbum ? `${currentAlbum.name} - Photos` : 'Albums - Photos';
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 pb-32">
+      <title>{pageTitle}</title>
       <div className="max-w-[1400px] mx-auto px-6 sm:px-8 lg:px-12 pt-10">
         {/* Thumbnail Selection Mode Banner */}
         {isThumbnailMode && (
@@ -440,7 +473,7 @@ const AlbumsPage: React.FC = () => {
               )}
             </div>
             <AlbumsList
-              albums={albums}
+              albums={optimisticAlbums}
               loading={loading}
               error={error}
               emptyStateTitle="No albums yet"
@@ -458,7 +491,7 @@ const AlbumsPage: React.FC = () => {
           <section>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Photos</h2>
             <MediaGallery
-              media={media || []}
+              media={optimisticMedia}
               loading={mediaLoading}
               loadingMore={mediaLoadingMore}
               error={mediaError}

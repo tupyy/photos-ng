@@ -188,8 +188,12 @@ const TimelinePage: React.FC = () => {
     });
   };
 
+  // Dynamic page title based on visible year
+  const pageTitle = visibleYear ? `${visibleYear} - Timeline - Photos` : 'Timeline - Photos';
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <title>{pageTitle}</title>
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="md:flex md:gap-8">

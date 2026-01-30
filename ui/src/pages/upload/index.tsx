@@ -188,8 +188,16 @@ const UploadMediaPage: React.FC = () => {
     }
   }, [stats.completed, isUploading, dispatch]);
 
+  // Dynamic page title
+  const pageTitle = isUploading
+    ? `Uploading ${stats.completed + 1}/${stats.total} - Photos`
+    : currentAlbum
+      ? `Upload to ${currentAlbum.name} - Photos`
+      : 'Upload - Photos';
+
   return (
     <div className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+      <title>{pageTitle}</title>
       <div className="px-4 py-6 sm:px-0">
         {/* Header */}
         <div className="mb-6">
