@@ -1,29 +1,99 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector, selectUpload, selectCurrentAlbum } from '@shared/store';
 import { uploadMediaFiles, addFiles, removeFile, clearFiles, removeCompletedFiles, reset } from '@shared/reducers/uploadSlice';
+import { CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
-const UploadMediaPage: React.FC = () => {
+interface FileData {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  status: 'pending' | 'uploading' | 'completed' | 'error';
+  progress: number;
+  error?: string;
+}
+
+interface ThumbnailItemProps {
+  file: FileData;
+  thumbnailUrl: string | undefined;
+  onRemove: () => void;
+  disabled: boolean;
+}
+
+const ThumbnailItem = ({ file, thumbnailUrl, onRemove, disabled }: ThumbnailItemProps) => (
+  <div className="relative aspect-square group">
+    {thumbnailUrl ? (
+      <img
+        src={thumbnailUrl}
+        alt={file.name}
+        className="w-full h-full object-cover rounded-lg bg-gray-100 dark:bg-gray-800"
+      />
+    ) : (
+      <div className="w-full h-full rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+        <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+        </svg>
+      </div>
+    )}
+
+    {/* Uploading overlay */}
+    {file.status === 'uploading' && (
+      <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+        <svg className="animate-spin w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+    )}
+
+    {/* Completed checkmark */}
+    {file.status === 'completed' && (
+      <div className="absolute top-1 right-1 bg-green-500 rounded-full p-0.5">
+        <CheckIcon className="w-3 h-3 text-white" />
+      </div>
+    )}
+
+    {/* Error overlay */}
+    {file.status === 'error' && (
+      <div className="absolute inset-0 bg-red-500/50 rounded-lg flex items-center justify-center" title={file.error}>
+        <XMarkIcon className="w-6 h-6 text-white" />
+      </div>
+    )}
+
+    {/* Remove button on hover */}
+    {!disabled && file.status !== 'completed' && file.status !== 'uploading' && (
+      <button
+        onClick={onRemove}
+        className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <XMarkIcon className="w-3.5 h-3.5 text-white" />
+      </button>
+    )}
+  </div>
+);
+
+const UploadMediaPage = () => {
   const { albumId } = useParams<{ albumId: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const currentAlbum = useAppSelector(selectCurrentAlbum);
   const { files, isUploading, error } = useAppSelector(selectUpload);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [actualFiles, setActualFiles] = useState<Record<string, File>>({});
+  const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       dispatch(reset());
-      // Clear actual files
       setActualFiles({});
+      // Revoke all thumbnail URLs to free memory
+      Object.values(thumbnailUrls).forEach(url => URL.revokeObjectURL(url));
     };
   }, [dispatch]);
-
-
 
   const handleFileSelect = async (selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
@@ -38,29 +108,26 @@ const UploadMediaPage: React.FC = () => {
       const timestamp = Date.now();
       const fileDataArray: { id: string; name: string; size: number; type: string }[] = [];
       const newActualFiles: Record<string, File> = {};
-      
-      // Process each file
+      const newThumbnailUrls: Record<string, string> = {};
+
       for (let index = 0; index < validFiles.length; index++) {
         const file = validFiles[index];
         const fileId = `${timestamp}-${index}`;
-        
-        // Add to file data for Redux (serializable)
+
         fileDataArray.push({
           id: fileId,
           name: file.name,
           size: file.size,
           type: file.type,
         });
-        
-        // Store actual file object in component state
+
         newActualFiles[fileId] = file;
+        newThumbnailUrls[fileId] = URL.createObjectURL(file);
       }
-      
-      // Update Redux with serializable data
+
       dispatch(addFiles(fileDataArray));
-      
-      // Update component state with files
       setActualFiles(prev => ({ ...prev, ...newActualFiles }));
+      setThumbnailUrls(prev => ({ ...prev, ...newThumbnailUrls }));
     }
 
     if (validFiles.length !== selectedFiles.length) {
@@ -70,7 +137,6 @@ const UploadMediaPage: React.FC = () => {
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     handleFileSelect(e.target.files);
-    // Reset input to allow selecting the same files again
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -97,25 +163,41 @@ const UploadMediaPage: React.FC = () => {
   };
 
   const handleRemoveFile = (fileId: string) => {
-    // Remove from actual files
+    // Revoke thumbnail URL
+    if (thumbnailUrls[fileId]) {
+      URL.revokeObjectURL(thumbnailUrls[fileId]);
+      setThumbnailUrls(prev => {
+        const newUrls = { ...prev };
+        delete newUrls[fileId];
+        return newUrls;
+      });
+    }
+
     setActualFiles(prev => {
       const newFiles = { ...prev };
       delete newFiles[fileId];
       return newFiles;
     });
-    
+
     dispatch(removeFile(fileId));
+  };
+
+  const handleClearAll = () => {
+    // Revoke all thumbnail URLs
+    Object.values(thumbnailUrls).forEach(url => URL.revokeObjectURL(url));
+    setThumbnailUrls({});
+    setActualFiles({});
+    dispatch(clearFiles());
   };
 
   const handleUpload = async () => {
     if (!albumId || files.length === 0) return;
 
     try {
-      // Prepare files with their actual File objects
       const filesToUpload = files.map(f => ({
         id: f.id,
         file: actualFiles[f.id]
-      })).filter(f => f.file); // Filter out any missing files
+      })).filter(f => f.file);
 
       if (filesToUpload.length === 0) {
         console.error('No files available for upload');
@@ -123,8 +205,7 @@ const UploadMediaPage: React.FC = () => {
       }
 
       await dispatch(uploadMediaFiles({ files: filesToUpload, albumId })).unwrap();
-      
-      // Navigate back to album after successful upload
+
       setTimeout(() => {
         navigate(`/albums/${albumId}`);
       }, 1000);
@@ -153,36 +234,34 @@ const UploadMediaPage: React.FC = () => {
     const completed = files.filter(f => f.status === 'completed').length;
     const failed = files.filter(f => f.status === 'error').length;
     const uploading = files.filter(f => f.status === 'uploading').length;
-    const pending = files.filter(f => f.status === 'pending').length;
-    
-    // Calculate overall progress percentage
+
     const totalProgress = files.reduce((acc, file) => {
       if (file.status === 'completed') return acc + 100;
       if (file.status === 'uploading') return acc + file.progress;
-      return acc; // pending and error files contribute 0
+      return acc;
     }, 0);
-    
+
     const overallProgress = files.length > 0 ? Math.round(totalProgress / files.length) : 0;
-    
-    return { 
-      completed, 
-      failed, 
-      uploading, 
-      pending,
+
+    return {
+      completed,
+      failed,
+      uploading,
       total: files.length,
       overallProgress,
-      currentlyUploading: uploading > 0 ? completed + 1 : completed // The file currently being uploaded
+      currentlyUploading: uploading > 0 ? completed + 1 : completed
     };
   };
 
   const stats = getProgressStats();
+  const totalSize = files.reduce((acc, f) => acc + f.size, 0);
 
   // Auto-remove completed files after a short delay
   useEffect(() => {
     if (stats.completed > 0 && !isUploading) {
       const timer = setTimeout(() => {
         dispatch(removeCompletedFiles());
-      }, 2000); // Wait 2 seconds after upload completes before removing
+      }, 2000);
 
       return () => clearTimeout(timer);
     }
@@ -213,10 +292,10 @@ const UploadMediaPage: React.FC = () => {
             </button>
           </div>
           <div className="mt-4">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Upload Media</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Upload Photos</h1>
             {currentAlbum && (
               <p className="text-gray-600 dark:text-gray-400 mt-1">
-                Upload photos to "{currentAlbum.name}"
+                to "{currentAlbum.name}"
               </p>
             )}
           </div>
@@ -258,7 +337,7 @@ const UploadMediaPage: React.FC = () => {
               </button>
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              Supports JPEG and PNG images up to 10MB each
+              JPEG and PNG images up to 10MB each
             </p>
           </div>
           <input
@@ -282,21 +361,19 @@ const UploadMediaPage: React.FC = () => {
                 </svg>
                 <div>
                   <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                    Uploading {stats.currentlyUploading} of {stats.total} files...
+                    Uploading {stats.currentlyUploading} of {stats.total}
                   </p>
-                  <p className="text-xs text-blue-700 dark:text-blue-200">
-                    {stats.completed} completed, {stats.failed} failed
-                  </p>
+                  {stats.failed > 0 && (
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      {stats.failed} failed
+                    </p>
+                  )}
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  {stats.overallProgress}%
-                </p>
-              </div>
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                {stats.overallProgress}%
+              </p>
             </div>
-            
-            {/* Overall Progress Bar */}
             <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
               <div
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
@@ -306,92 +383,11 @@ const UploadMediaPage: React.FC = () => {
           </div>
         )}
 
-        {/* File List */}
-        {files.length > 0 && (
-          <div className="mt-6">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Selected Files ({files.length})
-            </h3>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {files.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                >
-                  <div className="flex items-center flex-1 min-w-0">
-                    <div className="flex-shrink-0">
-                      {file.type.startsWith('image/') ? (
-                        <svg className="h-8 w-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                        </svg>
-                      ) : (
-                        <svg className="h-8 w-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="ml-4 flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          {file.name}
-                        </p>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {formatFileSize(file.size)}
-                          </span>
-                          {file.status === 'completed' && (
-                            <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                          {file.status === 'error' && (
-                            <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </div>
-                      </div>
-                      {file.status === 'uploading' && (
-                        <div className="mt-2">
-                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${file.progress}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {file.progress}% uploaded
-                          </p>
-                        </div>
-                      )}
-                      {file.status === 'error' && file.error && (
-                        <p className="text-xs text-red-600 dark:text-red-400 mt-1">{file.error}</p>
-                      )}
-                    </div>
-                  </div>
-                  {!isUploading && (
-                    <button
-                      onClick={() => handleRemoveFile(file.id)}
-                      className="ml-4 flex-shrink-0 p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                    >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Error Display */}
         {error && (
           <div className="mt-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
             <div className="flex">
-              <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
+              <XMarkIcon className="h-5 w-5 text-red-400" />
               <div className="ml-3">
                 <h3 className="text-sm font-medium text-red-800 dark:text-red-200">Upload Error</h3>
                 <p className="text-sm text-red-700 dark:text-red-300 mt-1">{error}</p>
@@ -400,31 +396,52 @@ const UploadMediaPage: React.FC = () => {
           </div>
         )}
 
-        {/* Action Buttons */}
+        {/* Thumbnail Grid Section */}
         {files.length > 0 && (
-          <div className="mt-6 flex justify-end space-x-3">
-            {stats.completed > 0 && !isUploading && (
-              <button
-                onClick={() => dispatch(removeCompletedFiles())}
-                className="px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:bg-green-900/20 dark:border-green-600 dark:text-green-300 dark:hover:bg-green-900/30"
-              >
-                Remove Completed ({stats.completed})
-              </button>
-            )}
-            <button
-              onClick={() => dispatch(clearFiles())}
-              disabled={isUploading}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-            >
-              Clear All
-            </button>
-            <button
-              onClick={handleUpload}
-              disabled={isUploading || files.length === 0}
-              className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isUploading ? `Uploading... (${stats.completed + stats.uploading}/${stats.total})` : `Upload ${files.length} File${files.length === 1 ? '' : 's'}`}
-            </button>
+          <div className="mt-6">
+            {/* Action bar - above grid */}
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {files.length} photo{files.length !== 1 ? 's' : ''} ({formatFileSize(totalSize)})
+              </p>
+              <div className="flex items-center gap-2">
+                {!isUploading && (
+                  <button
+                    onClick={handleClearAll}
+                    className="px-3 py-1.5 text-sm text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+                <button
+                  onClick={handleCancel}
+                  disabled={isUploading}
+                  className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpload}
+                  disabled={isUploading || files.length === 0}
+                  className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isUploading ? 'Uploading...' : `Upload ${files.length}`}
+                </button>
+              </div>
+            </div>
+
+            {/* Thumbnail grid */}
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+              {files.map((file) => (
+                <ThumbnailItem
+                  key={file.id}
+                  file={file as FileData}
+                  thumbnailUrl={thumbnailUrls[file.id]}
+                  onRemove={() => handleRemoveFile(file.id)}
+                  disabled={isUploading}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>
