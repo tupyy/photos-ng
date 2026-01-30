@@ -380,14 +380,16 @@ const AlbumsPage: React.FC = () => {
                 Back
               </PillButton>
 
-              {/* Selection Mode Toggle */}
-              {!isSelectionMode ? (
-                <PillButton onClick={enterSelectionMode}>
-                  <Squares2X2Icon className="w-4 h-4" />
-                  Select
-                </PillButton>
-              ) : (
-                <PillButton onClick={exitSelectionMode}>Done</PillButton>
+              {/* Selection Mode Toggle - only show if there's content to select */}
+              {((currentAlbum.children && currentAlbum.children.length > 0) || optimisticMedia.length > 0) && (
+                !isSelectionMode ? (
+                  <PillButton onClick={enterSelectionMode}>
+                    <Squares2X2Icon className="w-4 h-4" />
+                    Select
+                  </PillButton>
+                ) : (
+                  <PillButton onClick={exitSelectionMode}>Done</PillButton>
+                )
               )}
             </div>
 
@@ -463,13 +465,16 @@ const AlbumsPage: React.FC = () => {
           <section>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Albums</h2>
-              {!isSelectionMode ? (
-                <PillButton onClick={enterSelectionMode}>
-                  <Squares2X2Icon className="w-4 h-4" />
-                  Select
-                </PillButton>
-              ) : (
-                <PillButton onClick={exitSelectionMode}>Done</PillButton>
+              {/* Only show Select button if there are albums */}
+              {optimisticAlbums.length > 0 && (
+                !isSelectionMode ? (
+                  <PillButton onClick={enterSelectionMode}>
+                    <Squares2X2Icon className="w-4 h-4" />
+                    Select
+                  </PillButton>
+                ) : (
+                  <PillButton onClick={exitSelectionMode}>Done</PillButton>
+                )
               )}
             </div>
             <AlbumsList
